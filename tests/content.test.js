@@ -58,10 +58,12 @@ test('native prompt TOC indices are parsed and deduplicated in DOM order', () =>
 });
 
 test('conversation turn test ids map user and assistant nodes to one prompt index', () => {
-  assert.equal(getPromptIndexFromTestId('conversation-turn-0'), 0);
-  assert.equal(getPromptIndexFromTestId('conversation-turn-1'), 0);
-  assert.equal(getPromptIndexFromTestId('conversation-turn-2'), 1);
-  assert.equal(getPromptIndexFromTestId('conversation-turn-3'), 1);
+  assert.equal(getPromptIndexFromTestId('conversation-turn-1', 'user'), 0);
+  assert.equal(getPromptIndexFromTestId('conversation-turn-2', 'assistant'), 0);
+  assert.equal(getPromptIndexFromTestId('conversation-turn-7', 'user'), 3);
+  assert.equal(getPromptIndexFromTestId('conversation-turn-8', 'assistant'), 3);
+  assert.equal(getPromptIndexFromTestId('conversation-turn-6', 'user'), 3);
+  assert.equal(getPromptIndexFromTestId('conversation-turn-7', 'assistant'), 3);
   assert.equal(getPromptIndexFromTestId('conversation-turn-x'), null);
 });
 
@@ -163,6 +165,7 @@ test('dynamic content never uses innerHTML and polling is absent', () => {
   assert.match(source, /findConnectedHeading/);
   assert.match(source, /waitForHeadingDestination/);
   assert.match(source, /pendingNavigationRequestId/);
+  assert.match(source, /if \(group\.nativeIndex === null\) this\.removeGroup\(group\)/);
   assert.doesNotMatch(source, /nativeLabel/);
   assert.doesNotMatch(source, /attributeFilter: \[[^\]]*aria-label/);
   assert.doesNotMatch(source, /Response without a preceding prompt/);

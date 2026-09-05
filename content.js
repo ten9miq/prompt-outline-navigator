@@ -87,9 +87,17 @@
     return items;
   }
 
-  function getPromptIndexFromTestId(testId) {
+  function getPromptIndexFromTestId(testId, role = null) {
     const match = /^conversation-turn-(\d+)$/.exec(testId || '');
-    return match ? Math.floor(Number(match[1]) / 2) : null;
+    if (!match) return null;
+    const turnIndex = Number(match[1]);
+    if (role === 'user') return Math.floor(turnIndex / 2);
+    if (role === 'assistant') {
+      return turnIndex > 0 && turnIndex % 2 === 0
+        ? (turnIndex / 2) - 1
+        : Math.floor(turnIndex / 2);
+    }
+    return Math.max(0, Math.floor((turnIndex - 1) / 2));
   }
 
   function findRemountedHeading(headings, descriptor) {
@@ -328,7 +336,8 @@
 
     getPromptIndexFromElement(element) {
       const turn = element?.closest?.(SELECTORS.turn);
-      return getPromptIndexFromTestId(turn?.getAttribute('data-testid'));
+      const role = element?.getAttribute?.('data-message-author-role');
+      return getPromptIndexFromTestId(turn?.getAttribute('data-testid'), role);
     }
 
     resolveNativeIndex(prompt, assistant, fallbackIndex, pairCount) {
@@ -407,6 +416,10 @@
           this.nativeIndexToGroup.set(index, group);
         }
         group.nativeButton = button;
+      }
+
+      for (const group of [...this.groups]) {
+        if (group.nativeIndex === null) this.removeGroup(group);
       }
 
       this.syncNativePrompts();
