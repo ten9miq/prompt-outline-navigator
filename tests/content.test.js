@@ -39,6 +39,7 @@ test('DOM-dependent selectors are centralized', () => {
   assert.equal(SELECTORS.thread, '#thread');
   assert.equal(SELECTORS.assistantMessage, '[data-message-author-role="assistant"]');
   assert.equal(SELECTORS.headings, 'h1,h2,h3,h4,h5,h6');
+  assert.equal(SELECTORS.conversationTurn, '[data-testid^="conversation-turn-"]');
   assert.equal(SELECTORS.nativeTocItem, 'button[data-toc-item-index]');
   assert.equal(SELECTORS.nativeTocActive, 'button[data-toc-item-index][data-toc-active]');
 });
@@ -165,7 +166,9 @@ test('dynamic content never uses innerHTML and polling is absent', () => {
   assert.match(source, /findConnectedHeading/);
   assert.match(source, /waitForHeadingDestination/);
   assert.match(source, /pendingNavigationRequestId/);
-  assert.match(source, /if \(group\.nativeIndex === null\) this\.removeGroup\(group\)/);
+  assert.match(source, /removeNonNativeGroups/);
+  assert.match(source, /closest\?\.\(SELECTORS\.conversationTurn\)/);
+  assert.match(source, /dataset\.tocVersion/);
   assert.doesNotMatch(source, /nativeLabel/);
   assert.doesNotMatch(source, /attributeFilter: \[[^\]]*aria-label/);
   assert.doesNotMatch(source, /Response without a preceding prompt/);
