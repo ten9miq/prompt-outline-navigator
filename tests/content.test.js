@@ -5,7 +5,13 @@ const assert = require('node:assert/strict');
 
 const sourcePath = path.join(__dirname, '..', 'content.js');
 const source = fs.readFileSync(sourcePath, 'utf8');
-const { SELECTORS, truncateText, pairConversationMessages } = require(sourcePath);
+const {
+  SELECTORS,
+  truncateText,
+  pairConversationMessages,
+  getNavigationOffset,
+  findActiveTrackingTarget
+} = require(sourcePath);
 
 test('prompt and heading edge-case strings remain plain text inputs', () => {
   const values = [
@@ -53,6 +59,24 @@ test('only a user followed by its first assistant creates a response pair', () =
   ]);
 });
 
+test('active tracking chooses exactly the last item above the navigation line', () => {
+  const target = (top, id) => ({ id, element: { getBoundingClientRect: () => ({ top }) } });
+  const first = target(-800, 'first');
+  const previous = target(40, 'previous');
+  const current = target(90, 'current');
+  const next = target(240, 'next');
+
+  assert.equal(findActiveTrackingTarget([first, previous, current, next], 100), current);
+  assert.equal(findActiveTrackingTarget([first, previous, current, next], 50), previous);
+  assert.equal(findActiveTrackingTarget([first, previous, current, next], -900), null);
+});
+
+test('navigation line uses ten percent of the viewport within safe limits', () => {
+  assert.equal(getNavigationOffset(600), 72);
+  assert.equal(getNavigationOffset(900), 90);
+  assert.equal(getNavigationOffset(1600), 120);
+});
+
 test('dynamic content never uses innerHTML and polling is absent', () => {
   assert.doesNotMatch(source, /\.innerHTML\s*=/);
   assert.doesNotMatch(source, /setInterval\s*\(/);
@@ -60,9 +84,9 @@ test('dynamic content never uses innerHTML and polling is absent', () => {
   assert.match(source, /new WeakMap/);
   assert.match(source, /new IntersectionObserver/);
   assert.match(source, /0px 0px -90% 0px/);
-  assert.match(source, /isWithinDeactivationBand/);
   assert.match(source, /collectResponsePairs/);
-  assert.match(source, /a\.getBoundingClientRect\(\)\.top - b\.getBoundingClientRect\(\)\.top/);
+  assert.match(source, /findActiveTrackingTarget/);
+  assert.match(source, /addEventListener\('scroll'/);
   assert.match(source, /scrollToDestination/);
   assert.match(source, /flashDestination/);
 });

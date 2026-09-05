@@ -37,6 +37,26 @@
     return pairs;
   }
 
+  function getNavigationOffset(viewportHeight) {
+    return Math.max(72, Math.min(120, viewportHeight * 0.1));
+  }
+
+  function findActiveTrackingTarget(targets, activationY) {
+    let low = 0;
+    let high = targets.length - 1;
+    let active = null;
+    while (low <= high) {
+      const middle = Math.floor((low + high) / 2);
+      if (targets[middle].element.getBoundingClientRect().top <= activationY) {
+        active = targets[middle];
+        low = middle + 1;
+      } else {
+        high = middle - 1;
+      }
+    }
+    return active;
+  }
+
   function createArrow(direction) {
     const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
     svg.setAttribute('width', '12');
@@ -74,20 +94,18 @@
       this.collapsedHeadings = new WeakSet();
       this.destinationHighlightTimers = new WeakMap();
 
-      this.visibleHeadings = new Map();
-      this.visiblePrompts = new Map();
       this.activeHeading = null;
       this.activeGroup = null;
       this.activeUpdateFrame = null;
-      this.clearActiveTimer = null;
       this.structureSyncFrame = null;
       this.threadBindFrame = null;
+      this.boundScheduleActiveUpdate = () => this.scheduleActiveUpdate();
 
       this.conversationObserver = null;
       this.pageObserver = null;
       this.themeObserver = null;
-      this.headingObserver = this.createPositionObserver('heading');
-      this.promptObserver = this.createPositionObserver('prompt');
+      this.headingObserver = this.createPositionObserver();
+      this.promptObserver = this.createPositionObserver();
 
       this.init();
     }
@@ -98,6 +116,7 @@
       this.setSidebarVisible(true, { focus: false });
       this.observePage();
       this.observeTheme();
+      this.observePositionChanges();
       this.bindCurrentThread();
     }
 
@@ -228,6 +247,7 @@
       responsePairs.forEach(({ assistant, prompt }, index) => this.addGroup(assistant, index, prompt));
       this.updateGroupOrderAndLabels(assistants);
       this.updateEmptyState();
+      this.scheduleActiveUpdate();
     }
 
     collectResponsePairs() {
@@ -310,6 +330,7 @@
 
       this.updateGroupOrderAndLabels(assistants);
       this.updateEmptyState();
+      this.scheduleActiveUpdate();
     }
 
     addGroup(assistant, index = this.groups.length, prompt = null) {
@@ -385,7 +406,6 @@
       if (!promptGroups?.size) {
         this.promptObserver?.unobserve(prompt);
         this.promptToGroups.delete(prompt);
-        this.visiblePrompts.delete(prompt);
       }
     }
 
@@ -420,6 +440,7 @@
       group.headings = current;
       current.forEach((heading) => group.content.append(this.headingToTocItem.get(heading)));
       this.refreshHeadingHierarchy(group);
+      this.scheduleActiveUpdate();
     }
 
     addHeading(group, heading, index) {
@@ -444,7 +465,6 @@
 
     removeHeading(group, heading) {
       this.headingObserver?.unobserve(heading);
-      this.visibleHeadings.delete(heading);
       const item = this.headingToTocItem.get(heading);
       item?.remove();
       this.headingToTocItem.delete(heading);
@@ -580,60 +600,46 @@
       this.refreshHeadingHierarchy(group);
     }
 
-    createPositionObserver(type) {
+    createPositionObserver() {
       if (typeof IntersectionObserver === 'undefined') return null;
-      return new IntersectionObserver((entries) => {
-        const visible = type === 'heading' ? this.visibleHeadings : this.visiblePrompts;
-        entries.forEach((entry) => {
-          if (entry.isIntersecting) visible.set(entry.target, entry.boundingClientRect.top);
-          else visible.delete(entry.target);
-        });
-        this.scheduleActiveUpdate();
-      }, { root: null, rootMargin: ACTIVE_ROOT_MARGIN, threshold: 0 });
+      return new IntersectionObserver(() => this.scheduleActiveUpdate(), {
+        root: null,
+        rootMargin: ACTIVE_ROOT_MARGIN,
+        threshold: 0
+      });
+    }
+
+    observePositionChanges() {
+      window.addEventListener('scroll', this.boundScheduleActiveUpdate, { capture: true, passive: true });
+      window.addEventListener('resize', this.boundScheduleActiveUpdate, { passive: true });
     }
 
     scheduleActiveUpdate() {
       if (this.activeUpdateFrame !== null) return;
       this.activeUpdateFrame = requestAnimationFrame(() => {
         this.activeUpdateFrame = null;
-        this.updateActiveFromIntersections();
+        this.updateActiveFromScrollPosition();
       });
     }
 
-    updateActiveFromIntersections() {
-      const closest = (entries) => {
-        const activationBottom = window.innerHeight * 0.1;
-        return [...entries.keys()]
-          .filter((element) => {
-            if (!element.isConnected) {
-              entries.delete(element);
-              return false;
-            }
-            const rect = element.getBoundingClientRect();
-            return rect.bottom > 0 && rect.top < activationBottom;
-          })
-          .sort((a, b) => a.getBoundingClientRect().top - b.getBoundingClientRect().top)[0] || null;
-      };
-      const heading = closest(this.visibleHeadings);
-      const prompt = closest(this.visiblePrompts);
-      const group = heading
-        ? this.headingToGroup.get(heading)
-        : this.groups.find((candidate) => candidate.prompt === prompt);
-      if (heading || group) {
-        clearTimeout(this.clearActiveTimer);
-        this.setActive(heading, group);
-        return;
-      }
-      const activeSource = this.activeHeading || this.activeGroup?.prompt || this.activeGroup?.assistant;
-      if (this.isWithinDeactivationBand(activeSource)) return;
-      clearTimeout(this.clearActiveTimer);
-      this.clearActiveTimer = setTimeout(() => this.setActive(null, null), 180);
+    getTrackingTargets() {
+      const targets = [];
+      this.groups.forEach((group) => {
+        const prompt = group.prompt || group.assistant;
+        if (prompt?.isConnected) targets.push({ element: prompt, heading: null, group });
+        group.headings.forEach((heading) => {
+          if (heading.isConnected) targets.push({ element: heading, heading, group });
+        });
+      });
+      return targets;
     }
 
-    isWithinDeactivationBand(element) {
-      if (!element?.isConnected) return false;
-      const rect = element.getBoundingClientRect();
-      return rect.bottom > window.innerHeight * -0.05 && rect.top < window.innerHeight * 0.15;
+    updateActiveFromScrollPosition() {
+      const target = findActiveTrackingTarget(
+        this.getTrackingTargets(),
+        getNavigationOffset(window.innerHeight)
+      );
+      this.setActive(target?.heading || null, target?.group || null);
     }
 
     setActive(heading, group) {
@@ -698,8 +704,6 @@
       this.headingToGroup = new WeakMap();
       this.headingToTocItem = new WeakMap();
       this.tocItemToHeading = new WeakMap();
-      this.visibleHeadings.clear();
-      this.visiblePrompts.clear();
       this.activeHeading = null;
       this.activeGroup = null;
     }
@@ -715,6 +719,13 @@
   }
 
   if (typeof module !== 'undefined' && module.exports) {
-    module.exports = { ChatGPTTOC, SELECTORS, truncateText, pairConversationMessages };
+    module.exports = {
+      ChatGPTTOC,
+      SELECTORS,
+      truncateText,
+      pairConversationMessages,
+      getNavigationOffset,
+      findActiveTrackingTarget
+    };
   }
 })();
