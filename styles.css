@@ -168,6 +168,26 @@ body.chatgpt-toc-open > .chatgpt-toc-app-root {
 
 .toc-status { padding: 18px 10px; color: var(--text-secondary, #666); text-align: center; }
 
+.chatgpt-toc-scroll-target {
+  scroll-margin-top: clamp(72px, 10vh, 120px) !important;
+}
+
+.chatgpt-toc-target-highlight {
+  border-radius: 6px;
+  animation: chatgpt-toc-target-highlight 2.4s ease-out;
+}
+
+@keyframes chatgpt-toc-target-highlight {
+  0%, 45% {
+    background-color: rgb(96 165 250 / 28%);
+    box-shadow: inset 3px 0 #60a5fa;
+  }
+  100% {
+    background-color: transparent;
+    box-shadow: inset 3px 0 transparent;
+  }
+}
+
 #chatgpt-toc-toggle {
   position: fixed;
   top: 70px;
@@ -221,4 +241,6 @@ body.chatgpt-toc-open > .chatgpt-toc-app-root {
 @media (prefers-reduced-motion: reduce) {
   body.chatgpt-toc-open > .chatgpt-toc-app-root,
   #chatgpt-toc-sidebar { transition: none; }
+
+  .chatgpt-toc-target-highlight { animation-duration: 1.2s; }
 }

@@ -63,4 +63,6 @@ test('dynamic content never uses innerHTML and polling is absent', () => {
   assert.match(source, /isWithinDeactivationBand/);
   assert.match(source, /collectResponsePairs/);
   assert.match(source, /a\.getBoundingClientRect\(\)\.top - b\.getBoundingClientRect\(\)\.top/);
+  assert.match(source, /scrollToDestination/);
+  assert.match(source, /flashDestination/);
 });

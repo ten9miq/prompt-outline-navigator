@@ -72,6 +72,7 @@
       this.tocItemToHeading = new WeakMap();
       this.collapsedGroups = new WeakSet();
       this.collapsedHeadings = new WeakSet();
+      this.destinationHighlightTimers = new WeakMap();
 
       this.visibleHeadings = new Map();
       this.visiblePrompts = new Map();
@@ -525,14 +526,41 @@
         if (event.target.closest('.toc-collapse-icon')) {
           event.stopPropagation();
           this.toggleHeading(heading);
-        } else heading.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        } else {
+          const group = this.headingToGroup.get(heading);
+          this.setActive(heading, group);
+          this.scrollToDestination(heading);
+        }
         return;
       }
 
       const header = event.target.closest('.toc-group-header');
       const group = this.groups.find((candidate) => candidate.header === header);
       const destination = group?.prompt || group?.assistant;
-      destination?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      if (destination) {
+        this.setActive(null, group);
+        this.scrollToDestination(destination);
+      }
+    }
+
+    scrollToDestination(element) {
+      element.classList.add('chatgpt-toc-scroll-target');
+      element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      this.flashDestination(element);
+      setTimeout(() => element.classList.remove('chatgpt-toc-scroll-target'), 1000);
+    }
+
+    flashDestination(element) {
+      const previousTimer = this.destinationHighlightTimers.get(element);
+      if (previousTimer) clearTimeout(previousTimer);
+      element.classList.remove('chatgpt-toc-target-highlight');
+      void element.offsetWidth;
+      element.classList.add('chatgpt-toc-target-highlight');
+      const timer = setTimeout(() => {
+        element.classList.remove('chatgpt-toc-target-highlight');
+        this.destinationHighlightTimers.delete(element);
+      }, 2400);
+      this.destinationHighlightTimers.set(element, timer);
     }
 
     toggleGroup(group) {

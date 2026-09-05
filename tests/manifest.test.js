@@ -9,7 +9,7 @@ const styles = fs.readFileSync(path.join(root, 'styles.css'), 'utf8');
 
 test('manifest identifies the navigator and needs no extra permissions', () => {
   assert.equal(manifest.name, 'TOC Navigator for ChatGPT');
-  assert.equal(manifest.version, '1.3.2');
+  assert.equal(manifest.version, '1.3.3');
   assert.deepEqual(manifest.permissions, []);
   assert.equal(manifest.key, undefined);
   assert.equal(manifest.update_url, undefined);
@@ -40,4 +40,10 @@ test('legacy Stylus and UserScript appearance is integrated', () => {
   assert.match(styles, /\.toc-group-header\.active[\s\S]*background: #2b2f36;[\s\S]*outline: 2px solid #6940c5/);
   assert.match(styles, /\.toc-item\.toc-h6 \{ padding-left: 30px; \}/);
   assert.match(styles, /-webkit-line-clamp: 5/);
+});
+
+test('TOC navigation leaves top space and highlights the destination', () => {
+  assert.match(styles, /scroll-margin-top: clamp\(72px, 10vh, 120px\)/);
+  assert.match(styles, /\.chatgpt-toc-target-highlight/);
+  assert.match(styles, /@keyframes chatgpt-toc-target-highlight/);
 });
