@@ -13,7 +13,8 @@ const {
   findActiveTrackingTarget,
   getNativeTocIndex,
   collectNativeTocItems,
-  getPromptIndexFromTestId
+  getPromptIndexFromTestId,
+  findRemountedHeading
 } = require(sourcePath);
 
 test('prompt and heading edge-case strings remain plain text inputs', () => {
@@ -62,6 +63,20 @@ test('conversation turn test ids map user and assistant nodes to one prompt inde
   assert.equal(getPromptIndexFromTestId('conversation-turn-2'), 1);
   assert.equal(getPromptIndexFromTestId('conversation-turn-3'), 1);
   assert.equal(getPromptIndexFromTestId('conversation-turn-x'), null);
+});
+
+test('a disconnected heading is replaced by its remounted counterpart', () => {
+  const heading = (text, tagName, isConnected) => ({ textContent: text, tagName, isConnected });
+  const stale = heading('Details', 'H2', false);
+  const remounted = heading('Details', 'H2', true);
+  const headings = [heading('Overview', 'H1', true), remounted];
+
+  assert.equal(findRemountedHeading(headings, {
+    index: 1,
+    tagName: stale.tagName,
+    text: stale.textContent
+  }), remounted);
+  assert.equal(findRemountedHeading([], { index: 0, tagName: 'H2', text: 'Details' }), null);
 });
 
 test('only a user followed by its first assistant creates a response pair', () => {
@@ -144,6 +159,9 @@ test('dynamic content never uses innerHTML and polling is absent', () => {
   assert.match(source, /nativeButton\.click\(\)/);
   assert.match(source, /getConnectedGroupDestination/);
   assert.match(source, /waitForGroupDestination/);
+  assert.match(source, /navigateToHeading/);
+  assert.match(source, /findConnectedHeading/);
+  assert.match(source, /waitForHeadingDestination/);
   assert.match(source, /pendingNavigationRequestId/);
   assert.doesNotMatch(source, /nativeLabel/);
   assert.doesNotMatch(source, /attributeFilter: \[[^\]]*aria-label/);

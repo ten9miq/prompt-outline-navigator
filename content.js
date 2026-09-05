@@ -92,6 +92,14 @@
     return match ? Math.floor(Number(match[1]) / 2) : null;
   }
 
+  function findRemountedHeading(headings, descriptor) {
+    const indexed = headings?.[descriptor.index];
+    if (indexed?.isConnected && indexed.tagName === descriptor.tagName) return indexed;
+    return headings?.find((candidate) => candidate.isConnected &&
+      candidate.tagName === descriptor.tagName &&
+      candidate.textContent.trim() === descriptor.text) || null;
+  }
+
   function createArrow(direction) {
     const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
     svg.setAttribute('width', '12');
@@ -807,10 +815,7 @@
           this.toggleHeading(heading);
         } else {
           const group = this.headingToGroup.get(heading);
-          this.navigationRequestId += 1;
-          this.pendingNavigationRequestId = null;
-          this.setActive(heading, group);
-          this.scrollToDestination(heading);
+          this.navigateToHeading(heading, group);
         }
         return;
       }
@@ -833,6 +838,54 @@
         this.waitForGroupDestination(group, requestId);
         return;
       }
+    }
+
+    navigateToHeading(heading, group) {
+      const requestId = ++this.navigationRequestId;
+      this.pendingNavigationRequestId = null;
+      this.setActive(heading, group);
+      if (heading.isConnected) {
+        this.scrollToDestination(heading);
+        return;
+      }
+
+      const descriptor = {
+        index: group?.headings.indexOf(heading) ?? -1,
+        tagName: heading.tagName,
+        text: heading.textContent.trim()
+      };
+      if (group?.nativeButton?.isConnected) {
+        this.pendingNavigationRequestId = requestId;
+        group.nativeButton.click();
+        this.waitForHeadingDestination(group, descriptor, requestId);
+        return;
+      }
+
+      const prompt = this.getConnectedGroupDestination(group);
+      if (prompt) {
+        this.pendingNavigationRequestId = requestId;
+        this.scrollToDestination(prompt);
+        this.waitForHeadingDestination(group, descriptor, requestId);
+      }
+    }
+
+    findConnectedHeading(group, descriptor) {
+      return findRemountedHeading(group?.headings, descriptor);
+    }
+
+    waitForHeadingDestination(group, descriptor, requestId, attempts = 0) {
+      if (requestId !== this.navigationRequestId || attempts >= 120) {
+        if (this.pendingNavigationRequestId === requestId) this.pendingNavigationRequestId = null;
+        return;
+      }
+      const heading = this.findConnectedHeading(group, descriptor);
+      if (heading) {
+        if (this.pendingNavigationRequestId === requestId) this.pendingNavigationRequestId = null;
+        this.setActive(heading, group);
+        this.scrollToDestination(heading);
+        return;
+      }
+      requestAnimationFrame(() => this.waitForHeadingDestination(group, descriptor, requestId, attempts + 1));
     }
 
     getConnectedGroupDestination(group) {
@@ -1025,7 +1078,8 @@
       findActiveTrackingTarget,
       getNativeTocIndex,
       collectNativeTocItems,
-      getPromptIndexFromTestId
+      getPromptIndexFromTestId,
+      findRemountedHeading
     };
   }
 })();
