@@ -197,7 +197,7 @@
       const title = document.createElement('h2');
       title.id = 'chatgpt-toc-title';
       title.className = 'toc-title';
-      title.textContent = 'Table of Contents';
+      title.textContent = 'TOC Navigator';
 
       const closeButton = document.createElement('button');
       closeButton.type = 'button';

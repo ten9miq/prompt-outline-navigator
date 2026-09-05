@@ -45,6 +45,11 @@ test('DOM-dependent selectors are centralized', () => {
   assert.equal(SELECTORS.nativeTocActive, 'button[data-toc-item-index][data-toc-active]');
 });
 
+test('sidebar heading uses the extension branding', () => {
+  assert.match(source, /title\.textContent = 'TOC Navigator'/);
+  assert.doesNotMatch(source, /title\.textContent = 'Table of Contents'/);
+});
+
 test('native prompt TOC indices are parsed and deduplicated in DOM order', () => {
   const button = (value) => ({ getAttribute: (name) => name === 'data-toc-item-index' ? value : null });
   const first = button('0');
