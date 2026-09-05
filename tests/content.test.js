@@ -87,6 +87,8 @@ test('dynamic content never uses innerHTML and polling is absent', () => {
   assert.match(source, /collectResponsePairs/);
   assert.match(source, /findActiveTrackingTarget/);
   assert.match(source, /addEventListener\('scroll'/);
+  assert.match(source, /allAssistants\.filter\(\(assistant\) => this\.turnToGroup\.has\(assistant\)\)/);
+  assert.match(source, /STRUCTURE_SETTLE_DELAY/);
   assert.match(source, /scrollToDestination/);
   assert.match(source, /flashDestination/);
 });

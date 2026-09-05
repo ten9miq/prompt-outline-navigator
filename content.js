@@ -13,6 +13,7 @@
 
   const PROMPT_LIMIT = 200;
   const ACTIVE_ROOT_MARGIN = '0px 0px -90% 0px';
+  const STRUCTURE_SETTLE_DELAY = 120;
 
   function truncateText(value, limit = PROMPT_LIMIT) {
     const text = String(value || '').trim();
@@ -97,7 +98,7 @@
       this.activeHeading = null;
       this.activeGroup = null;
       this.activeUpdateFrame = null;
-      this.structureSyncFrame = null;
+      this.structureSyncTimer = null;
       this.threadBindFrame = null;
       this.boundScheduleActiveUpdate = () => this.scheduleActiveUpdate();
 
@@ -302,11 +303,11 @@
     }
 
     scheduleStructureSync() {
-      if (this.structureSyncFrame !== null) return;
-      this.structureSyncFrame = requestAnimationFrame(() => {
-        this.structureSyncFrame = null;
+      clearTimeout(this.structureSyncTimer);
+      this.structureSyncTimer = setTimeout(() => {
+        this.structureSyncTimer = null;
         this.syncConversationStructure();
-      });
+      }, STRUCTURE_SETTLE_DELAY);
     }
 
     syncConversationStructure() {
@@ -316,8 +317,8 @@
       }
 
       const responsePairs = this.collectResponsePairs();
-      const assistants = responsePairs.map(({ assistant }) => assistant);
-      const liveAssistants = new Set(assistants);
+      const allAssistants = Array.from(this.thread.querySelectorAll(SELECTORS.assistantMessage));
+      const liveAssistants = new Set(allAssistants);
       for (const group of [...this.groups]) {
         if (!liveAssistants.has(group.assistant)) this.removeGroup(group);
       }
@@ -328,7 +329,8 @@
         else this.addGroup(assistant, index, prompt);
       });
 
-      this.updateGroupOrderAndLabels(assistants);
+      const trackedAssistants = allAssistants.filter((assistant) => this.turnToGroup.has(assistant));
+      this.updateGroupOrderAndLabels(trackedAssistants);
       this.updateEmptyState();
       this.scheduleActiveUpdate();
     }
@@ -625,7 +627,7 @@
     getTrackingTargets() {
       const targets = [];
       this.groups.forEach((group) => {
-        const prompt = group.prompt || group.assistant;
+        const prompt = group.prompt?.isConnected ? group.prompt : group.assistant;
         if (prompt?.isConnected) targets.push({ element: prompt, heading: null, group });
         group.headings.forEach((heading) => {
           if (heading.isConnected) targets.push({ element: heading, heading, group });
