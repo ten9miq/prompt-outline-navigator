@@ -138,6 +138,7 @@
       this.structureSyncTimer = null;
       this.threadBindFrame = null;
       this.nativeSyncFrame = null;
+      this.navigationRequestId = 0;
       this.boundScheduleActiveUpdate = () => this.scheduleActiveUpdate();
 
       this.conversationObserver = null;
@@ -793,6 +794,7 @@
           this.toggleHeading(heading);
         } else {
           const group = this.headingToGroup.get(heading);
+          this.navigationRequestId += 1;
           this.setActive(heading, group);
           this.scrollToDestination(heading);
         }
@@ -801,20 +803,35 @@
 
       const header = event.target.closest('.toc-group-header');
       const group = this.groups.find((candidate) => candidate.header === header);
-      if (group?.nativeButton?.isConnected) {
-        this.setActive(null, group);
-        group.nativeButton.click();
-        setTimeout(() => {
-          const destination = group.prompt?.isConnected ? group.prompt : group.assistant;
-          if (destination?.isConnected) this.scrollToDestination(destination);
-        }, 200);
-        return;
-      }
-      const destination = group?.prompt || group?.assistant;
+      const destination = this.getConnectedGroupDestination(group);
       if (destination) {
+        this.navigationRequestId += 1;
         this.setActive(null, group);
         this.scrollToDestination(destination);
+        return;
       }
+      if (group?.nativeButton?.isConnected) {
+        const requestId = ++this.navigationRequestId;
+        this.setActive(null, group);
+        group.nativeButton.click();
+        this.waitForGroupDestination(group, requestId);
+        return;
+      }
+    }
+
+    getConnectedGroupDestination(group) {
+      if (group?.prompt?.isConnected) return group.prompt;
+      return group?.assistant?.isConnected ? group.assistant : null;
+    }
+
+    waitForGroupDestination(group, requestId, attempts = 0) {
+      if (requestId !== this.navigationRequestId || attempts >= 120) return;
+      const destination = this.getConnectedGroupDestination(group);
+      if (destination) {
+        this.scrollToDestination(destination);
+        return;
+      }
+      requestAnimationFrame(() => this.waitForGroupDestination(group, requestId, attempts + 1));
     }
 
     scrollToDestination(element) {

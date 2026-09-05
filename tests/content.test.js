@@ -142,6 +142,8 @@ test('dynamic content never uses innerHTML and polling is absent', () => {
   assert.match(source, /syncNativeToc/);
   assert.match(source, /syncNativeTurns/);
   assert.match(source, /nativeButton\.click\(\)/);
+  assert.match(source, /getConnectedGroupDestination/);
+  assert.match(source, /waitForGroupDestination/);
   assert.doesNotMatch(source, /nativeLabel/);
   assert.doesNotMatch(source, /attributeFilter: \[[^\]]*aria-label/);
   assert.doesNotMatch(source, /Response without a preceding prompt/);
