@@ -1,10 +1,32 @@
 /* TOC Navigator for ChatGPT */
-:root { --chatgpt-toc-width: 200px; }
+:root {
+  --chatgpt-toc-width: 200px;
+  --chatgpt-toc-content-max-width: 80vw;
+}
 
 body.chatgpt-toc-open > .chatgpt-toc-app-root {
   width: calc(100% - var(--chatgpt-toc-width)) !important;
   max-width: calc(100% - var(--chatgpt-toc-width)) !important;
   transition: width 180ms ease, max-width 180ms ease;
+}
+
+/* Widen ChatGPT through its content-width variable instead of reshaping its DOM. */
+#thread { --wide-content-max-width: var(--chatgpt-toc-content-max-width); }
+
+[data-conversation-screenshot-content],
+#thread-bottom-container [class*="max-w-(--thread-content-max-width)"],
+#thread-bottom [class*="max-w-(--thread-content-max-width)"] {
+  --thread-content-max-width: var(--wide-content-max-width) !important;
+  width: 100% !important;
+  max-width: var(--thread-content-max-width) !important;
+}
+
+[data-turn="assistant"] .markdown.prose {
+  width: 100% !important;
+  max-width: none !important;
+  padding-inline: 10px;
+  box-sizing: border-box;
+  overflow-wrap: anywhere;
 }
 
 #chatgpt-toc-sidebar {

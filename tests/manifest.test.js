@@ -9,7 +9,7 @@ const styles = fs.readFileSync(path.join(root, 'styles.css'), 'utf8');
 
 test('manifest identifies the navigator and needs no extra permissions', () => {
   assert.equal(manifest.name, 'TOC Navigator for ChatGPT');
-  assert.equal(manifest.version, '1.3.15');
+  assert.equal(manifest.version, '1.3.16');
   assert.deepEqual(manifest.permissions, []);
   assert.equal(manifest.key, undefined);
   assert.equal(manifest.update_url, undefined);
@@ -30,6 +30,15 @@ test('sidecar reserves width without padding or reparenting styles', () => {
   assert.match(styles, /body\.chatgpt-toc-open\s*>\s*\.chatgpt-toc-app-root/);
   assert.match(styles, /calc\(100% - var\(--chatgpt-toc-width\)\)/);
   assert.doesNotMatch(styles, /padding-right/);
+});
+
+test('conversation and composer use ChatGPT content-width variables for wide mode', () => {
+  assert.match(styles, /--chatgpt-toc-content-max-width:\s*80vw/);
+  assert.match(styles, /#thread\s*\{\s*--wide-content-max-width:/);
+  assert.match(styles, /--thread-content-max-width:\s*var\(--wide-content-max-width\)\s*!important/);
+  assert.match(styles, /#thread-bottom-container \[class\*="max-w-\(--thread-content-max-width\)"\]/);
+  assert.match(styles, /\[data-turn="assistant"\] \.markdown\.prose[\s\S]*max-width:\s*none\s*!important/);
+  assert.doesNotMatch(styles, /body\s*>\s*div\s*>\s*div\.flex/);
 });
 
 test('legacy Stylus and UserScript appearance is integrated', () => {
