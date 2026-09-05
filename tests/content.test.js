@@ -14,7 +14,8 @@ const {
   getNativeTocIndex,
   collectNativeTocItems,
   getPromptIndexFromTestId,
-  findRemountedHeading
+  findRemountedHeading,
+  canCreateConversationGroup
 } = require(sourcePath);
 
 test('prompt and heading edge-case strings remain plain text inputs', () => {
@@ -80,6 +81,12 @@ test('a disconnected heading is replaced by its remounted counterpart', () => {
     text: stale.textContent
   }), remounted);
   assert.equal(findRemountedHeading([], { index: 0, tagName: 'H2', text: 'Details' }), null);
+});
+
+test('native TOC authority prevents unmatched fallback groups', () => {
+  assert.equal(canCreateConversationGroup(null, 5), false);
+  assert.equal(canCreateConversationGroup(3, 5), true);
+  assert.equal(canCreateConversationGroup(null, 0), true);
 });
 
 test('only a user followed by its first assistant creates a response pair', () => {
@@ -167,6 +174,9 @@ test('dynamic content never uses innerHTML and polling is absent', () => {
   assert.match(source, /waitForHeadingDestination/);
   assert.match(source, /pendingNavigationRequestId/);
   assert.match(source, /removeNonNativeGroups/);
+  assert.match(source, /reconcileNativeTocItems/);
+  assert.match(source, /syncConversationStructure\(\{ nativeTocReady: true \}\)/);
+  assert.doesNotMatch(source, /nativeTocItems\.clear\(\)/);
   assert.match(source, /closest\?\.\(SELECTORS\.conversationTurn\)/);
   assert.match(source, /dataset\.tocVersion/);
   assert.doesNotMatch(source, /nativeLabel/);

@@ -109,6 +109,10 @@
       candidate.textContent.trim() === descriptor.text) || null;
   }
 
+  function canCreateConversationGroup(nativeIndex, nativeTocCount) {
+    return nativeIndex !== null || nativeTocCount === 0;
+  }
+
   function createArrow(direction) {
     const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
     svg.setAttribute('width', '12');
@@ -294,9 +298,10 @@
         return;
       }
 
-      this.nativeTocItems = collectNativeTocItems(document.querySelectorAll(SELECTORS.nativeTocItem));
+      const nativeItems = collectNativeTocItems(document.querySelectorAll(SELECTORS.nativeTocItem));
+      if (nativeItems.size) this.reconcileNativeTocItems(nativeItems);
       this.scanConversation();
-      this.syncNativeToc();
+      this.syncNativePrompts();
       this.conversationObserver = new MutationObserver((records) => this.handleConversationMutations(records));
       this.conversationObserver.observe(this.thread, {
         childList: true,
@@ -313,7 +318,7 @@
           this.turnToGroup.get(assistant) ||
           (nativeIndex !== null && this.nativeIndexToGroup.get(nativeIndex));
         if (group) this.bindGroupToTurn(group, assistant, prompt, key || null);
-        else if (nativeIndex !== null || !this.nativeTocItems.size) {
+        else if (canCreateConversationGroup(nativeIndex, this.nativeTocItems.size)) {
           this.addGroup(assistant, index, prompt, key || null, nativeIndex);
         }
       });
@@ -391,12 +396,17 @@
     syncNativeToc() {
       const items = collectNativeTocItems(document.querySelectorAll(SELECTORS.nativeTocItem));
       if (!items.size) {
-        this.nativeTocItems.clear();
         this.groups.forEach((group) => { group.nativeButton = null; });
         this.scheduleActiveUpdate();
         return;
       }
 
+      this.reconcileNativeTocItems(items);
+      this.syncNativePrompts();
+      this.syncConversationStructure({ nativeTocReady: true });
+    }
+
+    reconcileNativeTocItems(items) {
       this.nativeTocItems = items;
       for (const [index, group] of [...this.nativeIndexToGroup]) {
         if (!items.has(index)) {
@@ -424,9 +434,6 @@
       }
 
       this.removeNonNativeGroups();
-
-      this.syncNativePrompts();
-      this.syncConversationStructure();
     }
 
     removeNonNativeGroups() {
@@ -516,10 +523,15 @@
       }, STRUCTURE_SETTLE_DELAY);
     }
 
-    syncConversationStructure() {
+    syncConversationStructure(options = {}) {
       if (!this.thread?.isConnected) {
         this.bindCurrentThread();
         return;
+      }
+
+      if (!options.nativeTocReady) {
+        const nativeItems = collectNativeTocItems(document.querySelectorAll(SELECTORS.nativeTocItem));
+        if (nativeItems.size) this.reconcileNativeTocItems(nativeItems);
       }
 
       const responsePairs = this.collectResponsePairs();
@@ -534,7 +546,7 @@
           (nativeIndex !== null && this.nativeIndexToGroup.get(nativeIndex));
         if (group) {
           this.bindGroupToTurn(group, assistant, prompt, key || null);
-        } else if (nativeIndex !== null || !this.nativeTocItems.size) {
+        } else if (canCreateConversationGroup(nativeIndex, this.nativeTocItems.size)) {
           this.addGroup(assistant, index, prompt, key || null, nativeIndex);
         }
       });
@@ -1074,6 +1086,7 @@
       this.turnToGroup = new WeakMap();
       this.turnKeyToGroup = new Map();
       this.nativeIndexToGroup = new Map();
+      this.nativeTocItems = new Map();
       this.promptToGroups = new WeakMap();
       this.headingToGroup = new WeakMap();
       this.headingToTocItem = new WeakMap();
@@ -1103,7 +1116,8 @@
       getNativeTocIndex,
       collectNativeTocItems,
       getPromptIndexFromTestId,
-      findRemountedHeading
+      findRemountedHeading,
+      canCreateConversationGroup
     };
   }
 })();
