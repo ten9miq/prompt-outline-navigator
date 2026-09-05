@@ -8,7 +8,9 @@
     userMessage: '[data-message-author-role="user"]',
     assistantMessage: '[data-message-author-role="assistant"]',
     headings: 'h1,h2,h3,h4,h5,h6',
-    turn: '[data-message-id],[data-turn-id],[data-testid^="conversation-turn-"]'
+    turn: '[data-message-id],[data-turn-id],[data-testid^="conversation-turn-"]',
+    nativeTocItem: 'button[data-toc-item-index]',
+    nativeTocActive: 'button[data-toc-item-index][data-toc-active]'
   });
 
   const PROMPT_LIMIT = 200;
@@ -70,6 +72,26 @@
     return active;
   }
 
+  function getNativeTocIndex(element) {
+    const value = element?.getAttribute?.('data-toc-item-index');
+    if (!/^\d+$/.test(value || '')) return null;
+    return Number(value);
+  }
+
+  function collectNativeTocItems(elements) {
+    const items = new Map();
+    for (const element of elements) {
+      const index = getNativeTocIndex(element);
+      if (index !== null && !items.has(index)) items.set(index, element);
+    }
+    return items;
+  }
+
+  function getPromptIndexFromTestId(testId) {
+    const match = /^conversation-turn-(\d+)$/.exec(testId || '');
+    return match ? Math.floor(Number(match[1]) / 2) : null;
+  }
+
   function createArrow(direction) {
     const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
     svg.setAttribute('width', '12');
@@ -100,6 +122,8 @@
       this.groups = [];
       this.turnToGroup = new WeakMap();
       this.turnKeyToGroup = new Map();
+      this.nativeIndexToGroup = new Map();
+      this.nativeTocItems = new Map();
       this.promptToGroups = new WeakMap();
       this.headingToGroup = new WeakMap();
       this.headingToTocItem = new WeakMap();
@@ -113,10 +137,12 @@
       this.activeUpdateFrame = null;
       this.structureSyncTimer = null;
       this.threadBindFrame = null;
+      this.nativeSyncFrame = null;
       this.boundScheduleActiveUpdate = () => this.scheduleActiveUpdate();
 
       this.conversationObserver = null;
       this.pageObserver = null;
+      this.nativeTocObserver = null;
       this.themeObserver = null;
       this.headingObserver = this.createPositionObserver();
       this.promptObserver = this.createPositionObserver();
@@ -131,6 +157,7 @@
       this.observePage();
       this.observeTheme();
       this.observePositionChanges();
+      this.observeNativeToc();
       this.bindCurrentThread();
     }
 
@@ -246,7 +273,9 @@
         return;
       }
 
+      this.nativeTocItems = collectNativeTocItems(document.querySelectorAll(SELECTORS.nativeTocItem));
       this.scanConversation();
+      this.syncNativeToc();
       this.conversationObserver = new MutationObserver((records) => this.handleConversationMutations(records));
       this.conversationObserver.observe(this.thread, {
         childList: true,
@@ -257,10 +286,15 @@
 
     scanConversation() {
       const responsePairs = this.collectResponsePairs();
-      const groups = responsePairs.map(({ assistant, prompt, key }, index) =>
-        this.addGroup(assistant, index, prompt, key || null)
-      );
-      this.updateGroupOrderAndLabels(groups);
+      responsePairs.forEach(({ assistant, prompt, key }, index) => {
+        const nativeIndex = this.resolveNativeIndex(prompt, assistant, index, responsePairs.length);
+        const group = (key && this.turnKeyToGroup.get(key)) ||
+          this.turnToGroup.get(assistant) ||
+          (nativeIndex !== null && this.nativeIndexToGroup.get(nativeIndex));
+        if (group) this.bindGroupToTurn(group, assistant, prompt, key || null);
+        else this.addGroup(assistant, index, prompt, key || null, nativeIndex);
+      });
+      this.updateGroupOrderAndLabels();
       this.updateEmptyState();
       this.scheduleActiveUpdate();
     }
@@ -271,6 +305,7 @@
     }
 
     getStableTurnKey(message) {
+      if (!message) return null;
       const turn = message.closest(SELECTORS.turn);
       if (!turn) return null;
       const messageId = turn.getAttribute('data-message-id');
@@ -279,6 +314,106 @@
       if (turnId) return `turn:${turnId}`;
       const testId = turn.getAttribute('data-testid');
       return testId?.startsWith('conversation-turn-') ? `test:${testId}` : null;
+    }
+
+    getPromptIndexFromElement(element) {
+      const turn = element?.closest?.(SELECTORS.turn);
+      return getPromptIndexFromTestId(turn?.getAttribute('data-testid'));
+    }
+
+    resolveNativeIndex(prompt, assistant, fallbackIndex, pairCount) {
+      if (!this.nativeTocItems.size) return null;
+      const parsed = this.getPromptIndexFromElement(prompt) ?? this.getPromptIndexFromElement(assistant);
+      if (parsed !== null && this.nativeTocItems.has(parsed)) return parsed;
+      return pairCount === this.nativeTocItems.size && this.nativeTocItems.has(fallbackIndex)
+        ? fallbackIndex
+        : null;
+    }
+
+    observeNativeToc() {
+      this.nativeTocObserver = new MutationObserver((records) => {
+        let activeChanged = false;
+        const structureChanged = records.some((record) => {
+          if (record.type === 'attributes') {
+            if (!record.target.matches?.(SELECTORS.nativeTocItem)) return false;
+            if (record.attributeName === 'data-toc-active') {
+              activeChanged = true;
+              return false;
+            }
+            return true;
+          }
+          return [...record.addedNodes, ...record.removedNodes]
+            .some((node) => elementMatchesOrContains(node, SELECTORS.nativeTocItem));
+        });
+        if (structureChanged) this.scheduleNativeTocSync();
+        else if (activeChanged) this.scheduleActiveUpdate();
+      });
+      this.nativeTocObserver.observe(document.body, {
+        childList: true,
+        subtree: true,
+        attributes: true,
+        attributeFilter: ['data-toc-item-index', 'data-toc-active', 'aria-label']
+      });
+    }
+
+    scheduleNativeTocSync() {
+      if (this.nativeSyncFrame !== null) return;
+      this.nativeSyncFrame = requestAnimationFrame(() => {
+        this.nativeSyncFrame = null;
+        this.syncNativeToc();
+      });
+    }
+
+    syncNativeToc() {
+      const items = collectNativeTocItems(document.querySelectorAll(SELECTORS.nativeTocItem));
+      if (!items.size) {
+        this.nativeTocItems.clear();
+        this.groups.forEach((group) => { group.nativeButton = null; });
+        this.scheduleActiveUpdate();
+        return;
+      }
+
+      this.nativeTocItems = items;
+      for (const [index, group] of [...this.nativeIndexToGroup]) {
+        if (!items.has(index)) {
+          this.nativeIndexToGroup.delete(index);
+          group.nativeIndex = null;
+          group.nativeButton = null;
+          group.nativeLabel = null;
+          if (!group.assistant) this.removeGroup(group);
+        }
+      }
+
+      for (const [index, button] of items) {
+        let group = this.nativeIndexToGroup.get(index);
+        if (!group) {
+          group = this.groups.find((candidate) => candidate.nativeIndex === null &&
+            (this.getPromptIndexFromElement(candidate.prompt) ??
+              this.getPromptIndexFromElement(candidate.assistant)) === index);
+          if (!group && this.groups.length === items.size) {
+            group = this.groups[index]?.nativeIndex === null ? this.groups[index] : null;
+          }
+          if (!group) group = this.addGroup(null, this.groups.length, null, null, index);
+          group.nativeIndex = index;
+          this.nativeIndexToGroup.set(index, group);
+        }
+        group.nativeButton = button;
+        group.nativeLabel = button.getAttribute('aria-label') || `Prompt ${index + 1}`;
+      }
+
+      this.syncNativePrompts();
+      this.syncConversationStructure();
+    }
+
+    syncNativePrompts() {
+      if (!this.thread || !this.nativeTocItems.size) return;
+      const prompts = Array.from(this.thread.querySelectorAll(SELECTORS.userMessage));
+      prompts.forEach((prompt, index) => {
+        let nativeIndex = this.getPromptIndexFromElement(prompt);
+        if (nativeIndex === null && prompts.length === this.nativeTocItems.size) nativeIndex = index;
+        const group = this.nativeIndexToGroup.get(nativeIndex);
+        if (group) this.setGroupPrompt(group, prompt);
+      });
     }
 
     handleConversationMutations(records) {
@@ -346,18 +481,22 @@
       const liveAssistants = new Set(allAssistants);
 
       responsePairs.forEach(({ assistant, prompt, key }, index) => {
-        const group = (key && this.turnKeyToGroup.get(key)) || this.turnToGroup.get(assistant);
+        const nativeIndex = this.resolveNativeIndex(prompt, assistant, index, responsePairs.length);
+        const group = (key && this.turnKeyToGroup.get(key)) ||
+          this.turnToGroup.get(assistant) ||
+          (nativeIndex !== null && this.nativeIndexToGroup.get(nativeIndex));
         if (group) {
-          if (group.assistant !== assistant) this.rebindGroup(group, assistant);
-          this.setGroupPrompt(group, prompt);
+          this.bindGroupToTurn(group, assistant, prompt, key || null);
         } else {
-          this.addGroup(assistant, index, prompt, key || null);
+          this.addGroup(assistant, index, prompt, key || null, nativeIndex);
         }
       });
+      this.syncNativePrompts();
 
       for (const group of [...this.groups]) {
         const replacement = group.key && this.turnKeyToGroup.get(group.key);
-        if (!liveAssistants.has(group.assistant) && (!group.key || replacement === group)) {
+        if (group.assistant && !liveAssistants.has(group.assistant) && !group.nativeButton &&
+            (!group.key || replacement === group)) {
           this.removeGroup(group);
         }
       }
@@ -377,8 +516,8 @@
       this.scheduleActiveUpdate();
     }
 
-    addGroup(assistant, index = this.groups.length, prompt = null, key = this.getStableTurnKey(assistant)) {
-      if (this.turnToGroup.has(assistant)) return this.turnToGroup.get(assistant);
+    addGroup(assistant, index = this.groups.length, prompt = null, key = this.getStableTurnKey(assistant), nativeIndex = null) {
+      if (assistant && this.turnToGroup.has(assistant)) return this.turnToGroup.get(assistant);
       if (key && this.turnKeyToGroup.has(key)) {
         const group = this.turnKeyToGroup.get(key);
         this.rebindGroup(group, assistant);
@@ -413,21 +552,43 @@
       header.append(textWrapper, collapse);
       section.append(header, content);
 
-      const group = { key, assistant, prompt: null, headings: [], section, header, title, promptText, collapse, content };
+      const group = {
+        key: null,
+        assistant: null,
+        prompt: null,
+        headings: [],
+        section,
+        header,
+        title,
+        promptText,
+        collapse,
+        content,
+        nativeIndex,
+        nativeButton: null,
+        nativeLabel: null
+      };
       this.groups.splice(Math.min(index, this.groups.length), 0, group);
-      this.turnToGroup.set(assistant, group);
-      if (key) this.turnKeyToGroup.set(key, group);
-      this.setGroupPrompt(group, prompt);
+      if (nativeIndex !== null) this.nativeIndexToGroup.set(nativeIndex, group);
       this.tocContent.append(section);
-      this.reconcileAssistantTurn(assistant);
+      this.bindGroupToTurn(group, assistant, prompt, key);
       return group;
     }
 
     rebindGroup(group, assistant) {
-      this.turnToGroup.delete(group.assistant);
+      this.bindGroupToTurn(group, assistant, group.prompt, this.getStableTurnKey(assistant) || group.key);
+    }
+
+    bindGroupToTurn(group, assistant, prompt, key) {
+      if (group.assistant && group.assistant !== assistant) this.turnToGroup.delete(group.assistant);
+      if (group.key && group.key !== key && this.turnKeyToGroup.get(group.key) === group) {
+        this.turnKeyToGroup.delete(group.key);
+      }
       group.assistant = assistant;
-      this.turnToGroup.set(assistant, group);
-      this.reconcileAssistantTurn(assistant);
+      group.key = key;
+      if (assistant) this.turnToGroup.set(assistant, group);
+      if (key) this.turnKeyToGroup.set(key, group);
+      this.setGroupPrompt(group, prompt);
+      if (assistant) this.reconcileAssistantTurn(assistant);
     }
 
     removeGroup(group) {
@@ -435,9 +596,12 @@
       if (group.prompt) {
         this.detachPrompt(group, group.prompt);
       }
-      this.turnToGroup.delete(group.assistant);
+      if (group.assistant) this.turnToGroup.delete(group.assistant);
       if (group.key && this.turnKeyToGroup.get(group.key) === group) {
         this.turnKeyToGroup.delete(group.key);
+      }
+      if (group.nativeIndex !== null && this.nativeIndexToGroup.get(group.nativeIndex) === group) {
+        this.nativeIndexToGroup.delete(group.nativeIndex);
       }
       group.section.remove();
       this.groups = this.groups.filter((candidate) => candidate !== group);
@@ -458,7 +622,8 @@
           promptGroups.add(group);
         }
       }
-      group.promptText.textContent = truncateText(prompt?.textContent || 'Response without a preceding prompt');
+      if (prompt) group.promptText.textContent = truncateText(prompt.textContent);
+      group.promptText.hidden = !group.promptText.textContent;
     }
 
     detachPrompt(group, prompt) {
@@ -473,13 +638,22 @@
     updatePrompt(prompt) {
       this.promptToGroups.get(prompt)?.forEach((group) => {
         group.promptText.textContent = truncateText(prompt.textContent);
+        group.promptText.hidden = !group.promptText.textContent;
       });
     }
 
-    updateGroupOrderAndLabels(orderedGroups) {
-      this.groups = orderedGroups;
-      orderedGroups.forEach((group, index) => {
-        group.title.textContent = `Prompt ${index + 1}`;
+    updateGroupOrderAndLabels(fallbackOrder = this.groups) {
+      const originalIndexes = new Map(this.groups.map((group, index) => [group, index]));
+      const fallbackIndexes = new Map(fallbackOrder.map((group, index) => [group, index]));
+      this.groups.sort((left, right) => {
+        if (left.nativeIndex !== null && right.nativeIndex !== null) return left.nativeIndex - right.nativeIndex;
+        if (left.nativeIndex !== null) return -1;
+        if (right.nativeIndex !== null) return 1;
+        return (fallbackIndexes.get(left) ?? originalIndexes.get(left)) -
+          (fallbackIndexes.get(right) ?? originalIndexes.get(right));
+      });
+      this.groups.forEach((group, index) => {
+        group.title.textContent = group.nativeLabel || `Prompt ${index + 1}`;
         this.tocContent.append(group.section);
       });
     }
@@ -616,6 +790,15 @@
 
       const header = event.target.closest('.toc-group-header');
       const group = this.groups.find((candidate) => candidate.header === header);
+      if (group?.nativeButton?.isConnected) {
+        this.setActive(null, group);
+        group.nativeButton.click();
+        setTimeout(() => {
+          const destination = group.prompt?.isConnected ? group.prompt : group.assistant;
+          if (destination?.isConnected) this.scrollToDestination(destination);
+        }, 200);
+        return;
+      }
       const destination = group?.prompt || group?.assistant;
       if (destination) {
         this.setActive(null, group);
@@ -699,7 +882,11 @@
         this.getTrackingTargets(),
         getNavigationOffset(window.innerHeight)
       );
-      this.setActive(target?.heading || null, target?.group || null);
+      const nativeActive = document.querySelector(SELECTORS.nativeTocActive);
+      const nativeGroup = this.nativeIndexToGroup.get(getNativeTocIndex(nativeActive));
+      const group = nativeGroup || target?.group || null;
+      const heading = target?.group === group ? target.heading : null;
+      this.setActive(heading || null, group);
     }
 
     setActive(heading, group) {
@@ -761,6 +948,7 @@
       this.groups = [];
       this.turnToGroup = new WeakMap();
       this.turnKeyToGroup = new Map();
+      this.nativeIndexToGroup = new Map();
       this.promptToGroups = new WeakMap();
       this.headingToGroup = new WeakMap();
       this.headingToTocItem = new WeakMap();
@@ -786,7 +974,10 @@
       truncateText,
       pairConversationMessages,
       getNavigationOffset,
-      findActiveTrackingTarget
+      findActiveTrackingTarget,
+      getNativeTocIndex,
+      collectNativeTocItems,
+      getPromptIndexFromTestId
     };
   }
 })();

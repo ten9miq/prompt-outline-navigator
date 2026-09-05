@@ -10,7 +10,10 @@ const {
   truncateText,
   pairConversationMessages,
   getNavigationOffset,
-  findActiveTrackingTarget
+  findActiveTrackingTarget,
+  getNativeTocIndex,
+  collectNativeTocItems,
+  getPromptIndexFromTestId
 } = require(sourcePath);
 
 test('prompt and heading edge-case strings remain plain text inputs', () => {
@@ -35,6 +38,30 @@ test('DOM-dependent selectors are centralized', () => {
   assert.equal(SELECTORS.thread, '#thread');
   assert.equal(SELECTORS.assistantMessage, '[data-message-author-role="assistant"]');
   assert.equal(SELECTORS.headings, 'h1,h2,h3,h4,h5,h6');
+  assert.equal(SELECTORS.nativeTocItem, 'button[data-toc-item-index]');
+  assert.equal(SELECTORS.nativeTocActive, 'button[data-toc-item-index][data-toc-active]');
+});
+
+test('native prompt TOC indices are parsed and deduplicated in DOM order', () => {
+  const button = (value) => ({ getAttribute: (name) => name === 'data-toc-item-index' ? value : null });
+  const first = button('0');
+  const duplicate = button('0');
+  const second = button('1');
+  const invalid = button('-1');
+  const items = collectNativeTocItems([first, duplicate, invalid, second]);
+
+  assert.equal(getNativeTocIndex(first), 0);
+  assert.equal(getNativeTocIndex(invalid), null);
+  assert.deepEqual([...items.keys()], [0, 1]);
+  assert.equal(items.get(0), first);
+});
+
+test('conversation turn test ids map user and assistant nodes to one prompt index', () => {
+  assert.equal(getPromptIndexFromTestId('conversation-turn-0'), 0);
+  assert.equal(getPromptIndexFromTestId('conversation-turn-1'), 0);
+  assert.equal(getPromptIndexFromTestId('conversation-turn-2'), 1);
+  assert.equal(getPromptIndexFromTestId('conversation-turn-3'), 1);
+  assert.equal(getPromptIndexFromTestId('conversation-turn-x'), null);
 });
 
 test('only a user followed by its first assistant creates a response pair', () => {
@@ -112,4 +139,7 @@ test('dynamic content never uses innerHTML and polling is absent', () => {
   assert.match(source, /getStableTurnKey/);
   assert.match(source, /scrollToDestination/);
   assert.match(source, /flashDestination/);
+  assert.match(source, /syncNativeToc/);
+  assert.match(source, /nativeButton\.click\(\)/);
+  assert.doesNotMatch(source, /Response without a preceding prompt/);
 });
