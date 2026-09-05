@@ -1,0 +1,5 @@
+*.zip
+_metadata/
+node_modules/
+coverage/
+
