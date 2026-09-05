@@ -9,7 +9,7 @@ const styles = fs.readFileSync(path.join(root, 'styles.css'), 'utf8');
 
 test('manifest identifies the navigator and needs no extra permissions', () => {
   assert.equal(manifest.name, 'TOC Navigator for ChatGPT');
-  assert.equal(manifest.version, '1.3.0');
+  assert.equal(manifest.version, '1.3.1');
   assert.deepEqual(manifest.permissions, []);
   assert.equal(manifest.key, undefined);
   assert.equal(manifest.update_url, undefined);
@@ -30,4 +30,14 @@ test('sidecar reserves width without padding or reparenting styles', () => {
   assert.match(styles, /body\.chatgpt-toc-open\s*>\s*\.chatgpt-toc-app-root/);
   assert.match(styles, /calc\(100% - var\(--chatgpt-toc-width\)\)/);
   assert.doesNotMatch(styles, /padding-right/);
+});
+
+test('legacy Stylus and UserScript appearance is integrated', () => {
+  assert.match(styles, /background:\s*var\(--bg-primary/);
+  assert.match(styles, /\.toc-h2 \.toc-text \{ color: #10a37f/);
+  assert.match(styles, /\.toc-h3 \.toc-text \{ color: #2196f3/);
+  assert.match(styles, /\.toc-item\.active \{ color: #fff; background: #6940c5; border-left-color: #60a5fa; \}/);
+  assert.match(styles, /\.toc-group-header\.active[\s\S]*background: #2b2f36;[\s\S]*outline: 2px solid #6940c5/);
+  assert.match(styles, /\.toc-item\.toc-h6 \{ padding-left: 30px; \}/);
+  assert.match(styles, /-webkit-line-clamp: 5/);
 });

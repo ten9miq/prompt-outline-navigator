@@ -37,4 +37,6 @@ test('dynamic content never uses innerHTML and polling is absent', () => {
   assert.match(source, /new MutationObserver/);
   assert.match(source, /new WeakMap/);
   assert.match(source, /new IntersectionObserver/);
+  assert.match(source, /0px 0px -90% 0px/);
+  assert.match(source, /isWithinDeactivationBand/);
 });

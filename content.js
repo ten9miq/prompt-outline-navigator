@@ -12,6 +12,7 @@
   });
 
   const PROMPT_LIMIT = 200;
+  const ACTIVE_ROOT_MARGIN = '0px 0px -90% 0px';
 
   function truncateText(value, limit = PROMPT_LIMIT) {
     const text = String(value || '').trim();
@@ -551,7 +552,7 @@
           else visible.delete(entry.target);
         });
         this.scheduleActiveUpdate();
-      }, { root: null, rootMargin: '-8% 0px -72% 0px', threshold: 0 });
+      }, { root: null, rootMargin: ACTIVE_ROOT_MARGIN, threshold: 0 });
     }
 
     scheduleActiveUpdate() {
@@ -574,8 +575,16 @@
         this.setActive(heading, group);
         return;
       }
+      const activeSource = this.activeHeading || this.activeGroup?.prompt || this.activeGroup?.assistant;
+      if (this.isWithinDeactivationBand(activeSource)) return;
       clearTimeout(this.clearActiveTimer);
       this.clearActiveTimer = setTimeout(() => this.setActive(null, null), 180);
+    }
+
+    isWithinDeactivationBand(element) {
+      if (!element?.isConnected) return false;
+      const rect = element.getBoundingClientRect();
+      return rect.bottom > window.innerHeight * -0.05 && rect.top < window.innerHeight * 0.15;
     }
 
     setActive(heading, group) {
