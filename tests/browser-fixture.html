@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>TOC Navigator browser fixture</title>
+  <link rel="stylesheet" href="../styles.css">
+  <style>
+    body { margin: 0; font-family: sans-serif; }
+    #app { min-height: 100vh; background: #fafafa; }
+    main { max-width: 760px; margin: auto; padding: 24px; }
+    [data-message-author-role] { margin: 16px 0; padding: 12px; border: 1px solid #ddd; }
+    #results { padding: 12px; color: #fff; background: #333; white-space: pre-wrap; }
+    #results.pass { background: #166534; }
+    #results.fail { background: #991b1b; }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <main>
+      <h1>Browser integration fixture</h1>
+      <pre id="results">RUNNING</pre>
+      <div id="thread">
+        <article data-testid="conversation-turn-1">
+          <div data-message-author-role="user">Prompt &lt;script&gt; literal 🚀</div>
+        </article>
+        <article data-testid="conversation-turn-2">
+          <div data-message-author-role="assistant">
+            <h2 id="mutable-heading">&lt;script&gt;alert(1)&lt;/script&gt;</h2>
+            <p>ordinary answer tokens</p>
+          </div>
+        </article>
+      </div>
+    </main>
+  </div>
+  <script src="../content.js"></script>
+  <script>
+    const waitFrame = () => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+    const results = [];
+    function check(condition, label) {
+      results.push(`${condition ? 'PASS' : 'FAIL'}: ${label}`);
+      if (!condition) throw new Error(label);
+    }
+
+    window.addEventListener('load', async () => {
+      const output = document.getElementById('results');
+      try {
+        await waitFrame();
+        const sidebar = document.getElementById('chatgpt-toc-sidebar');
+        check(sidebar.classList.contains('is-open'), 'sidebar opens by default');
+        check(document.body.classList.contains('chatgpt-toc-open'), 'body reserves sidecar space');
+        check(document.getElementById('app').classList.contains('chatgpt-toc-app-root'), 'app root is marked without reparenting');
+        check(sidebar.querySelector('.toc-text').textContent === '<script>alert(1)</script>', 'HTML-like heading stays literal');
+        check(!sidebar.querySelector('script'), 'untrusted text does not create elements');
+
+        document.getElementById('mutable-heading').textContent = '<div>updated & safe</div>';
+        await waitFrame();
+        check(sidebar.querySelector('.toc-text').textContent === '<div>updated & safe</div>', 'heading text updates incrementally');
+
+        const assistant = document.querySelector('[data-message-author-role="assistant"]');
+        const added = document.createElement('h3');
+        added.textContent = '日本語 English 🚀';
+        assistant.append(added);
+        await waitFrame();
+        check(sidebar.querySelectorAll('.toc-item').length === 2, 'new heading is added');
+
+        document.getElementById('mutable-heading').remove();
+        await waitFrame();
+        check(sidebar.querySelectorAll('.toc-item').length === 1, 'removed heading is reconciled');
+
+        const thread = document.getElementById('thread');
+        const userTurn = document.createElement('article');
+        userTurn.innerHTML = '<div data-message-author-role="user">Second prompt</div>';
+        const assistantTurn = document.createElement('article');
+        assistantTurn.innerHTML = '<div data-message-author-role="assistant"><h1>A &amp; B</h1></div>';
+        thread.append(userTurn, assistantTurn);
+        await waitFrame();
+        check(sidebar.querySelectorAll('.toc-group').length === 2, 'new assistant turn adds one group');
+        check(sidebar.querySelectorAll('.toc-group-title')[1].textContent === 'Prompt 2', 'groups stay in DOM order');
+
+        sidebar.querySelector('.toc-close').click();
+        check(!sidebar.classList.contains('is-open') && !document.body.classList.contains('chatgpt-toc-open'), 'close releases sidecar space');
+        document.getElementById('chatgpt-toc-toggle').click();
+        check(sidebar.classList.contains('is-open') && document.body.classList.contains('chatgpt-toc-open'), 'toggle reopens sidebar');
+
+        output.className = 'pass';
+        output.textContent = `ALL ${results.length} BROWSER TESTS PASSED\n${results.join('\n')}`;
+        document.title = 'PASS - TOC Navigator browser fixture';
+      } catch (error) {
+        output.className = 'fail';
+        output.textContent = `${results.join('\n')}\nFAIL: ${error.message}`;
+        document.title = 'FAIL - TOC Navigator browser fixture';
+      }
+    }, { once: true });
+  </script>
+</body>
+</html>

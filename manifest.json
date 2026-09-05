@@ -6,7 +6,7 @@
          "32": "icons/toc_gpt_icon_32.png",
          "48": "icons/toc_gpt_icon_48.png"
       },
-      "default_title": "GPT TOC"
+      "default_title": "TOC Navigator"
    },
    "content_scripts": [ {
       "css": [ "styles.css" ],
@@ -14,7 +14,7 @@
       "matches": [ "https://chat.openai.com/*", "https://chatgpt.com/*" ],
       "run_at": "document_idle"
    } ],
-   "description": "Display a table of contents for ChatGPT generated content in a right sidebar",
+   "description": "A live table-of-contents and navigation sidebar for ChatGPT conversations",
    "host_permissions": [ "https://chat.openai.com/*", "https://chatgpt.com/*" ],
    "icons": {
       "128": "icons/toc_gpt_icon_128.png",
@@ -22,14 +22,8 @@
       "32": "icons/toc_gpt_icon_32.png",
       "48": "icons/toc_gpt_icon_48.png"
    },
-   "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAndtzUtJE7meViEww81IulLxxq1tNH0sewP06sMLnjDus3NNGeENR8UfSn2GUlBPflbyTiWgmrFpOLl10T4poFG4v5X4Gc6HUr3kom4VL3lJFYXI8uqPXjbU71eMB4mRA+xGtORL7eEqhi+h8i3vfYQBt4WGBKXS8vpAg5EbsOa4fM8VQQJHm7RydNef1e+F+xKiiyINssXXi1oZHR1yx0FixjfqI6k35ZFI0Pkr35OUWbktV9/yYFyGjKzzApeSY7KLyHLDLgycx0/YpKxbfBQi/EEE1TnXWocmg/NZmKfwrG41qYNgU4/DByR/Ei+dO1CpPAe98i5hi9EPo1CCEfwIDAQAB",
    "manifest_version": 3,
-   "name": "ChatGPT Table of Contents",
+   "name": "TOC Navigator for ChatGPT",
    "permissions": [  ],
-   "update_url": "https://clients2.google.com/service/update2/crx",
-   "version": "1.2.1",
-   "web_accessible_resources": [ {
-      "matches": [ "https://chat.openai.com/*", "https://chatgpt.com/*" ],
-      "resources": [ "sidebar.html" ]
-   } ]
+   "version": "1.3.0"
 }
