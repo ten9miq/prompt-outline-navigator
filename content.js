@@ -139,6 +139,7 @@
       this.threadBindFrame = null;
       this.nativeSyncFrame = null;
       this.navigationRequestId = 0;
+      this.pendingNavigationRequestId = null;
       this.boundScheduleActiveUpdate = () => this.scheduleActiveUpdate();
 
       this.conversationObserver = null;
@@ -470,7 +471,10 @@
       headingsToUpdate.forEach((heading) => this.updateHeading(heading));
       turnsToReconcile.forEach((assistant) => this.reconcileAssistantTurn(assistant));
       promptsToUpdate.forEach((prompt) => this.updatePrompt(prompt));
-      if (structureChanged) this.scheduleStructureSync();
+      if (structureChanged) {
+        if (this.pendingNavigationRequestId !== null) this.syncConversationStructure();
+        else this.scheduleStructureSync();
+      }
     }
 
     scheduleStructureSync() {
@@ -671,7 +675,16 @@
     }
 
     reconcileAssistantTurn(assistant) {
-      const group = this.turnToGroup.get(assistant);
+      let group = this.turnToGroup.get(assistant);
+      if (!group) {
+        const nativeIndex = this.getPromptIndexFromElement(assistant);
+        group = this.nativeIndexToGroup.get(nativeIndex);
+        if (group) {
+          const key = this.getStableTurnKey(assistant);
+          this.bindGroupToTurn(group, assistant, group.prompt, key || group.key);
+          return;
+        }
+      }
       if (!group || !assistant.isConnected) return;
 
       const current = Array.from(assistant.querySelectorAll(SELECTORS.headings));
@@ -795,6 +808,7 @@
         } else {
           const group = this.headingToGroup.get(heading);
           this.navigationRequestId += 1;
+          this.pendingNavigationRequestId = null;
           this.setActive(heading, group);
           this.scrollToDestination(heading);
         }
@@ -806,12 +820,14 @@
       const destination = this.getConnectedGroupDestination(group);
       if (destination) {
         this.navigationRequestId += 1;
+        this.pendingNavigationRequestId = null;
         this.setActive(null, group);
         this.scrollToDestination(destination);
         return;
       }
       if (group?.nativeButton?.isConnected) {
         const requestId = ++this.navigationRequestId;
+        this.pendingNavigationRequestId = requestId;
         this.setActive(null, group);
         group.nativeButton.click();
         this.waitForGroupDestination(group, requestId);
@@ -825,9 +841,13 @@
     }
 
     waitForGroupDestination(group, requestId, attempts = 0) {
-      if (requestId !== this.navigationRequestId || attempts >= 120) return;
+      if (requestId !== this.navigationRequestId || attempts >= 120) {
+        if (this.pendingNavigationRequestId === requestId) this.pendingNavigationRequestId = null;
+        return;
+      }
       const destination = this.getConnectedGroupDestination(group);
       if (destination) {
+        if (this.pendingNavigationRequestId === requestId) this.pendingNavigationRequestId = null;
         this.scrollToDestination(destination);
         return;
       }
