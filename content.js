@@ -23,6 +23,20 @@
     return node instanceof Element && (node.matches(selector) || Boolean(node.querySelector(selector)));
   }
 
+  function pairConversationMessages(messages) {
+    const pairs = [];
+    let pendingPrompt = null;
+    for (const message of messages) {
+      if (message.matches(SELECTORS.userMessage)) {
+        pendingPrompt = message;
+        continue;
+      }
+      if (pendingPrompt) pairs.push({ prompt: pendingPrompt, assistant: message });
+      pendingPrompt = null;
+    }
+    return pairs;
+  }
+
   function createArrow(direction) {
     const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
     svg.setAttribute('width', '12');
@@ -208,10 +222,16 @@
     }
 
     scanConversation() {
-      const assistants = Array.from(this.thread.querySelectorAll(SELECTORS.assistantMessage));
-      assistants.forEach((assistant, index) => this.addGroup(assistant, index));
+      const responsePairs = this.collectResponsePairs();
+      const assistants = responsePairs.map(({ assistant }) => assistant);
+      responsePairs.forEach(({ assistant, prompt }, index) => this.addGroup(assistant, index, prompt));
       this.updateGroupOrderAndLabels(assistants);
       this.updateEmptyState();
+    }
+
+    collectResponsePairs() {
+      const messages = this.thread.querySelectorAll(`${SELECTORS.userMessage},${SELECTORS.assistantMessage}`);
+      return pairConversationMessages(messages);
     }
 
     handleConversationMutations(records) {
@@ -252,8 +272,6 @@
           turnsToReconcile.add(assistant);
         }
 
-        const user = targetElement?.closest(SELECTORS.userMessage);
-        if (user && !assistant) promptsToUpdate.add(user);
       }
 
       headingsToUpdate.forEach((heading) => this.updateHeading(heading));
@@ -276,23 +294,24 @@
         return;
       }
 
-      const assistants = Array.from(this.thread.querySelectorAll(SELECTORS.assistantMessage));
+      const responsePairs = this.collectResponsePairs();
+      const assistants = responsePairs.map(({ assistant }) => assistant);
       const liveAssistants = new Set(assistants);
       for (const group of [...this.groups]) {
         if (!liveAssistants.has(group.assistant)) this.removeGroup(group);
       }
 
-      assistants.forEach((assistant, index) => {
+      responsePairs.forEach(({ assistant, prompt }, index) => {
         const group = this.turnToGroup.get(assistant);
-        if (group) this.setGroupPrompt(group, this.findPromptForAssistant(assistant));
-        else this.addGroup(assistant, index);
+        if (group) this.setGroupPrompt(group, prompt);
+        else this.addGroup(assistant, index, prompt);
       });
 
       this.updateGroupOrderAndLabels(assistants);
       this.updateEmptyState();
     }
 
-    addGroup(assistant, index = this.groups.length) {
+    addGroup(assistant, index = this.groups.length, prompt = null) {
       if (this.turnToGroup.has(assistant)) return this.turnToGroup.get(assistant);
 
       const section = document.createElement('section');
@@ -325,7 +344,7 @@
       const group = { assistant, prompt: null, headings: [], section, header, title, promptText, collapse, content };
       this.groups.splice(Math.min(index, this.groups.length), 0, group);
       this.turnToGroup.set(assistant, group);
-      this.setGroupPrompt(group, this.findPromptForAssistant(assistant));
+      this.setGroupPrompt(group, prompt);
       this.tocContent.append(section);
       this.reconcileAssistantTurn(assistant);
       return group;
@@ -340,16 +359,6 @@
       group.section.remove();
       this.groups = this.groups.filter((candidate) => candidate !== group);
       if (this.activeGroup === group) this.setActive(null, null);
-    }
-
-    findPromptForAssistant(assistant) {
-      const messages = this.thread.querySelectorAll(`${SELECTORS.userMessage},${SELECTORS.assistantMessage}`);
-      let latestUser = null;
-      for (const message of messages) {
-        if (message === assistant) return latestUser;
-        if (message.matches(SELECTORS.userMessage)) latestUser = message;
-      }
-      return null;
     }
 
     setGroupPrompt(group, prompt) {
@@ -564,7 +573,19 @@
     }
 
     updateActiveFromIntersections() {
-      const closest = (entries) => [...entries.entries()].sort((a, b) => Math.abs(a[1]) - Math.abs(b[1]))[0]?.[0] || null;
+      const closest = (entries) => {
+        const activationBottom = window.innerHeight * 0.1;
+        return [...entries.keys()]
+          .filter((element) => {
+            if (!element.isConnected) {
+              entries.delete(element);
+              return false;
+            }
+            const rect = element.getBoundingClientRect();
+            return rect.bottom > 0 && rect.top < activationBottom;
+          })
+          .sort((a, b) => a.getBoundingClientRect().top - b.getBoundingClientRect().top)[0] || null;
+      };
       const heading = closest(this.visibleHeadings);
       const prompt = closest(this.visiblePrompts);
       const group = heading
@@ -665,5 +686,7 @@
     else start();
   }
 
-  if (typeof module !== 'undefined' && module.exports) module.exports = { ChatGPTTOC, SELECTORS, truncateText };
+  if (typeof module !== 'undefined' && module.exports) {
+    module.exports = { ChatGPTTOC, SELECTORS, truncateText, pairConversationMessages };
+  }
 })();
