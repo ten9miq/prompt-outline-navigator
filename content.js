@@ -352,7 +352,7 @@
         childList: true,
         subtree: true,
         attributes: true,
-        attributeFilter: ['data-toc-item-index', 'data-toc-active', 'aria-label']
+        attributeFilter: ['data-toc-item-index', 'data-toc-active']
       });
     }
 
@@ -379,7 +379,6 @@
           this.nativeIndexToGroup.delete(index);
           group.nativeIndex = null;
           group.nativeButton = null;
-          group.nativeLabel = null;
           if (!group.assistant) this.removeGroup(group);
         }
       }
@@ -398,7 +397,6 @@
           this.nativeIndexToGroup.set(index, group);
         }
         group.nativeButton = button;
-        group.nativeLabel = button.getAttribute('aria-label') || `Prompt ${index + 1}`;
       }
 
       this.syncNativePrompts();
@@ -413,6 +411,18 @@
         if (nativeIndex === null && prompts.length === this.nativeTocItems.size) nativeIndex = index;
         const group = this.nativeIndexToGroup.get(nativeIndex);
         if (group) this.setGroupPrompt(group, prompt);
+      });
+    }
+
+    syncNativeTurns(assistants) {
+      if (!this.nativeTocItems.size) return;
+      assistants.forEach((assistant, index) => {
+        let nativeIndex = this.getPromptIndexFromElement(assistant);
+        if (nativeIndex === null && assistants.length === this.nativeTocItems.size) nativeIndex = index;
+        const group = this.nativeIndexToGroup.get(nativeIndex);
+        if (!group) return;
+        const key = this.getStableTurnKey(assistant);
+        this.bindGroupToTurn(group, assistant, group.prompt, key || group.key);
       });
     }
 
@@ -479,6 +489,7 @@
       const responsePairs = this.collectResponsePairs();
       const allAssistants = Array.from(this.thread.querySelectorAll(SELECTORS.assistantMessage));
       const liveAssistants = new Set(allAssistants);
+      this.syncNativeTurns(allAssistants);
 
       responsePairs.forEach(({ assistant, prompt, key }, index) => {
         const nativeIndex = this.resolveNativeIndex(prompt, assistant, index, responsePairs.length);
@@ -564,8 +575,7 @@
         collapse,
         content,
         nativeIndex,
-        nativeButton: null,
-        nativeLabel: null
+        nativeButton: null
       };
       this.groups.splice(Math.min(index, this.groups.length), 0, group);
       if (nativeIndex !== null) this.nativeIndexToGroup.set(nativeIndex, group);
@@ -653,7 +663,8 @@
           (fallbackIndexes.get(right) ?? originalIndexes.get(right));
       });
       this.groups.forEach((group, index) => {
-        group.title.textContent = group.nativeLabel || `Prompt ${index + 1}`;
+        const promptNumber = group.nativeIndex === null ? index + 1 : group.nativeIndex + 1;
+        group.title.textContent = `Prompt ${promptNumber}`;
         this.tocContent.append(group.section);
       });
     }
