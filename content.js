@@ -8,7 +8,7 @@
     userMessage: '[data-message-author-role="user"]',
     assistantMessage: '[data-message-author-role="assistant"]',
     headings: 'h1,h2,h3,h4,h5,h6',
-    turn: '[data-testid^="conversation-turn-"],[data-turn-id],[data-turn]'
+    turn: '[data-message-id],[data-turn-id],[data-testid^="conversation-turn-"]'
   });
 
   const PROMPT_LIMIT = 200;
@@ -24,15 +24,27 @@
     return node instanceof Element && (node.matches(selector) || Boolean(node.querySelector(selector)));
   }
 
-  function pairConversationMessages(messages) {
+  function pairConversationMessages(messages, getKey = () => null) {
     const pairs = [];
+    const keyedPairIndexes = new Map();
     let pendingPrompt = null;
     for (const message of messages) {
       if (message.matches(SELECTORS.userMessage)) {
         pendingPrompt = message;
         continue;
       }
-      if (pendingPrompt) pairs.push({ prompt: pendingPrompt, assistant: message });
+      if (pendingPrompt) {
+        const key = getKey(message);
+        const pair = key
+          ? { prompt: pendingPrompt, assistant: message, key }
+          : { prompt: pendingPrompt, assistant: message };
+        if (key && keyedPairIndexes.has(key)) {
+          pairs[keyedPairIndexes.get(key)] = pair;
+        } else {
+          if (key) keyedPairIndexes.set(key, pairs.length);
+          pairs.push(pair);
+        }
+      }
       pendingPrompt = null;
     }
     return pairs;
@@ -87,6 +99,7 @@
 
       this.groups = [];
       this.turnToGroup = new WeakMap();
+      this.turnKeyToGroup = new Map();
       this.promptToGroups = new WeakMap();
       this.headingToGroup = new WeakMap();
       this.headingToTocItem = new WeakMap();
@@ -244,16 +257,28 @@
 
     scanConversation() {
       const responsePairs = this.collectResponsePairs();
-      const assistants = responsePairs.map(({ assistant }) => assistant);
-      responsePairs.forEach(({ assistant, prompt }, index) => this.addGroup(assistant, index, prompt));
-      this.updateGroupOrderAndLabels(assistants);
+      const groups = responsePairs.map(({ assistant, prompt, key }, index) =>
+        this.addGroup(assistant, index, prompt, key || null)
+      );
+      this.updateGroupOrderAndLabels(groups);
       this.updateEmptyState();
       this.scheduleActiveUpdate();
     }
 
     collectResponsePairs() {
       const messages = this.thread.querySelectorAll(`${SELECTORS.userMessage},${SELECTORS.assistantMessage}`);
-      return pairConversationMessages(messages);
+      return pairConversationMessages(messages, (assistant) => this.getStableTurnKey(assistant));
+    }
+
+    getStableTurnKey(message) {
+      const turn = message.closest(SELECTORS.turn);
+      if (!turn) return null;
+      const messageId = turn.getAttribute('data-message-id');
+      if (messageId) return `message:${messageId}`;
+      const turnId = turn.getAttribute('data-turn-id');
+      if (turnId) return `turn:${turnId}`;
+      const testId = turn.getAttribute('data-testid');
+      return testId?.startsWith('conversation-turn-') ? `test:${testId}` : null;
     }
 
     handleConversationMutations(records) {
@@ -319,24 +344,47 @@
       const responsePairs = this.collectResponsePairs();
       const allAssistants = Array.from(this.thread.querySelectorAll(SELECTORS.assistantMessage));
       const liveAssistants = new Set(allAssistants);
-      for (const group of [...this.groups]) {
-        if (!liveAssistants.has(group.assistant)) this.removeGroup(group);
-      }
 
-      responsePairs.forEach(({ assistant, prompt }, index) => {
-        const group = this.turnToGroup.get(assistant);
-        if (group) this.setGroupPrompt(group, prompt);
-        else this.addGroup(assistant, index, prompt);
+      responsePairs.forEach(({ assistant, prompt, key }, index) => {
+        const group = (key && this.turnKeyToGroup.get(key)) || this.turnToGroup.get(assistant);
+        if (group) {
+          if (group.assistant !== assistant) this.rebindGroup(group, assistant);
+          this.setGroupPrompt(group, prompt);
+        } else {
+          this.addGroup(assistant, index, prompt, key || null);
+        }
       });
 
-      const trackedAssistants = allAssistants.filter((assistant) => this.turnToGroup.has(assistant));
-      this.updateGroupOrderAndLabels(trackedAssistants);
+      for (const group of [...this.groups]) {
+        const replacement = group.key && this.turnKeyToGroup.get(group.key);
+        if (!liveAssistants.has(group.assistant) && (!group.key || replacement === group)) {
+          this.removeGroup(group);
+        }
+      }
+
+      const seenGroups = new Set();
+      const orderedGroups = [];
+      allAssistants.forEach((assistant) => {
+        const key = this.getStableTurnKey(assistant);
+        const group = (key && this.turnKeyToGroup.get(key)) || this.turnToGroup.get(assistant);
+        if (group && !seenGroups.has(group)) {
+          seenGroups.add(group);
+          orderedGroups.push(group);
+        }
+      });
+      this.updateGroupOrderAndLabels(orderedGroups);
       this.updateEmptyState();
       this.scheduleActiveUpdate();
     }
 
-    addGroup(assistant, index = this.groups.length, prompt = null) {
+    addGroup(assistant, index = this.groups.length, prompt = null, key = this.getStableTurnKey(assistant)) {
       if (this.turnToGroup.has(assistant)) return this.turnToGroup.get(assistant);
+      if (key && this.turnKeyToGroup.has(key)) {
+        const group = this.turnKeyToGroup.get(key);
+        this.rebindGroup(group, assistant);
+        this.setGroupPrompt(group, prompt);
+        return group;
+      }
 
       const section = document.createElement('section');
       section.className = 'toc-group';
@@ -365,13 +413,21 @@
       header.append(textWrapper, collapse);
       section.append(header, content);
 
-      const group = { assistant, prompt: null, headings: [], section, header, title, promptText, collapse, content };
+      const group = { key, assistant, prompt: null, headings: [], section, header, title, promptText, collapse, content };
       this.groups.splice(Math.min(index, this.groups.length), 0, group);
       this.turnToGroup.set(assistant, group);
+      if (key) this.turnKeyToGroup.set(key, group);
       this.setGroupPrompt(group, prompt);
       this.tocContent.append(section);
       this.reconcileAssistantTurn(assistant);
       return group;
+    }
+
+    rebindGroup(group, assistant) {
+      this.turnToGroup.delete(group.assistant);
+      group.assistant = assistant;
+      this.turnToGroup.set(assistant, group);
+      this.reconcileAssistantTurn(assistant);
     }
 
     removeGroup(group) {
@@ -380,6 +436,9 @@
         this.detachPrompt(group, group.prompt);
       }
       this.turnToGroup.delete(group.assistant);
+      if (group.key && this.turnKeyToGroup.get(group.key) === group) {
+        this.turnKeyToGroup.delete(group.key);
+      }
       group.section.remove();
       this.groups = this.groups.filter((candidate) => candidate !== group);
       if (this.activeGroup === group) this.setActive(null, null);
@@ -417,10 +476,9 @@
       });
     }
 
-    updateGroupOrderAndLabels(assistants) {
-      const ordered = assistants.map((assistant) => this.turnToGroup.get(assistant)).filter(Boolean);
-      this.groups = ordered;
-      ordered.forEach((group, index) => {
+    updateGroupOrderAndLabels(orderedGroups) {
+      this.groups = orderedGroups;
+      orderedGroups.forEach((group, index) => {
         group.title.textContent = `Prompt ${index + 1}`;
         this.tocContent.append(group.section);
       });
@@ -702,6 +760,7 @@
       this.groups.forEach((group) => group.section.remove());
       this.groups = [];
       this.turnToGroup = new WeakMap();
+      this.turnKeyToGroup = new Map();
       this.promptToGroups = new WeakMap();
       this.headingToGroup = new WeakMap();
       this.headingToTocItem = new WeakMap();

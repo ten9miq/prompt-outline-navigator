@@ -59,6 +59,26 @@ test('only a user followed by its first assistant creates a response pair', () =
   ]);
 });
 
+test('remounted assistants with the same stable turn key are deduplicated', () => {
+  const message = (role, id, turnKey) => ({
+    id,
+    turnKey,
+    matches: (selector) => selector === `[data-message-author-role="${role}"]`
+  });
+  const oldPrompt = message('user', 'old-user');
+  const oldAssistant = message('assistant', 'old-assistant', 'turn-2');
+  const newPrompt = message('user', 'new-user');
+  const newAssistant = message('assistant', 'new-assistant', 'turn-2');
+
+  assert.deepEqual(
+    pairConversationMessages(
+      [oldPrompt, oldAssistant, newPrompt, newAssistant],
+      (assistant) => assistant.turnKey
+    ),
+    [{ prompt: newPrompt, assistant: newAssistant, key: 'turn-2' }]
+  );
+});
+
 test('active tracking chooses exactly the last item above the navigation line', () => {
   const target = (top, id) => ({ id, element: { getBoundingClientRect: () => ({ top }) } });
   const first = target(-800, 'first');
@@ -87,8 +107,9 @@ test('dynamic content never uses innerHTML and polling is absent', () => {
   assert.match(source, /collectResponsePairs/);
   assert.match(source, /findActiveTrackingTarget/);
   assert.match(source, /addEventListener\('scroll'/);
-  assert.match(source, /allAssistants\.filter\(\(assistant\) => this\.turnToGroup\.has\(assistant\)\)/);
   assert.match(source, /STRUCTURE_SETTLE_DELAY/);
+  assert.match(source, /turnKeyToGroup/);
+  assert.match(source, /getStableTurnKey/);
   assert.match(source, /scrollToDestination/);
   assert.match(source, /flashDestination/);
 });
