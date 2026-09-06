@@ -17,6 +17,7 @@ const {
   getPromptIndexFromTestId,
   findRemountedHeading,
   canCreateConversationGroup,
+  resolveDarkTheme,
   SIDEBAR_VISIBILITY_KEY
 } = require(sourcePath);
 
@@ -50,6 +51,14 @@ test('DOM-dependent selectors are centralized', () => {
 test('sidebar heading uses the extension branding', () => {
   assert.match(source, /title\.textContent = 'TOC Navigator'/);
   assert.doesNotMatch(source, /title\.textContent = 'Table of Contents'/);
+});
+
+test('explicit ChatGPT theme overrides the operating-system preference', () => {
+  assert.equal(resolveDarkTheme('dark', 'normal', false), true);
+  assert.equal(resolveDarkTheme('light', 'normal', true), false);
+  assert.equal(resolveDarkTheme('', 'dark', false), true);
+  assert.equal(resolveDarkTheme('', 'light', true), false);
+  assert.equal(resolveDarkTheme('', 'normal', true), true);
 });
 
 test('sidebar visibility is restored and persisted in extension storage', () => {

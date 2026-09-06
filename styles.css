@@ -32,6 +32,14 @@ body.chatgpt-toc-open > .chatgpt-toc-app-root > :first-child {
 }
 
 #chatgpt-toc-sidebar {
+  --toc-title-color: #1f2937;
+  --toc-group-title-color: #08745b;
+  --toc-h1-color: #0d6f5d;
+  --toc-h2-color: #08745b;
+  --toc-h3-color: #0b64a0;
+  --toc-h4-color: #4b5563;
+  --toc-h5-color: #5f5f5f;
+  --toc-h6-color: #6b7280;
   position: fixed;
   inset: 0 0 0 auto;
   z-index: 40;
@@ -63,7 +71,7 @@ body.chatgpt-toc-open > .chatgpt-toc-app-root > :first-child {
   flex: 0 0 auto;
 }
 
-.toc-title { margin: 0; color: #333; font-size: 16px; font-weight: 600; }
+.toc-title { margin: 0; color: var(--toc-title-color); font-size: 16px; font-weight: 600; }
 
 .toc-close,
 .toc-collapse-icon,
@@ -130,7 +138,7 @@ body.chatgpt-toc-open > .chatgpt-toc-app-root > :first-child {
 .toc-group-title {
   display: block;
   margin-bottom: 0;
-  color: #10a37f;
+  color: var(--toc-group-title-color);
   font-size: 12px;
   font-weight: 600;
   letter-spacing: .5px;
@@ -165,7 +173,7 @@ body.chatgpt-toc-open > .chatgpt-toc-app-root > :first-child {
 }
 
 .toc-item[hidden] { display: none; }
-.toc-item:hover { border-left-color: #10a37f; }
+.toc-item:hover { border-left-color: var(--toc-group-title-color); }
 
 .toc-item.toc-h1 { padding-left: 0; }
 .toc-item.toc-h2 { padding-left: 6px; }
@@ -183,12 +191,13 @@ body.chatgpt-toc-open > .chatgpt-toc-app-root > :first-child {
   overflow-wrap: anywhere;
 }
 
-.toc-h1 .toc-text { color: #0d8a6f; font-weight: 700; }
-.toc-h2 .toc-text { color: #10a37f; font-weight: 600; }
-.toc-h3 .toc-text { color: #2196f3; font-weight: 500; }
-.toc-h4 .toc-text { color: #666; font-weight: 500; }
-.toc-h5 .toc-text { color: #999; font-weight: 400; }
-.toc-h6 .toc-text { color: #bbb; font-weight: 400; font-style: italic; }
+.toc-h1 .toc-text { color: var(--toc-h1-color); font-weight: 700; }
+.toc-h2 .toc-text { color: var(--toc-h2-color); font-weight: 600; }
+.toc-h3 .toc-text { color: var(--toc-h3-color); font-weight: 500; }
+.toc-h4 .toc-text { color: var(--toc-h4-color); font-weight: 500; }
+.toc-h5 .toc-text { color: var(--toc-h5-color); font-weight: 400; }
+.toc-h6 .toc-text { color: var(--toc-h6-color); font-weight: 400; font-style: italic; }
+.toc-item.active .toc-text { color: #fff; }
 
 .toc-status { padding: 18px 10px; color: var(--text-secondary, #666); text-align: center; }
 
@@ -231,6 +240,14 @@ body.chatgpt-toc-open > .chatgpt-toc-app-root > :first-child {
 #chatgpt-toc-toggle[hidden] { display: none; }
 
 .dark-mode#chatgpt-toc-sidebar {
+  --toc-title-color: #f3f4f6;
+  --toc-group-title-color: #5eead4;
+  --toc-h1-color: #6ee7b7;
+  --toc-h2-color: #5eead4;
+  --toc-h3-color: #60a5fa;
+  --toc-h4-color: #d1d5db;
+  --toc-h5-color: #b8c0cc;
+  --toc-h6-color: #9ca3af;
   color: var(--tw-prose-body, var(--text-primary, #ececec));
   background: var(--bg-primary, var(--main-surface-primary, #212121));
   border-left-color: var(--border-light, #424242);

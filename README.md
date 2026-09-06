@@ -12,7 +12,7 @@ A live table-of-contents and navigation sidebar for ChatGPT conversations.
 - Tracks the current prompt and heading with `IntersectionObserver`.
 - Keeps the active TOC entry visible inside the sidebar.
 - Renders prompt and heading text with `textContent`, including text that looks like HTML.
-- Supports nested heading collapse, prompt-group collapse, light/dark themes, and SPA navigation.
+- Supports nested heading collapse, prompt-group collapse, theme-adjusted hierarchy colors for light/dark modes, and SPA navigation.
 
 ## Development
 

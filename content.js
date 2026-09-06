@@ -114,6 +114,17 @@
     return nativeIndex !== null || nativeTocCount === 0;
   }
 
+  function resolveDarkTheme(className, colorScheme, prefersDark) {
+    const classes = String(className || '').split(/\s+/);
+    if (classes.includes('dark')) return true;
+    if (classes.includes('light')) return false;
+
+    const scheme = String(colorScheme || '').trim().toLowerCase();
+    if (scheme === 'dark') return true;
+    if (scheme === 'light') return false;
+    return Boolean(prefersDark);
+  }
+
   function createArrow(direction) {
     const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
     svg.setAttribute('width', '12');
@@ -1081,10 +1092,13 @@
 
     observeTheme() {
       const sync = () => {
-        const dark = document.documentElement.classList.contains('dark') ||
-          getComputedStyle(document.documentElement).colorScheme === 'dark' ||
-          window.matchMedia?.('(prefers-color-scheme: dark)').matches;
-        this.sidebar.classList.toggle('dark-mode', Boolean(dark));
+        const root = document.documentElement;
+        const dark = resolveDarkTheme(
+          root.className,
+          getComputedStyle(root).colorScheme,
+          window.matchMedia?.('(prefers-color-scheme: dark)').matches
+        );
+        this.sidebar.classList.toggle('dark-mode', dark);
       };
       sync();
       this.themeObserver = new MutationObserver(sync);
@@ -1146,6 +1160,7 @@
       getPromptIndexFromTestId,
       findRemountedHeading,
       canCreateConversationGroup,
+      resolveDarkTheme,
       SIDEBAR_VISIBILITY_KEY
     };
   }

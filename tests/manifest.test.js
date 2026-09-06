@@ -9,9 +9,19 @@ const packageJson = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 
 const styles = fs.readFileSync(path.join(root, 'styles.css'), 'utf8');
 const iconSvg = fs.readFileSync(path.join(root, 'icons', 'toc_navigator_icon.svg'), 'utf8');
 
+function contrastRatio(foreground, background) {
+  const luminance = (hex) => {
+    const channels = [1, 3, 5].map((offset) => parseInt(hex.slice(offset, offset + 2), 16) / 255)
+      .map((value) => value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4);
+    return (0.2126 * channels[0]) + (0.7152 * channels[1]) + (0.0722 * channels[2]);
+  };
+  const values = [luminance(foreground), luminance(background)].sort((a, b) => b - a);
+  return (values[0] + 0.05) / (values[1] + 0.05);
+}
+
 test('manifest identifies the navigator and only stores extension preferences', () => {
   assert.equal(manifest.name, 'TOC Navigator for ChatGPT');
-  assert.equal(manifest.version, '1.3.22');
+  assert.equal(manifest.version, '1.3.23');
   assert.equal(manifest.author, 'ten9miq');
   assert.equal(packageJson.author, 'ten9miq');
   assert.deepEqual(manifest.permissions, ['storage']);
@@ -69,12 +79,26 @@ test('conversation and composer use ChatGPT content-width variables for wide mod
 
 test('legacy Stylus and UserScript appearance is integrated', () => {
   assert.match(styles, /background:\s*var\(--bg-primary/);
-  assert.match(styles, /\.toc-h2 \.toc-text \{ color: #10a37f/);
-  assert.match(styles, /\.toc-h3 \.toc-text \{ color: #2196f3/);
+  assert.match(styles, /\.toc-h2 \.toc-text \{ color: var\(--toc-h2-color\)/);
+  assert.match(styles, /\.toc-h3 \.toc-text \{ color: var\(--toc-h3-color\)/);
   assert.match(styles, /\.toc-item\.active \{ color: #fff; background: #6940c5; border-left-color: #60a5fa; \}/);
+  assert.match(styles, /\.toc-item\.active \.toc-text \{ color: #fff; \}/);
   assert.match(styles, /\.toc-group-header\.active[\s\S]*background: #2b2f36;[\s\S]*outline: 2px solid #6940c5/);
   assert.match(styles, /\.toc-item\.toc-h6 \{ padding-left: 30px; \}/);
   assert.match(styles, /-webkit-line-clamp: 5/);
+});
+
+test('light and dark hierarchy palettes meet small-text contrast', () => {
+  const light = ['#1f2937', '#08745b', '#0d6f5d', '#08745b', '#0b64a0', '#4b5563', '#5f5f5f', '#6b7280'];
+  const dark = ['#f3f4f6', '#5eead4', '#6ee7b7', '#5eead4', '#60a5fa', '#d1d5db', '#b8c0cc', '#9ca3af'];
+  for (const color of light) {
+    assert.match(styles, new RegExp(`: ${color.replace('#', '\\#')}`));
+    assert.ok(contrastRatio(color, '#ffffff') >= 4.5, `${color} must contrast with the light background`);
+  }
+  for (const color of dark) {
+    assert.match(styles, new RegExp(`: ${color.replace('#', '\\#')}`));
+    assert.ok(contrastRatio(color, '#212121') >= 4.5, `${color} must contrast with the dark background`);
+  }
 });
 
 test('TOC navigation leaves top space and highlights the destination', () => {
