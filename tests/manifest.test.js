@@ -9,7 +9,7 @@ const styles = fs.readFileSync(path.join(root, 'styles.css'), 'utf8');
 
 test('manifest identifies the navigator and needs no extra permissions', () => {
   assert.equal(manifest.name, 'TOC Navigator for ChatGPT');
-  assert.equal(manifest.version, '1.3.16');
+  assert.equal(manifest.version, '1.3.17');
   assert.deepEqual(manifest.permissions, []);
   assert.equal(manifest.key, undefined);
   assert.equal(manifest.update_url, undefined);
@@ -28,7 +28,9 @@ test('content script covers both supported ChatGPT hosts', () => {
 test('sidecar reserves width without padding or reparenting styles', () => {
   assert.match(styles, /--chatgpt-toc-width:\s*200px/);
   assert.match(styles, /body\.chatgpt-toc-open\s*>\s*\.chatgpt-toc-app-root/);
-  assert.match(styles, /calc\(100% - var\(--chatgpt-toc-width\)\)/);
+  assert.match(styles, /body\.chatgpt-toc-open\s*>\s*\.chatgpt-toc-app-root\s*>\s*:first-child/);
+  assert.match(styles, /calc\(100vw - var\(--chatgpt-toc-width\)\)/);
+  assert.match(styles, /min-width:\s*0\s*!important/);
   assert.doesNotMatch(styles, /padding-right/);
 });
 

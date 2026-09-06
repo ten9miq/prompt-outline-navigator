@@ -4,9 +4,11 @@
   --chatgpt-toc-content-max-width: 80vw;
 }
 
-body.chatgpt-toc-open > .chatgpt-toc-app-root {
-  width: calc(100% - var(--chatgpt-toc-width)) !important;
-  max-width: calc(100% - var(--chatgpt-toc-width)) !important;
+body.chatgpt-toc-open > .chatgpt-toc-app-root,
+body.chatgpt-toc-open > .chatgpt-toc-app-root > :first-child {
+  width: calc(100vw - var(--chatgpt-toc-width)) !important;
+  max-width: calc(100vw - var(--chatgpt-toc-width)) !important;
+  min-width: 0 !important;
   transition: width 180ms ease, max-width 180ms ease;
 }
 
