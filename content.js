@@ -2,163 +2,28 @@
 (() => {
   'use strict';
 
-  const SELECTORS = Object.freeze({
-    thread: '#thread',
-    main: 'main',
-    userMessage: '[data-message-author-role="user"]',
-    assistantMessage: '[data-message-author-role="assistant"]',
-    headings: 'h1,h2,h3,h4,h5,h6',
-    turn: '[data-message-id],[data-turn-id],[data-testid^="conversation-turn-"]',
-    conversationTurn: '[data-testid^="conversation-turn-"]',
-    nativeTocItem: 'button[data-toc-item-index]',
-    nativeTocActive: 'button[data-toc-item-index][data-toc-active]'
-  });
-
-  const PROMPT_LIMIT = 200;
-  const ACTIVE_ROOT_MARGIN = '0px 0px -90% 0px';
-  const STRUCTURE_SETTLE_DELAY = 120;
-  const SIDEBAR_VISIBILITY_KEY = 'sidebarVisible';
-
-  function truncateText(value, limit = PROMPT_LIMIT) {
-    const text = String(value || '').trim();
-    return text.length > limit ? `${text.slice(0, limit)}…` : text;
-  }
-
-  function elementMatchesOrContains(node, selector) {
-    return node instanceof Element && (node.matches(selector) || Boolean(node.querySelector(selector)));
-  }
-
-  function pairConversationMessages(messages, getKey = () => null) {
-    const pairs = [];
-    const keyedPairIndexes = new Map();
-    let pendingPrompt = null;
-    for (const message of messages) {
-      if (message.matches(SELECTORS.userMessage)) {
-        pendingPrompt = message;
-        continue;
-      }
-      if (pendingPrompt) {
-        const key = getKey(message);
-        const pair = key
-          ? { prompt: pendingPrompt, assistant: message, key }
-          : { prompt: pendingPrompt, assistant: message };
-        if (key && keyedPairIndexes.has(key)) {
-          pairs[keyedPairIndexes.get(key)] = pair;
-        } else {
-          if (key) keyedPairIndexes.set(key, pairs.length);
-          pairs.push(pair);
-        }
-      }
-      pendingPrompt = null;
-    }
-    return pairs;
-  }
-
-  function getNavigationOffset(viewportHeight) {
-    return Math.max(72, Math.min(120, viewportHeight * 0.1));
-  }
-
-  function findActiveTrackingTarget(targets, activationY) {
-    let low = 0;
-    let high = targets.length - 1;
-    let active = null;
-    while (low <= high) {
-      const middle = Math.floor((low + high) / 2);
-      if (targets[middle].element.getBoundingClientRect().top <= activationY) {
-        active = targets[middle];
-        low = middle + 1;
-      } else {
-        high = middle - 1;
-      }
-    }
-    return active;
-  }
-
-  function getNativeTocIndex(element) {
-    const value = element?.getAttribute?.('data-toc-item-index');
-    if (!/^\d+$/.test(value || '')) return null;
-    return Number(value);
-  }
-
-  function collectNativeTocItems(elements) {
-    const items = new Map();
-    for (const element of elements) {
-      const index = getNativeTocIndex(element);
-      if (index !== null && !items.has(index)) items.set(index, element);
-    }
-    return items;
-  }
-
-  function getPromptIndexFromTestId(testId, role = null) {
-    const match = /^conversation-turn-(\d+)$/.exec(testId || '');
-    if (!match) return null;
-    const turnIndex = Number(match[1]);
-    if (role === 'user') return Math.floor(turnIndex / 2);
-    if (role === 'assistant') {
-      return turnIndex > 0 && turnIndex % 2 === 0
-        ? (turnIndex / 2) - 1
-        : Math.floor(turnIndex / 2);
-    }
-    return Math.max(0, Math.floor((turnIndex - 1) / 2));
-  }
-
-  function findRemountedHeading(headings, descriptor) {
-    const indexed = headings?.[descriptor.index];
-    if (indexed?.isConnected && indexed.tagName === descriptor.tagName) return indexed;
-    return headings?.find((candidate) => candidate.isConnected &&
-      candidate.tagName === descriptor.tagName &&
-      candidate.textContent.trim() === descriptor.text) || null;
-  }
-
-  function canCreateConversationGroup(nativeIndex, nativeTocCount) {
-    return nativeIndex !== null || nativeTocCount === 0;
-  }
-
-  function resolveDarkTheme(className, colorScheme, prefersDark) {
-    const classes = String(className || '').split(/\s+/);
-    if (classes.includes('dark')) return true;
-    if (classes.includes('light')) return false;
-
-    const scheme = String(colorScheme || '').trim().toLowerCase();
-    if (scheme === 'dark') return true;
-    if (scheme === 'light') return false;
-    return Boolean(prefersDark);
-  }
-
-  function createArrow(direction) {
-    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-    svg.setAttribute('width', '12');
-    svg.setAttribute('height', '12');
-    svg.setAttribute('viewBox', '0 0 12 12');
-    svg.setAttribute('aria-hidden', 'true');
-
-    const polyline = document.createElementNS('http://www.w3.org/2000/svg', 'polyline');
-    polyline.setAttribute('points', direction === 'right' ? '4,3 8,6 4,9' : '3,4 6,8 9,4');
-    polyline.setAttribute('fill', 'none');
-    polyline.setAttribute('stroke', 'currentColor');
-    polyline.setAttribute('stroke-width', '2');
-    polyline.setAttribute('stroke-linecap', 'round');
-    polyline.setAttribute('stroke-linejoin', 'round');
-    svg.append(polyline);
-    return svg;
-  }
-
-  function createCloseIcon() {
-    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-    svg.setAttribute('width', '12');
-    svg.setAttribute('height', '12');
-    svg.setAttribute('viewBox', '0 0 12 12');
-    svg.setAttribute('aria-hidden', 'true');
-
-    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-    path.setAttribute('d', 'M2.5 2.5l7 7m0-7-7 7');
-    path.setAttribute('fill', 'none');
-    path.setAttribute('stroke', 'currentColor');
-    path.setAttribute('stroke-width', '1.75');
-    path.setAttribute('stroke-linecap', 'round');
-    svg.append(path);
-    return svg;
-  }
+  const shared = typeof module !== 'undefined' && module.exports
+    ? require('./src/shared.js')
+    : globalThis.TOCNavigator;
+  const {
+    SELECTORS,
+    ACTIVE_ROOT_MARGIN,
+    STRUCTURE_SETTLE_DELAY,
+    SIDEBAR_VISIBILITY_KEY,
+    truncateText,
+    elementMatchesOrContains,
+    pairConversationMessages,
+    getNavigationOffset,
+    findActiveTrackingTarget,
+    getNativeTocIndex,
+    collectNativeTocItems,
+    getPromptIndexFromTestId,
+    findRemountedHeading,
+    canCreateConversationGroup,
+    resolveDarkTheme,
+    createArrow,
+    createCloseIcon
+  } = shared;
 
   class ChatGPTTOC {
     constructor() {

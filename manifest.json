@@ -11,7 +11,7 @@
    },
    "content_scripts": [ {
       "css": [ "styles.css" ],
-      "js": [ "content.js" ],
+      "js": [ "src/shared.js", "content.js" ],
       "matches": [ "https://chat.openai.com/*", "https://chatgpt.com/*" ],
       "run_at": "document_idle"
    } ],

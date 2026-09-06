@@ -4,7 +4,10 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 
 const sourcePath = path.join(__dirname, '..', 'content.js');
-const source = fs.readFileSync(sourcePath, 'utf8');
+const sharedSourcePath = path.join(__dirname, '..', 'src', 'shared.js');
+const source = [sharedSourcePath, sourcePath]
+  .map((filePath) => fs.readFileSync(filePath, 'utf8'))
+  .join('\n');
 const {
   ChatGPTTOC,
   SELECTORS,
@@ -54,7 +57,7 @@ test('sidebar heading uses the extension branding', () => {
 });
 
 test('sidebar close control uses a centered SVG instead of a font glyph', () => {
-  assert.match(source, /function createCloseIcon\(\)/);
+  assert.match(source, /(?:function createCloseIcon\(\)|api\.createCloseIcon =)/);
   assert.match(source, /closeButton\.append\(createCloseIcon\(\)\)/);
   assert.doesNotMatch(source, /closeButton\.textContent = '×'/);
 });
