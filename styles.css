@@ -34,7 +34,7 @@ body.chatgpt-toc-open > .chatgpt-toc-app-root > :first-child {
 #chatgpt-toc-sidebar {
   position: fixed;
   inset: 0 0 0 auto;
-  z-index: 9999;
+  z-index: 40;
   display: flex;
   width: var(--chatgpt-toc-width);
   height: 100dvh;
@@ -216,7 +216,7 @@ body.chatgpt-toc-open > .chatgpt-toc-app-root > :first-child {
   position: fixed;
   top: 70px;
   right: 14px;
-  z-index: 10000;
+  z-index: 40;
   padding: 7px 10px;
   color: #fff;
   background: #10a37f;

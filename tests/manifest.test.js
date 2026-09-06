@@ -9,7 +9,7 @@ const styles = fs.readFileSync(path.join(root, 'styles.css'), 'utf8');
 
 test('manifest identifies the navigator and needs no extra permissions', () => {
   assert.equal(manifest.name, 'TOC Navigator for ChatGPT');
-  assert.equal(manifest.version, '1.3.17');
+  assert.equal(manifest.version, '1.3.18');
   assert.deepEqual(manifest.permissions, []);
   assert.equal(manifest.key, undefined);
   assert.equal(manifest.update_url, undefined);
@@ -32,6 +32,12 @@ test('sidecar reserves width without padding or reparenting styles', () => {
   assert.match(styles, /calc\(100vw - var\(--chatgpt-toc-width\)\)/);
   assert.match(styles, /min-width:\s*0\s*!important/);
   assert.doesNotMatch(styles, /padding-right/);
+});
+
+test('ChatGPT modal overlays remain above the sidebar and toggle', () => {
+  assert.match(styles, /#chatgpt-toc-sidebar\s*\{[\s\S]*?z-index:\s*40/);
+  assert.match(styles, /#chatgpt-toc-toggle\s*\{[\s\S]*?z-index:\s*40/);
+  assert.doesNotMatch(styles, /z-index:\s*(?:9999|10000)/);
 });
 
 test('conversation and composer use ChatGPT content-width variables for wide mode', () => {
