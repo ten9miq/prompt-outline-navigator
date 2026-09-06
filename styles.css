@@ -244,14 +244,14 @@ body.chatgpt-toc-open > .chatgpt-toc-app-root > :first-child {
 #chatgpt-toc-toggle[hidden] { display: none; }
 
 .dark-mode#chatgpt-toc-sidebar {
-  --toc-title-color: #f3f4f6;
-  --toc-group-title-color: #5eead4;
-  --toc-h1-color: #6ee7b7;
-  --toc-h2-color: #5eead4;
-  --toc-h3-color: #60a5fa;
-  --toc-h4-color: #d1d5db;
-  --toc-h5-color: #b8c0cc;
-  --toc-h6-color: #9ca3af;
+  --toc-title-color: #a7adb5;
+  --toc-group-title-color: #35b58f;
+  --toc-h1-color: #35b58f;
+  --toc-h2-color: #32ad96;
+  --toc-h3-color: #4f91c9;
+  --toc-h4-color: #a7adb5;
+  --toc-h5-color: #969da6;
+  --toc-h6-color: #858d98;
   --toc-active-prompt-color: #fff;
   --toc-active-prompt-bg: #2b2f36;
   --toc-active-prompt-outline: #6940c5;

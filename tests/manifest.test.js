@@ -21,7 +21,7 @@ function contrastRatio(foreground, background) {
 
 test('manifest identifies the navigator and only stores extension preferences', () => {
   assert.equal(manifest.name, 'TOC Navigator for ChatGPT');
-  assert.equal(manifest.version, '1.3.24');
+  assert.equal(manifest.version, '1.3.25');
   assert.equal(manifest.author, 'ten9miq');
   assert.equal(packageJson.author, 'ten9miq');
   assert.deepEqual(manifest.permissions, ['storage']);
@@ -100,7 +100,7 @@ test('active prompt colors adapt to light and dark backgrounds', () => {
 
 test('light and dark hierarchy palettes meet small-text contrast', () => {
   const light = ['#1f2937', '#08745b', '#0d6f5d', '#08745b', '#0b64a0', '#4b5563', '#5f5f5f', '#6b7280'];
-  const dark = ['#f3f4f6', '#5eead4', '#6ee7b7', '#5eead4', '#60a5fa', '#d1d5db', '#b8c0cc', '#9ca3af'];
+  const dark = ['#a7adb5', '#35b58f', '#35b58f', '#32ad96', '#4f91c9', '#a7adb5', '#969da6', '#858d98'];
   for (const color of light) {
     assert.match(styles, new RegExp(`: ${color.replace('#', '\\#')}`));
     assert.ok(contrastRatio(color, '#ffffff') >= 4.5, `${color} must contrast with the light background`);
