@@ -6,6 +6,8 @@ A live table-of-contents and navigation sidebar for ChatGPT conversations.
 
 Prompt Outline Navigator is an independent project and is not affiliated with or endorsed by OpenAI.
 
+[Privacy Policy](PRIVACY.md)
+
 ## Features
 
 - Opens a dedicated 200px sidecar without moving ChatGPT's React root and remembers its open/closed state.

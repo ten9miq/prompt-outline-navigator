@@ -6,6 +6,8 @@ ChatGPTの会話に、リアルタイムで更新される目次とナビゲー�
 
 Prompt Outline Navigatorは独立したプロジェクトであり、OpenAIとの提携や、OpenAIによる承認を受けたものではありません。
 
+[プライバシーポリシー](PRIVACY.ja.md)
+
 ## 機能
 
 - ChatGPTのReactルートを移動せず、専用の200pxサイドバーを表示し、開閉状態を保存します。
