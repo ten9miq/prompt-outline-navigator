@@ -21,7 +21,7 @@ function contrastRatio(foreground, background) {
 
 test('manifest identifies the navigator and only stores extension preferences', () => {
   assert.equal(manifest.name, 'TOC Navigator for ChatGPT');
-  assert.equal(manifest.version, '1.3.25');
+  assert.equal(manifest.version, '1.3.26');
   assert.equal(manifest.author, 'ten9miq');
   assert.equal(packageJson.author, 'ten9miq');
   assert.deepEqual(manifest.permissions, ['storage']);
@@ -66,6 +66,11 @@ test('ChatGPT modal overlays remain above the sidebar and toggle', () => {
   assert.match(styles, /#chatgpt-toc-sidebar\s*\{[\s\S]*?z-index:\s*40/);
   assert.match(styles, /#chatgpt-toc-toggle\s*\{[\s\S]*?z-index:\s*40/);
   assert.doesNotMatch(styles, /z-index:\s*(?:9999|10000)/);
+});
+
+test('sidebar close button has a fixed centered hit area', () => {
+  assert.match(styles, /\.toc-close\s*\{[\s\S]*?width:\s*24px;[\s\S]*?height:\s*24px;[\s\S]*?padding:\s*0;/);
+  assert.match(styles, /\.toc-close svg \{ display: block; \}/);
 });
 
 test('conversation and composer use ChatGPT content-width variables for wide mode', () => {

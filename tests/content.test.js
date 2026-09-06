@@ -53,6 +53,12 @@ test('sidebar heading uses the extension branding', () => {
   assert.doesNotMatch(source, /title\.textContent = 'Table of Contents'/);
 });
 
+test('sidebar close control uses a centered SVG instead of a font glyph', () => {
+  assert.match(source, /function createCloseIcon\(\)/);
+  assert.match(source, /closeButton\.append\(createCloseIcon\(\)\)/);
+  assert.doesNotMatch(source, /closeButton\.textContent = '×'/);
+});
+
 test('explicit ChatGPT theme overrides the operating-system preference', () => {
   assert.equal(resolveDarkTheme('dark', 'normal', false), true);
   assert.equal(resolveDarkTheme('light', 'normal', true), false);

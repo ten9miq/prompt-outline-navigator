@@ -91,7 +91,16 @@ body.chatgpt-toc-open > .chatgpt-toc-app-root > :first-child {
   cursor: pointer;
 }
 
-.toc-close { width: auto; min-height: 10px; font-size: 20px; }
+.toc-close {
+  width: 24px;
+  height: 24px;
+  min-height: 24px;
+  padding: 0;
+  flex: 0 0 24px;
+  line-height: 1;
+}
+
+.toc-close svg { display: block; }
 
 .toc-close:hover,
 .toc-collapse-icon:hover,

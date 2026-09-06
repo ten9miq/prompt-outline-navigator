@@ -143,6 +143,23 @@
     return svg;
   }
 
+  function createCloseIcon() {
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.setAttribute('width', '12');
+    svg.setAttribute('height', '12');
+    svg.setAttribute('viewBox', '0 0 12 12');
+    svg.setAttribute('aria-hidden', 'true');
+
+    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    path.setAttribute('d', 'M2.5 2.5l7 7m0-7-7 7');
+    path.setAttribute('fill', 'none');
+    path.setAttribute('stroke', 'currentColor');
+    path.setAttribute('stroke-width', '1.75');
+    path.setAttribute('stroke-linecap', 'round');
+    svg.append(path);
+    return svg;
+  }
+
   class ChatGPTTOC {
     constructor() {
       this.sidebar = null;
@@ -216,7 +233,7 @@
       closeButton.type = 'button';
       closeButton.className = 'toc-close';
       closeButton.setAttribute('aria-label', 'Close table of contents');
-      closeButton.textContent = '×';
+      closeButton.append(createCloseIcon());
       closeButton.addEventListener('click', () => this.setSidebarVisible(false));
 
       this.tocContent = document.createElement('nav');
