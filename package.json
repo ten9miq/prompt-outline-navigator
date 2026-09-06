@@ -1,6 +1,6 @@
 {
   "name": "chatgpt-toc-navigator",
-  "version": "1.3.19",
+  "version": "1.3.20",
   "description": "A live table-of-contents and navigation sidebar for ChatGPT conversations",
   "main": "content.js",
   "scripts": {

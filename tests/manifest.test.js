@@ -6,13 +6,28 @@ const assert = require('node:assert/strict');
 const root = path.join(__dirname, '..');
 const manifest = JSON.parse(fs.readFileSync(path.join(root, 'manifest.json'), 'utf8'));
 const styles = fs.readFileSync(path.join(root, 'styles.css'), 'utf8');
+const iconSvg = fs.readFileSync(path.join(root, 'icons', 'toc_navigator_icon.svg'), 'utf8');
 
 test('manifest identifies the navigator and only stores extension preferences', () => {
   assert.equal(manifest.name, 'TOC Navigator for ChatGPT');
-  assert.equal(manifest.version, '1.3.19');
+  assert.equal(manifest.version, '1.3.20');
   assert.deepEqual(manifest.permissions, ['storage']);
   assert.equal(manifest.key, undefined);
   assert.equal(manifest.update_url, undefined);
+});
+
+test('navigator icons are transparent PNGs at every declared size', () => {
+  for (const size of [16, 32, 48, 64, 128]) {
+    const png = fs.readFileSync(path.join(root, 'icons', `toc_gpt_icon_${size}.png`));
+    assert.equal(png.subarray(1, 4).toString('ascii'), 'PNG');
+    assert.equal(png.readUInt32BE(16), size);
+    assert.equal(png.readUInt32BE(20), size);
+    assert.equal(png[25], 6, `${size}px icon must use RGBA color`);
+  }
+  assert.match(iconSvg, /#10a37f/);
+  assert.match(iconSvg, /#6940c5/);
+  assert.match(iconSvg, /#60a5fa/);
+  assert.doesNotMatch(iconSvg, /<(?:linearGradient|radialGradient|text)\b/);
 });
 
 test('content script covers both supported ChatGPT hosts', () => {
