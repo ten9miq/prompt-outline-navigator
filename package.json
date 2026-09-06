@@ -5,7 +5,7 @@
   "main": "content.js",
   "scripts": {
     "test": "node --test",
-    "check": "node --check content.js",
+    "check": "node --check src/shared.js && node --check src/sidebar.js && node --check src/conversation.js && node --check src/navigation.js && node --check src/active-tracker.js && node --check content.js",
     "build": "npm run check && npm test"
   },
   "keywords": [

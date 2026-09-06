@@ -48,6 +48,7 @@ test('content script covers both supported ChatGPT hosts', () => {
   assert.deepEqual(contentScript.js, [
     'src/shared.js',
     'src/sidebar.js',
+    'src/conversation.js',
     'src/navigation.js',
     'src/active-tracker.js',
     'content.js'

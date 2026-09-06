@@ -21,6 +21,8 @@ npm test
 npm run check
 ```
 
+The content scripts are split by responsibility: shared helpers, sidebar UI, conversation synchronization, navigation, active-position tracking, and the `content.js` bootstrap. Keep their order in `manifest.json` when adding or moving code.
+
 Load this directory with **Chrome > Extensions > Developer mode > Load unpacked**.
 
 For a local browser regression page, open `tests/browser-fixture.html`. It checks initial display, literal HTML-like labels, incremental add/update/remove behavior, group insertion, and close/reopen layout handling.
