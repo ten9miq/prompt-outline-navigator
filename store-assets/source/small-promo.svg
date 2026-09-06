@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 440 280" role="img" aria-labelledby="title desc">
+  <title id="title">Prompt Outline Navigator small promotional tile</title>
+  <desc id="desc">A stylized conversation outline connected to a position marker.</desc>
+  <defs>
+    <linearGradient id="background" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#101827"/>
+      <stop offset="0.55" stop-color="#152d35"/>
+      <stop offset="1" stop-color="#2c1f4d"/>
+    </linearGradient>
+    <filter id="shadow" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="10" stdDeviation="12" flood-color="#000" flood-opacity=".35"/>
+    </filter>
+  </defs>
+  <rect width="440" height="280" fill="url(#background)"/>
+  <circle cx="64" cy="50" r="90" fill="#10a37f" opacity=".08"/>
+  <circle cx="384" cy="245" r="120" fill="#6940c5" opacity=".16"/>
+  <g filter="url(#shadow)">
+    <rect x="62" y="42" width="316" height="196" rx="22" fill="#1f2937" stroke="#344052" stroke-width="2"/>
+    <rect x="84" y="65" width="184" height="150" rx="15" fill="#111827"/>
+    <path d="M111 94h123M111 124h95M111 154h112M111 184h72" fill="none" stroke="#10a37f" stroke-linecap="round" stroke-width="12"/>
+    <path d="M316 72v136" fill="none" stroke="#6940c5" stroke-linecap="round" stroke-width="12"/>
+    <rect x="297" y="124" width="38" height="34" rx="9" fill="#60a5fa"/>
+  </g>
+</svg>

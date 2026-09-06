@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Prompt Outline Navigator store demo</title>
+  <script>
+    if (new URLSearchParams(location.search).get('theme') === 'dark') {
+      document.documentElement.classList.add('dark');
+      document.documentElement.style.colorScheme = 'dark';
+    }
+  </script>
+  <link rel="stylesheet" href="../../styles.css">
+  <style>
+    :root { color-scheme: light; }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: Arial, sans-serif; background: #f7f7f8; color: #242424; }
+    .dark body { background: #171717; color: #ececec; }
+    #app { min-height: 100vh; background: inherit; }
+    .app-header { height: 58px; display: flex; align-items: center; justify-content: space-between; padding: 0 28px; border-bottom: 1px solid #dedede; background: rgba(255,255,255,.92); }
+    .dark .app-header { border-color: #333; background: rgba(23,23,23,.94); }
+    .brand { font-weight: 700; font-size: 17px; }
+    .demo-label { color: #6b7280; font-size: 13px; }
+    main { width: min(880px, calc(100% - 56px)); margin: 0 auto; padding: 42px 24px 120px; }
+    [data-message-author-role="user"] { max-width: 620px; margin: 0 0 28px auto; padding: 15px 18px; border-radius: 20px; background: #e9e9eb; }
+    .dark [data-message-author-role="user"] { background: #2f2f2f; }
+    [data-message-author-role="assistant"] { margin-bottom: 44px; font-size: 16px; line-height: 1.65; }
+    [data-message-author-role="assistant"] h1 { margin: 0 0 18px; font-size: 28px; }
+    [data-message-author-role="assistant"] h2 { margin: 28px 0 10px; font-size: 21px; }
+    [data-message-author-role="assistant"] h3 { margin: 21px 0 8px; font-size: 17px; }
+    [data-message-author-role="assistant"] p { margin: 8px 0; }
+    .feature-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-top: 18px; }
+    .feature { padding: 14px; border: 1px solid #ddd; border-radius: 12px; background: rgba(255,255,255,.62); }
+    .dark .feature { border-color: #383838; background: #202020; }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <header class="app-header">
+      <div class="brand">Conversation workspace</div>
+      <div class="demo-label">Sample content — no personal data</div>
+    </header>
+    <main>
+      <div id="thread">
+        <article data-testid="conversation-turn-1">
+          <div data-message-author-role="user">Create a practical guide for organizing a long research conversation.</div>
+        </article>
+        <article data-testid="conversation-turn-2">
+          <div data-message-author-role="assistant">
+            <h1>Research conversation guide</h1>
+            <p>A clear outline makes long answers easier to scan and revisit.</p>
+            <h2>1. Define the objective</h2>
+            <p>Start with the decision or result the research needs to support.</p>
+            <h3>Questions to answer</h3>
+            <p>List the unknowns and group related questions before collecting details.</p>
+            <h2>2. Organize the evidence</h2>
+            <div class="feature-grid">
+              <div class="feature"><strong>Sources</strong><br>Keep claims connected to their evidence.</div>
+              <div class="feature"><strong>Decisions</strong><br>Record conclusions separately from open questions.</div>
+            </div>
+            <h2>3. Review the outline</h2>
+            <p>Use the navigation panel to return to any section without losing context.</p>
+          </div>
+        </article>
+        <article data-testid="conversation-turn-3">
+          <div data-message-author-role="user">Add a short checklist for the final review.</div>
+        </article>
+        <article data-testid="conversation-turn-4">
+          <div data-message-author-role="assistant">
+            <h1>Final review checklist</h1>
+            <h2>Confirm coverage</h2>
+            <p>Verify that every question has an answer or a clearly marked follow-up.</p>
+            <h2>Check navigation</h2>
+            <p>Confirm that each outline entry opens the expected destination.</p>
+          </div>
+        </article>
+      </div>
+    </main>
+  </div>
+  <script src="../../src/shared.js"></script>
+  <script src="../../src/sidebar.js"></script>
+  <script src="../../src/conversation.js"></script>
+  <script src="../../src/navigation.js"></script>
+  <script src="../../src/active-tracker.js"></script>
+  <script src="../../content.js"></script>
+</body>
+</html>
