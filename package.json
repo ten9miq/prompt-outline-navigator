@@ -6,7 +6,8 @@
   "scripts": {
     "test": "node --test",
     "check": "node --check src/shared.js && node --check src/sidebar.js && node --check src/conversation.js && node --check src/navigation.js && node --check src/active-tracker.js && node --check content.js",
-    "build": "npm run check && npm test"
+    "build": "npm run check && npm test",
+    "package:store": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/build-store-package.ps1"
   },
   "keywords": [
     "chrome-extension",

@@ -31,6 +31,16 @@ Load this directory with **Chrome > Extensions > Developer mode > Load unpacked*
 
 For a local browser regression page, open `tests/browser-fixture.html`. It checks initial display, literal HTML-like labels, incremental add/update/remove behavior, group insertion, and close/reopen layout handling.
 
+### Chrome Web Store package
+
+Build a minimal review package containing only manifest-referenced runtime files and the license:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/build-store-package.ps1
+```
+
+The script runs JavaScript syntax checks and automated tests, verifies the ZIP contents, and prints its SHA-256 hash. The output is written to `dist/prompt-outline-navigator-<version>-chrome-web-store.zip`.
+
 ## Origin
 
 Based on [ChatGPT Table of Contents](https://github.com/WindZZzzZZzz/gpt-toc-extension) by Leo Z. The initial source snapshot is Chrome Web Store version 1.2.1.

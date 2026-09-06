@@ -31,6 +31,16 @@ Chromeの「拡張機能」画面でデベロッパーモードを有効にし�
 
 ローカルのブラウザー回帰テストには`tests/browser-fixture.html`を使用します。初期表示、HTMLのように見えるラベルの文字列処理、項目の差分追加・更新・削除、グループ追加、サイドバーの開閉に伴うレイアウト変更を確認できます。
 
+### Chrome Web Store用パッケージ
+
+manifestから参照される実行ファイルとライセンスだけを含む、審査用の最小パッケージを生成します。
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/build-store-package.ps1
+```
+
+スクリプトはJavaScriptの構文検査と自動テストを実行し、ZIPの内容を検証してSHA-256ハッシュを表示します。出力先は`dist/prompt-outline-navigator-<version>-chrome-web-store.zip`です。
+
 ## 由来
 
 Leo Zによる[ChatGPT Table of Contents](https://github.com/WindZZzzZZzz/gpt-toc-extension)を基にしています。初期ソースにはChromeウェブストア版1.2.1のスナップショットを使用しました。
