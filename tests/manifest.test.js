@@ -7,10 +7,10 @@ const root = path.join(__dirname, '..');
 const manifest = JSON.parse(fs.readFileSync(path.join(root, 'manifest.json'), 'utf8'));
 const styles = fs.readFileSync(path.join(root, 'styles.css'), 'utf8');
 
-test('manifest identifies the navigator and needs no extra permissions', () => {
+test('manifest identifies the navigator and only stores extension preferences', () => {
   assert.equal(manifest.name, 'TOC Navigator for ChatGPT');
-  assert.equal(manifest.version, '1.3.18');
-  assert.deepEqual(manifest.permissions, []);
+  assert.equal(manifest.version, '1.3.19');
+  assert.deepEqual(manifest.permissions, ['storage']);
   assert.equal(manifest.key, undefined);
   assert.equal(manifest.update_url, undefined);
 });

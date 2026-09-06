@@ -6,6 +6,7 @@ const assert = require('node:assert/strict');
 const sourcePath = path.join(__dirname, '..', 'content.js');
 const source = fs.readFileSync(sourcePath, 'utf8');
 const {
+  ChatGPTTOC,
   SELECTORS,
   truncateText,
   pairConversationMessages,
@@ -15,7 +16,8 @@ const {
   collectNativeTocItems,
   getPromptIndexFromTestId,
   findRemountedHeading,
-  canCreateConversationGroup
+  canCreateConversationGroup,
+  SIDEBAR_VISIBILITY_KEY
 } = require(sourcePath);
 
 test('prompt and heading edge-case strings remain plain text inputs', () => {
@@ -48,6 +50,34 @@ test('DOM-dependent selectors are centralized', () => {
 test('sidebar heading uses the extension branding', () => {
   assert.match(source, /title\.textContent = 'TOC Navigator'/);
   assert.doesNotMatch(source, /title\.textContent = 'Table of Contents'/);
+});
+
+test('sidebar visibility is restored and persisted in extension storage', () => {
+  assert.equal(SIDEBAR_VISIBILITY_KEY, 'sidebarVisible');
+  assert.match(source, /await storage\.get\(SIDEBAR_VISIBILITY_KEY\)/);
+  assert.match(source, /persist:\s*false/);
+  assert.match(source, /this\.toggleButton\.hidden = true/);
+});
+
+test('sidebar visibility storage reads closed state and writes later changes', async () => {
+  const previousChrome = globalThis.chrome;
+  const writes = [];
+  globalThis.chrome = {
+    storage: {
+      local: {
+        get: async () => ({ [SIDEBAR_VISIBILITY_KEY]: false }),
+        set: async (value) => writes.push(value)
+      }
+    }
+  };
+  try {
+    assert.equal(await ChatGPTTOC.prototype.loadSidebarVisibility(), false);
+    await ChatGPTTOC.prototype.saveSidebarVisibility(true);
+    assert.deepEqual(writes, [{ [SIDEBAR_VISIBILITY_KEY]: true }]);
+  } finally {
+    if (previousChrome === undefined) delete globalThis.chrome;
+    else globalThis.chrome = previousChrome;
+  }
 });
 
 test('native prompt TOC indices are parsed and deduplicated in DOM order', () => {

@@ -4,7 +4,7 @@ A live table-of-contents and navigation sidebar for ChatGPT conversations.
 
 ## Features
 
-- Opens a dedicated 200px sidecar by default without moving ChatGPT's React root.
+- Opens a dedicated 200px sidecar without moving ChatGPT's React root and remembers its open/closed state.
 - Widens conversation responses and the composer through ChatGPT's content-width variable.
 - Updates only changed turns and headings with `MutationObserver`.
 - Tracks the current prompt and heading with `IntersectionObserver`.

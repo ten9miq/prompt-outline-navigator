@@ -17,6 +17,7 @@
   const PROMPT_LIMIT = 200;
   const ACTIVE_ROOT_MARGIN = '0px 0px -90% 0px';
   const STRUCTURE_SETTLE_DELAY = 120;
+  const SIDEBAR_VISIBILITY_KEY = 'sidebarVisible';
 
   function truncateText(value, limit = PROMPT_LIMIT) {
     const text = String(value || '').trim();
@@ -170,13 +171,14 @@
       this.headingObserver = this.createPositionObserver();
       this.promptObserver = this.createPositionObserver();
 
-      this.init();
+      void this.init();
     }
 
-    init() {
+    async init() {
       this.createSidebar();
       this.addToggleButton();
-      this.setSidebarVisible(true, { focus: false });
+      const visible = await this.loadSidebarVisibility();
+      this.setSidebarVisible(visible, { focus: false, persist: false });
       this.observePage();
       this.observeTheme();
       this.observePositionChanges();
@@ -233,8 +235,33 @@
       this.toggleButton.setAttribute('aria-label', 'Open table of contents');
       this.toggleButton.setAttribute('aria-controls', this.sidebar.id);
       this.toggleButton.textContent = '📋 TOC';
+      this.toggleButton.hidden = true;
       this.toggleButton.addEventListener('click', () => this.setSidebarVisible(true));
       document.body.append(this.toggleButton);
+    }
+
+    async loadSidebarVisibility() {
+      const storage = globalThis.chrome?.storage?.local;
+      if (!storage?.get) return true;
+      try {
+        const saved = await storage.get(SIDEBAR_VISIBILITY_KEY);
+        return saved?.[SIDEBAR_VISIBILITY_KEY] !== false;
+      } catch {
+        return true;
+      }
+    }
+
+    saveSidebarVisibility(visible) {
+      const storage = globalThis.chrome?.storage?.local;
+      if (!storage?.set) return;
+      try {
+        return Promise.resolve(
+          storage.set({ [SIDEBAR_VISIBILITY_KEY]: Boolean(visible) })
+        ).catch(() => {});
+      } catch {
+        // Keep the current-page state even if extension storage is unavailable.
+        return undefined;
+      }
     }
 
     setSidebarVisible(visible, options = {}) {
@@ -245,6 +272,7 @@
       this.toggleButton.setAttribute('aria-expanded', String(visible));
       document.body.classList.toggle('chatgpt-toc-open', visible);
       this.refreshAppRoot();
+      if (options.persist !== false) this.saveSidebarVisibility(visible);
 
       if (visible && options.focus !== false) {
         this.sidebar.querySelector('.toc-close')?.focus();
@@ -1117,7 +1145,8 @@
       collectNativeTocItems,
       getPromptIndexFromTestId,
       findRemountedHeading,
-      canCreateConversationGroup
+      canCreateConversationGroup,
+      SIDEBAR_VISIBILITY_KEY
     };
   }
 })();
