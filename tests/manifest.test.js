@@ -45,7 +45,7 @@ test('navigator icons are transparent PNGs at every declared size', () => {
 
 test('content script covers both supported ChatGPT hosts', () => {
   const [contentScript] = manifest.content_scripts;
-  assert.deepEqual(contentScript.js, ['src/shared.js', 'src/sidebar.js', 'content.js']);
+  assert.deepEqual(contentScript.js, ['src/shared.js', 'src/sidebar.js', 'src/navigation.js', 'content.js']);
   assert.deepEqual(contentScript.css, ['styles.css']);
   assert.deepEqual(contentScript.matches, [
     'https://chat.openai.com/*',
