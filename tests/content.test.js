@@ -4,9 +4,9 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 
 const sourcePath = path.join(__dirname, '..', 'content.js');
-const sharedSourcePath = path.join(__dirname, '..', 'src', 'shared.js');
-const source = [sharedSourcePath, sourcePath]
-  .map((filePath) => fs.readFileSync(filePath, 'utf8'))
+const manifest = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'manifest.json'), 'utf8'));
+const source = manifest.content_scripts[0].js
+  .map((filePath) => fs.readFileSync(path.join(__dirname, '..', filePath), 'utf8'))
   .join('\n');
 const {
   ChatGPTTOC,
