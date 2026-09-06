@@ -1,8 +1,10 @@
-# TOC Navigator for ChatGPT
+# Prompt Outline Navigator
 
 [English](README.md) | [日本語](README.ja.md)
 
 ChatGPTの会話に、リアルタイムで更新される目次とナビゲーション用サイドバーを追加します。
+
+Prompt Outline Navigatorは独立したプロジェクトであり、OpenAIとの提携や、OpenAIによる承認を受けたものではありません。
 
 ## 機能
 

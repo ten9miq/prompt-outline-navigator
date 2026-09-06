@@ -1,4 +1,4 @@
-// Shared constants and side-effect-free helpers for TOC Navigator.
+// Shared constants and side-effect-free helpers for Prompt Outline Navigator.
 (() => {
   'use strict';
 

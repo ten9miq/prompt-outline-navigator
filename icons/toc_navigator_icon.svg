@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-labelledby="title desc">
-  <title id="title">TOC Navigator</title>
+  <title id="title">Prompt Outline Navigator</title>
   <desc id="desc">A table of contents beside a navigation rail with an active position marker.</desc>
   <g fill="none" stroke="#10a37f" stroke-linecap="round" stroke-linejoin="round">
     <rect x="12" y="12" width="76" height="104" rx="14" stroke-width="10"/>

@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>TOC Navigator browser fixture</title>
+  <title>Prompt Outline Navigator browser fixture</title>
   <link rel="stylesheet" href="../styles.css">
   <style>
     body { margin: 0; font-family: sans-serif; }
@@ -90,11 +90,11 @@
 
         output.className = 'pass';
         output.textContent = `ALL ${results.length} BROWSER TESTS PASSED\n${results.join('\n')}`;
-        document.title = 'PASS - TOC Navigator browser fixture';
+        document.title = 'PASS - Prompt Outline Navigator browser fixture';
       } catch (error) {
         output.className = 'fail';
         output.textContent = `${results.join('\n')}\nFAIL: ${error.message}`;
-        document.title = 'FAIL - TOC Navigator browser fixture';
+        document.title = 'FAIL - Prompt Outline Navigator browser fixture';
       }
     }, { once: true });
   </script>

@@ -1,8 +1,10 @@
-# TOC Navigator for ChatGPT
+# Prompt Outline Navigator
 
 [English](README.md) | [日本語](README.ja.md)
 
 A live table-of-contents and navigation sidebar for ChatGPT conversations.
+
+Prompt Outline Navigator is an independent project and is not affiliated with or endorsed by OpenAI.
 
 ## Features
 

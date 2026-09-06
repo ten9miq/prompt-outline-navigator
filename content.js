@@ -1,4 +1,4 @@
-// TOC Navigator for ChatGPT bootstrap and shared instance state.
+// Prompt Outline Navigator bootstrap and shared instance state.
 (() => {
   'use strict';
 

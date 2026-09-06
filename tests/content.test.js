@@ -52,7 +52,7 @@ test('DOM-dependent selectors are centralized', () => {
 });
 
 test('sidebar heading uses the extension branding', () => {
-  assert.match(source, /title\.textContent = 'TOC Navigator'/);
+  assert.match(source, /title\.textContent = 'Prompt Outline Navigator'/);
   assert.doesNotMatch(source, /title\.textContent = 'Table of Contents'/);
 });
 

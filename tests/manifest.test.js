@@ -20,8 +20,8 @@ function contrastRatio(foreground, background) {
 }
 
 test('manifest identifies the navigator and only stores extension preferences', () => {
-  assert.equal(manifest.name, 'TOC Navigator for ChatGPT');
-  assert.equal(manifest.version, '1.3.27');
+  assert.equal(manifest.name, 'Prompt Outline Navigator');
+  assert.equal(manifest.version, '1.3.28');
   assert.equal(manifest.author, 'ten9miq');
   assert.equal(packageJson.author, 'ten9miq');
   assert.deepEqual(manifest.permissions, ['storage']);
