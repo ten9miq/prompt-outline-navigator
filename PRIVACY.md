@@ -43,4 +43,4 @@ If the extension's data handling changes, this policy and the Chrome Web Store p
 
 ## Contact
 
-Questions about this policy can be submitted through the project's [GitHub Issues](https://github.com/ten9miq/chatgpt-toc-navigator/issues).
+Questions about this policy can be submitted through the project's [GitHub Issues](https://github.com/ten9miq/prompt-outline-navigator/issues).

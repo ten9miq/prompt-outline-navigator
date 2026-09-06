@@ -43,4 +43,4 @@ Prompt Outline Navigatorは、ChatGPT上に表示された会話から目次を�
 
 ## 問い合わせ
 
-本ポリシーに関する質問は、プロジェクトの[GitHub Issues](https://github.com/ten9miq/chatgpt-toc-navigator/issues)から送信できます。
+本ポリシーに関する質問は、プロジェクトの[GitHub Issues](https://github.com/ten9miq/prompt-outline-navigator/issues)から送信できます。
