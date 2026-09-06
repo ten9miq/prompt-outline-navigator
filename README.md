@@ -1,5 +1,7 @@
 # TOC Navigator for ChatGPT
 
+[English](README.md) | [日本語](README.ja.md)
+
 A live table-of-contents and navigation sidebar for ChatGPT conversations.
 
 ## Features

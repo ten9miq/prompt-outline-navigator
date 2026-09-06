@@ -11,7 +11,7 @@ const iconSvg = fs.readFileSync(path.join(root, 'icons', 'toc_navigator_icon.svg
 
 test('manifest identifies the navigator and only stores extension preferences', () => {
   assert.equal(manifest.name, 'TOC Navigator for ChatGPT');
-  assert.equal(manifest.version, '1.3.21');
+  assert.equal(manifest.version, '1.3.22');
   assert.equal(manifest.author, 'ten9miq');
   assert.equal(packageJson.author, 'ten9miq');
   assert.deepEqual(manifest.permissions, ['storage']);
