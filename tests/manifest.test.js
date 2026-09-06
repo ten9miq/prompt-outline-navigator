@@ -5,12 +5,15 @@ const assert = require('node:assert/strict');
 
 const root = path.join(__dirname, '..');
 const manifest = JSON.parse(fs.readFileSync(path.join(root, 'manifest.json'), 'utf8'));
+const packageJson = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'));
 const styles = fs.readFileSync(path.join(root, 'styles.css'), 'utf8');
 const iconSvg = fs.readFileSync(path.join(root, 'icons', 'toc_navigator_icon.svg'), 'utf8');
 
 test('manifest identifies the navigator and only stores extension preferences', () => {
   assert.equal(manifest.name, 'TOC Navigator for ChatGPT');
-  assert.equal(manifest.version, '1.3.20');
+  assert.equal(manifest.version, '1.3.21');
+  assert.equal(manifest.author, 'ten9miq');
+  assert.equal(packageJson.author, 'ten9miq');
   assert.deepEqual(manifest.permissions, ['storage']);
   assert.equal(manifest.key, undefined);
   assert.equal(manifest.update_url, undefined);

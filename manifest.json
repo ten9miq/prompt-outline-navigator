@@ -1,4 +1,5 @@
 {
+   "author": "ten9miq",
    "action": {
       "default_icon": {
          "128": "icons/toc_gpt_icon_128.png",
@@ -25,5 +26,5 @@
    "manifest_version": 3,
    "name": "TOC Navigator for ChatGPT",
    "permissions": [ "storage" ],
-   "version": "1.3.20"
+   "version": "1.3.21"
 }
