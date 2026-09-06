@@ -40,6 +40,9 @@ body.chatgpt-toc-open > .chatgpt-toc-app-root > :first-child {
   --toc-h4-color: #4b5563;
   --toc-h5-color: #5f5f5f;
   --toc-h6-color: #6b7280;
+  --toc-active-prompt-color: #312e81;
+  --toc-active-prompt-bg: #ede9fe;
+  --toc-active-prompt-outline: #6940c5;
   position: fixed;
   inset: 0 0 0 auto;
   z-index: 40;
@@ -123,9 +126,9 @@ body.chatgpt-toc-open > .chatgpt-toc-app-root > :first-child {
 .toc-item:hover { background: var(--theme-attribution-highlight-bg, var(--surface-hover, #ececf1)); }
 
 .toc-group-header.active {
-  color: #fff;
-  background: #2b2f36;
-  outline: 2px solid #6940c5;
+  color: var(--toc-active-prompt-color);
+  background: var(--toc-active-prompt-bg);
+  outline: 2px solid var(--toc-active-prompt-outline);
   outline-offset: -2px;
 }
 
@@ -145,7 +148,8 @@ body.chatgpt-toc-open > .chatgpt-toc-app-root > :first-child {
   text-transform: uppercase;
 }
 
-.toc-group-header.active .toc-group-title { color: #fff; }
+.toc-group-header.active .toc-group-title,
+.toc-group-header.active .toc-group-prompt { color: inherit; }
 
 .toc-group-prompt {
   display: -webkit-box;
@@ -248,6 +252,9 @@ body.chatgpt-toc-open > .chatgpt-toc-app-root > :first-child {
   --toc-h4-color: #d1d5db;
   --toc-h5-color: #b8c0cc;
   --toc-h6-color: #9ca3af;
+  --toc-active-prompt-color: #fff;
+  --toc-active-prompt-bg: #2b2f36;
+  --toc-active-prompt-outline: #6940c5;
   color: var(--tw-prose-body, var(--text-primary, #ececec));
   background: var(--bg-primary, var(--main-surface-primary, #212121));
   border-left-color: var(--border-light, #424242);
@@ -265,10 +272,12 @@ body.chatgpt-toc-open > .chatgpt-toc-app-root > :first-child {
 .dark-mode .toc-collapse-icon:hover,
 .dark-mode .toc-group-collapse-icon:hover { background: var(--surface-hover, #2f2f2f); }
 
-.dark-mode .toc-group-header.active { color: #fff; background: #2b2f36; outline-color: #6940c5; }
+.dark-mode .toc-group-header.active {
+  color: var(--toc-active-prompt-color);
+  background: var(--toc-active-prompt-bg);
+  outline-color: var(--toc-active-prompt-outline);
+}
 .dark-mode .toc-item.active { color: #fff; background: #6940c5; border-left-color: #60a5fa; }
-.dark-mode .toc-group-header.active .toc-group-title,
-.dark-mode .toc-group-header.active .toc-group-prompt { color: #fff; }
 
 .toc-item:focus-visible,
 .toc-group-header:focus-visible,

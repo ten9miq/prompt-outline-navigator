@@ -21,7 +21,7 @@ function contrastRatio(foreground, background) {
 
 test('manifest identifies the navigator and only stores extension preferences', () => {
   assert.equal(manifest.name, 'TOC Navigator for ChatGPT');
-  assert.equal(manifest.version, '1.3.23');
+  assert.equal(manifest.version, '1.3.24');
   assert.equal(manifest.author, 'ten9miq');
   assert.equal(packageJson.author, 'ten9miq');
   assert.deepEqual(manifest.permissions, ['storage']);
@@ -83,9 +83,19 @@ test('legacy Stylus and UserScript appearance is integrated', () => {
   assert.match(styles, /\.toc-h3 \.toc-text \{ color: var\(--toc-h3-color\)/);
   assert.match(styles, /\.toc-item\.active \{ color: #fff; background: #6940c5; border-left-color: #60a5fa; \}/);
   assert.match(styles, /\.toc-item\.active \.toc-text \{ color: #fff; \}/);
-  assert.match(styles, /\.toc-group-header\.active[\s\S]*background: #2b2f36;[\s\S]*outline: 2px solid #6940c5/);
+  assert.match(styles, /\.toc-group-header\.active[\s\S]*background: var\(--toc-active-prompt-bg\)/);
   assert.match(styles, /\.toc-item\.toc-h6 \{ padding-left: 30px; \}/);
   assert.match(styles, /-webkit-line-clamp: 5/);
+});
+
+test('active prompt colors adapt to light and dark backgrounds', () => {
+  assert.match(styles, /--toc-active-prompt-color: #312e81/);
+  assert.match(styles, /--toc-active-prompt-bg: #ede9fe/);
+  assert.match(styles, /\.dark-mode#chatgpt-toc-sidebar[\s\S]*--toc-active-prompt-color: #fff/);
+  assert.match(styles, /\.dark-mode#chatgpt-toc-sidebar[\s\S]*--toc-active-prompt-bg: #2b2f36/);
+  assert.match(styles, /\.toc-group-header\.active \.toc-group-prompt \{ color: inherit; \}/);
+  assert.ok(contrastRatio('#312e81', '#ede9fe') >= 4.5);
+  assert.ok(contrastRatio('#ffffff', '#2b2f36') >= 4.5);
 });
 
 test('light and dark hierarchy palettes meet small-text contrast', () => {
