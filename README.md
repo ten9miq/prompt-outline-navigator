@@ -34,3 +34,7 @@ For a local browser regression page, open `tests/browser-fixture.html`. It check
 ## Origin
 
 Based on [ChatGPT Table of Contents](https://github.com/WindZZzzZZzz/gpt-toc-extension) by Leo Z. The initial source snapshot is Chrome Web Store version 1.2.1.
+
+## License
+
+Released under the [MIT License](LICENSE). The original project's copyright notice is retained.

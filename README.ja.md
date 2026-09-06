@@ -34,3 +34,7 @@ Chromeの「拡張機能」画面でデベロッパーモードを有効にし�
 ## 由来
 
 Leo Zによる[ChatGPT Table of Contents](https://github.com/WindZZzzZZzz/gpt-toc-extension)を基にしています。初期ソースにはChromeウェブストア版1.2.1のスナップショットを使用しました。
+
+## ライセンス
+
+[MIT License](LICENSE)で公開しています。元プロジェクトの著作権表示を維持しています。

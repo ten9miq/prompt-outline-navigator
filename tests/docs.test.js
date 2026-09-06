@@ -28,3 +28,12 @@ test('repository instructions require synchronized README maintenance', () => {
   assert.match(agents, /README\.ja\.md/);
   assert.match(agents, /update both README files in the same commit/);
 });
+
+test('repository includes the upstream and current MIT copyright notices', () => {
+  const license = fs.readFileSync(path.join(root, 'LICENSE'), 'utf8');
+  assert.match(license, /^MIT License/);
+  assert.match(license, /Copyright \(c\) 2025 Leo Zhang/);
+  assert.match(license, /Copyright \(c\) 2026 ten9miq/);
+  assert.match(english, /\[MIT License\]\(LICENSE\)/);
+  assert.match(japanese, /\[MIT License\]\(LICENSE\)/);
+});
