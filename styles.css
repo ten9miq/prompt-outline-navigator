@@ -79,6 +79,13 @@ body.chatgpt-toc-open > .chatgpt-toc-app-root > :first-child {
   table-layout: auto;
 }
 
+/* ChatGPT sizes data-col-size cells from --thread-content-width, which can be
+   wider than the table container after the TOC sidebar reserves its space. */
+[data-turn="assistant"] .markdown table :is(th, td)[data-col-size] {
+  min-width: 0 !important;
+  max-width: none !important;
+}
+
 /* Prevent long preformatted output from being clipped by the widened layout. */
 [data-turn="assistant"] .markdown pre {
   max-width: 100%;

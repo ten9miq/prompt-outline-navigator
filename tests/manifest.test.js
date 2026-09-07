@@ -21,7 +21,7 @@ function contrastRatio(foreground, background) {
 
 test('manifest identifies the navigator and only stores extension preferences', () => {
   assert.equal(manifest.name, 'Prompt Outline Navigator');
-  assert.equal(manifest.version, '1.3.31');
+  assert.equal(manifest.version, '1.3.32');
   assert.equal(manifest.author, 'ten9miq');
   assert.equal(packageJson.author, 'ten9miq');
   assert.deepEqual(manifest.permissions, ['storage']);
@@ -98,6 +98,7 @@ test('conversation and composer use ChatGPT content-width variables for wide mod
 test('wide response content stays accessible instead of being clipped', () => {
   assert.match(styles, /\[data-turn="assistant"\] \.markdown \[class\*="_tableContainer"\][\s\S]*overflow-x: auto !important/);
   assert.match(styles, /\[data-turn="assistant"\] \.markdown \[class\*="_tableWrapper"\][\s\S]*min-width: 0 !important/);
+  assert.match(styles, /table :is\(th, td\)\[data-col-size\][\s\S]*min-width: 0 !important;[\s\S]*max-width: none !important;/);
   assert.match(styles, /\[class~="grid"\]:has\([\s\S]*grid-template-columns: minmax\(0, 1fr\) !important/);
   assert.match(styles, /\[data-turn="assistant"\] \.markdown pre[\s\S]*overflow-x: auto/);
   assert.match(styles, /#prompt-textarea \{ max-height: 50vh !important; \}/);
