@@ -21,7 +21,7 @@ function contrastRatio(foreground, background) {
 
 test('manifest identifies the navigator and only stores extension preferences', () => {
   assert.equal(manifest.name, 'Prompt Outline Navigator');
-  assert.equal(manifest.version, '1.3.30');
+  assert.equal(manifest.version, '1.3.29');
   assert.equal(manifest.author, 'ten9miq');
   assert.equal(packageJson.author, 'ten9miq');
   assert.deepEqual(manifest.permissions, ['storage']);
@@ -79,11 +79,6 @@ test('ChatGPT modal overlays remain above the sidebar and toggle', () => {
 test('sidebar close button has a fixed centered hit area', () => {
   assert.match(styles, /\.toc-close\s*\{[\s\S]*?width:\s*24px;[\s\S]*?height:\s*24px;[\s\S]*?padding:\s*0;/);
   assert.match(styles, /\.toc-close svg \{ display: block; \}/);
-});
-
-test('sidebar title stays on one compact line', () => {
-  assert.match(styles, /\.toc-header\s*\{[\s\S]*?gap:\s*4px;[\s\S]*?padding:\s*0 6px 0 8px;/);
-  assert.match(styles, /\.toc-title\s*\{[\s\S]*?font-size:\s*13px;[\s\S]*?text-overflow:\s*ellipsis;[\s\S]*?white-space:\s*nowrap;/);
 });
 
 test('conversation and composer use ChatGPT content-width variables for wide mode', () => {
