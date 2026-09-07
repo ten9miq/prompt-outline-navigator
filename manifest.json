@@ -25,5 +25,5 @@
    "manifest_version": 3,
    "name": "Prompt Outline Navigator",
    "permissions": [ "storage" ],
-   "version": "1.3.29"
+   "version": "1.3.31"
 }

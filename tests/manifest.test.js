@@ -21,7 +21,7 @@ function contrastRatio(foreground, background) {
 
 test('manifest identifies the navigator and only stores extension preferences', () => {
   assert.equal(manifest.name, 'Prompt Outline Navigator');
-  assert.equal(manifest.version, '1.3.29');
+  assert.equal(manifest.version, '1.3.31');
   assert.equal(manifest.author, 'ten9miq');
   assert.equal(packageJson.author, 'ten9miq');
   assert.deepEqual(manifest.permissions, ['storage']);
@@ -81,6 +81,11 @@ test('sidebar close button has a fixed centered hit area', () => {
   assert.match(styles, /\.toc-close svg \{ display: block; \}/);
 });
 
+test('sidebar title stays on one compact line', () => {
+  assert.match(styles, /\.toc-header\s*\{[\s\S]*?gap:\s*4px;[\s\S]*?padding:\s*0 6px 0 8px;/);
+  assert.match(styles, /\.toc-title\s*\{[\s\S]*?font-size:\s*13px;[\s\S]*?text-overflow:\s*ellipsis;[\s\S]*?white-space:\s*nowrap;/);
+});
+
 test('conversation and composer use ChatGPT content-width variables for wide mode', () => {
   assert.match(styles, /--chatgpt-toc-content-max-width:\s*80vw/);
   assert.match(styles, /#thread\s*\{\s*--wide-content-max-width:/);
@@ -88,6 +93,14 @@ test('conversation and composer use ChatGPT content-width variables for wide mod
   assert.match(styles, /#thread-bottom-container \[class\*="max-w-\(--thread-content-max-width\)"\]/);
   assert.match(styles, /\[data-turn="assistant"\] \.markdown\.prose[\s\S]*max-width:\s*none\s*!important/);
   assert.doesNotMatch(styles, /body\s*>\s*div\s*>\s*div\.flex/);
+});
+
+test('wide response content stays accessible instead of being clipped', () => {
+  assert.match(styles, /\[data-turn="assistant"\] \.markdown \[class\*="_tableContainer"\][\s\S]*overflow-x: auto !important/);
+  assert.match(styles, /\[data-turn="assistant"\] \.markdown \[class\*="_tableWrapper"\][\s\S]*min-width: 0 !important/);
+  assert.match(styles, /\[class~="grid"\]:has\([\s\S]*grid-template-columns: minmax\(0, 1fr\) !important/);
+  assert.match(styles, /\[data-turn="assistant"\] \.markdown pre[\s\S]*overflow-x: auto/);
+  assert.match(styles, /#prompt-textarea \{ max-height: 50vh !important; \}/);
 });
 
 test('legacy Stylus and UserScript appearance is integrated', () => {
