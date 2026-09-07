@@ -28,8 +28,84 @@ body.chatgpt-toc-open > .chatgpt-toc-app-root > :first-child {
   max-width: none !important;
   padding-inline: 10px;
   box-sizing: border-box;
+  word-break: normal;
   overflow-wrap: anywhere;
 }
+
+/* Keep project pages and rich response content from widening their grid tracks. */
+#thread [class~="grid"]:has(
+    > [class~="min-h-0"] > [class~="group/page-table-scroll"]
+  ) {
+  min-width: 0 !important;
+  grid-template-columns: minmax(0, 1fr) !important;
+}
+
+#thread > [class~="composer-parent"]
+  > [class~="grid"][class~="basis-auto"]
+  > div {
+  min-width: 0 !important;
+  width: 100% !important;
+  max-width: 100% !important;
+}
+
+#thread [class~="max-w-app-content"] {
+  min-width: 0 !important;
+  width: 100% !important;
+  max-width: none !important;
+  margin-inline: 0 !important;
+}
+
+/* Fit tables to the response width and scroll only when their contents need more room. */
+[data-turn="assistant"] .markdown [class*="_tableContainer"] {
+  width: 100% !important;
+  max-width: 100% !important;
+  margin-inline: 0 !important;
+  box-sizing: border-box;
+  overflow-x: auto !important;
+  overscroll-behavior-inline: contain;
+}
+
+[data-turn="assistant"] .markdown [class*="_tableWrapper"] {
+  min-width: 0 !important;
+  width: 100% !important;
+  max-width: none !important;
+  margin-inline: 0 !important;
+}
+
+[data-turn="assistant"] .markdown [class*="_tableWrapper"] > table {
+  width: 100% !important;
+  min-width: 100% !important;
+  max-width: none !important;
+  table-layout: auto;
+}
+
+/* Prevent long preformatted output from being clipped by the widened layout. */
+[data-turn="assistant"] .markdown pre {
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+[data-turn="assistant"] .markdown .whitespace-pre\!,
+[data-turn="assistant"] .markdown code.whitespace-pre\! span {
+  white-space: pre-wrap !important;
+  overflow-wrap: anywhere;
+}
+
+#thread > div pre div.w-full.overflow-y-auto { max-height: 75vh !important; }
+
+/* Retain the useful editor height limits without applying broad utility-class overrides. */
+#prompt-textarea { max-height: 50vh !important; }
+
+[data-testid="cot-v5-pinned-row"] > button {
+  width: auto !important;
+  max-width: none !important;
+  padding-left: 0 !important;
+  flex: 0 0 auto !important;
+}
+
+.markdown hr { margin-block: 5px; }
+.markdown h2 { margin-block: 10px 6px; }
+.markdown h3 { margin-block: 5px 3px; }
 
 #chatgpt-toc-sidebar {
   --toc-title-color: #1f2937;
