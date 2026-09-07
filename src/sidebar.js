@@ -21,6 +21,7 @@
       title.id = 'chatgpt-toc-title';
       title.className = 'toc-title';
       title.textContent = 'Prompt Outline Navigator';
+      title.title = title.textContent;
       const closeButton = document.createElement('button');
       closeButton.type = 'button';
       closeButton.className = 'toc-close';

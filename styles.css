@@ -68,13 +68,25 @@ body.chatgpt-toc-open > .chatgpt-toc-app-root > :first-child {
   min-height: 30px;
   align-items: center;
   justify-content: space-between;
-  padding: 0 20px;
+  gap: 4px;
+  padding: 0 6px 0 8px;
   background: var(--bg-primary, var(--main-surface-primary, #fff));
   border-bottom: 1px solid var(--border-light, #e5e5e5);
   flex: 0 0 auto;
 }
 
-.toc-title { margin: 0; color: var(--toc-title-color); font-size: 16px; font-weight: 600; }
+.toc-title {
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  color: var(--toc-title-color);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1 1 auto;
+}
 
 .toc-close,
 .toc-collapse-icon,
