@@ -372,6 +372,7 @@
         header,
         title,
         promptText,
+        promptTextCaptured: false,
         collapse,
         content,
         promptIndex: nativeIndex,
@@ -448,7 +449,15 @@
           promptGroups.add(group);
         }
       }
-      if (prompt) group.promptText.textContent = truncateText(prompt.textContent);
+      const promptIndex = this.getPromptIndexFromElement(prompt);
+      const promptMatchesGroup = group.nativeIndex === null || promptIndex === group.nativeIndex;
+      if (prompt && promptMatchesGroup && !group.promptTextCaptured) {
+        const text = truncateText(prompt.textContent);
+        if (text) {
+          group.promptText.textContent = text;
+          group.promptTextCaptured = true;
+        }
+      }
       group.promptText.hidden = !group.promptText.textContent;
     }
 
@@ -462,8 +471,14 @@
     }
 
     updatePrompt(prompt) {
+      const promptIndex = this.getPromptIndexFromElement(prompt);
       this.promptToGroups.get(prompt)?.forEach((group) => {
-        group.promptText.textContent = truncateText(prompt.textContent);
+        if (group.promptTextCaptured) return;
+        if (group.nativeIndex !== null && promptIndex !== group.nativeIndex) return;
+        const text = truncateText(prompt.textContent);
+        if (!text) return;
+        group.promptText.textContent = text;
+        group.promptTextCaptured = true;
         group.promptText.hidden = !group.promptText.textContent;
       });
     }

@@ -217,6 +217,47 @@ test('virtualized stable turns detach live nodes without discarding cached headi
   assert.equal(context.turnToGroup.has(assistant), false);
 });
 
+test('the first resolved prompt label stays fixed across remounted prompt nodes', () => {
+  const firstPrompt = { textContent: 'Original prompt' };
+  const remountedPrompt = { textContent: 'Incorrect remounted prompt' };
+  const promptText = { textContent: '', hidden: true };
+  const group = { prompt: null, promptText, promptTextCaptured: false, nativeIndex: null };
+  const context = {
+    promptToGroups: new WeakMap(),
+    promptObserver: { observe() {} },
+    detachPrompt() {},
+    getPromptIndexFromElement: () => null
+  };
+
+  ChatGPTTOC.prototype.setGroupPrompt.call(context, group, firstPrompt);
+  assert.equal(promptText.textContent, 'Original prompt');
+  assert.equal(group.promptTextCaptured, true);
+
+  ChatGPTTOC.prototype.setGroupPrompt.call(context, group, remountedPrompt);
+  assert.equal(group.prompt, remountedPrompt);
+  assert.equal(promptText.textContent, 'Original prompt');
+
+  remountedPrompt.textContent = 'Changed again while scrolling';
+  ChatGPTTOC.prototype.updatePrompt.call(context, remountedPrompt);
+  assert.equal(promptText.textContent, 'Original prompt');
+});
+
+test('a mismatched native prompt cannot become the fixed group label', () => {
+  const prompt = { textContent: 'Prompt from another group' };
+  const promptText = { textContent: '', hidden: true };
+  const group = { prompt: null, promptText, promptTextCaptured: false, nativeIndex: 2 };
+  const context = {
+    promptToGroups: new WeakMap(),
+    promptObserver: { observe() {} },
+    detachPrompt() {},
+    getPromptIndexFromElement: () => 8
+  };
+
+  ChatGPTTOC.prototype.setGroupPrompt.call(context, group, prompt);
+  assert.equal(promptText.textContent, '');
+  assert.equal(group.promptTextCaptured, false);
+});
+
 test('navigation recovery prefers the current DOM thread over a stale instance reference', () => {
   const previousDocument = globalThis.document;
   const previousGetComputedStyle = globalThis.getComputedStyle;
