@@ -63,12 +63,17 @@
     }
 
     setActive(heading, group) {
-      if (this.activeHeading === heading && this.activeGroup === group) return;
+      const item = this.headingToTocItem.get(heading);
+      const sameSelection = this.activeHeading === heading && this.activeGroup === group;
+      const headingStateMatches = !heading || item?.classList.contains('active');
+      const groupStateMatches = !group || group.header.classList.contains('active');
+      const fallbackStateMatches = !group
+        || group.header.classList.contains('active-fallback') === !item;
+      if (sameSelection && headingStateMatches && groupStateMatches && fallbackStateMatches) return;
       this.headingToTocItem.get(this.activeHeading)?.classList.remove('active');
       this.activeGroup?.header.classList.remove('active', 'active-fallback');
       this.activeHeading = heading;
       this.activeGroup = group;
-      const item = this.headingToTocItem.get(heading);
       item?.classList.add('active');
       if (group) {
         group.header.classList.add('active');

@@ -52,7 +52,7 @@ test('TOC updates follow the tail only when it was already visible', () => {
 });
 
 test('active tracking does not override a preserved TOC browsing position', () => {
-  const classList = { add() {}, remove() {}, toggle() {} };
+  const classList = { add() {}, remove() {}, toggle() {}, contains() { return false; } };
   const heading = {};
   const item = { hidden: false, classList };
   const group = { header: { classList }, content: { hidden: false } };
@@ -67,6 +67,36 @@ test('active tracking does not override a preserved TOC browsing position', () =
 
   ChatGPTTOC.prototype.setActive.call(context, heading, group);
   assert.equal(ensureCalls, 0);
+});
+
+test('active tracking restores a lost heading highlight for the current selection', () => {
+  const createClassList = (initial = []) => {
+    const classes = new Set(initial);
+    return {
+      add(...names) { names.forEach((name) => classes.add(name)); },
+      remove(...names) { names.forEach((name) => classes.delete(name)); },
+      toggle(name, force) { if (force) classes.add(name); else classes.delete(name); },
+      contains(name) { return classes.has(name); }
+    };
+  };
+  const heading = {};
+  const item = { hidden: false, classList: createClassList() };
+  const group = {
+    header: { classList: createClassList(['active']) },
+    content: { hidden: false }
+  };
+  const context = {
+    activeHeading: heading,
+    activeGroup: group,
+    headingToTocItem: new WeakMap([[heading, item]]),
+    preserveTocScrollOnActiveUpdate: true,
+    ensureTocItemVisible() {}
+  };
+
+  ChatGPTTOC.prototype.setActive.call(context, heading, group);
+  assert.equal(item.classList.contains('active'), true);
+  assert.equal(group.header.classList.contains('active'), true);
+  assert.equal(group.header.classList.contains('active-fallback'), false);
 });
 
 test('prompt and heading edge-case strings remain plain text inputs', () => {
@@ -485,6 +515,8 @@ test('dynamic content never uses innerHTML and polling is absent', () => {
   assert.doesNotMatch(source, /nativeTocItems\.clear\(\)/);
   assert.match(source, /closest\?\.\(SELECTORS\.conversationTurn\)/);
   assert.match(source, /dataset\.tocVersion/);
+  assert.match(source, /classList\.remove\('toc-h1', 'toc-h2', 'toc-h3', 'toc-h4', 'toc-h5', 'toc-h6'\)/);
+  assert.doesNotMatch(source, /item\.className\s*=\s*`toc-item toc-h/);
   assert.doesNotMatch(source, /nativeLabel/);
   assert.doesNotMatch(source, /attributeFilter: \[[^\]]*aria-label/);
   assert.doesNotMatch(source, /Response without a preceding prompt/);

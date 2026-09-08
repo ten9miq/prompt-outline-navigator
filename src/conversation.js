@@ -588,7 +588,8 @@
         const level = Number(heading.tagName.slice(1));
         const next = group.headings[index + 1];
         const hasChildren = Boolean(next && Number(next.tagName.slice(1)) > level);
-        item.className = `toc-item toc-h${level}`;
+        item.classList.remove('toc-h1', 'toc-h2', 'toc-h3', 'toc-h4', 'toc-h5', 'toc-h6');
+        item.classList.add('toc-item', `toc-h${level}`);
         item.style.setProperty('--toc-level', String(level));
         item.setAttribute('aria-label', `Go to ${heading.textContent.trim() || heading.tagName}`);
         if (hasChildren) item.setAttribute('aria-expanded', String(!this.collapsedHeadings.has(heading)));
