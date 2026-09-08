@@ -377,6 +377,7 @@ test('active tracking chooses exactly the last item above the navigation line', 
 test('active tracking falls back to the current prompt when no heading has been reached', () => {
   const firstGroup = { id: 'first' };
   const secondGroup = { id: 'second' };
+  const staleNativeGroup = { id: 'stale-native' };
   const heading = { id: 'heading' };
   const previousHeading = { id: 'previous-heading' };
 
@@ -395,6 +396,10 @@ test('active tracking falls back to the current prompt when no heading has been 
   assert.deepEqual(resolveActiveTrackingSelection(secondGroup, { group: firstGroup, heading: previousHeading }, [firstGroup, secondGroup]), {
     group: firstGroup,
     heading: previousHeading
+  });
+  assert.deepEqual(resolveActiveTrackingSelection(staleNativeGroup, null, [firstGroup, secondGroup], secondGroup), {
+    group: secondGroup,
+    heading: null
   });
 });
 

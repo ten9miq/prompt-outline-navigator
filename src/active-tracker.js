@@ -54,13 +54,11 @@
     }
 
     updateActiveFromScrollPosition() {
-      const target = findActiveTrackingTarget(
-        this.getTrackingTargets(),
-        getNavigationOffset(window.innerHeight)
-      );
+      const targets = this.getTrackingTargets();
+      const target = findActiveTrackingTarget(targets, getNavigationOffset(window.innerHeight));
       const nativeActive = document.querySelector(SELECTORS.nativeTocActive);
       const nativeGroup = this.nativeIndexToGroup.get(getNativeTocIndex(nativeActive));
-      const selection = resolveActiveTrackingSelection(nativeGroup, target, this.groups);
+      const selection = resolveActiveTrackingSelection(nativeGroup, target, this.groups, targets[0]?.group);
       this.setActive(selection.heading, selection.group);
     }
 

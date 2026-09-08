@@ -72,8 +72,8 @@
     return active;
   };
 
-  api.resolveActiveTrackingSelection = (nativeGroup, target, groups) => {
-    const group = target?.group || nativeGroup || groups[0] || null;
+  api.resolveActiveTrackingSelection = (nativeGroup, target, groups, firstConnectedGroup = null) => {
+    const group = target?.group || firstConnectedGroup || nativeGroup || groups[0] || null;
     return {
       group,
       heading: target?.group === group ? target.heading : null
