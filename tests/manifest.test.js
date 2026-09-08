@@ -21,7 +21,7 @@ function contrastRatio(foreground, background) {
 
 test('manifest identifies the navigator and only stores extension preferences', () => {
   assert.equal(manifest.name, 'Prompt Outline Navigator');
-  assert.equal(manifest.version, '1.3.33');
+  assert.equal(manifest.version, '1.3.34');
   assert.equal(manifest.author, 'ten9miq');
   assert.equal(packageJson.author, 'ten9miq');
   assert.deepEqual(manifest.permissions, ['storage']);
@@ -99,6 +99,8 @@ test('wide response content stays accessible instead of being clipped', () => {
   assert.match(styles, /\[data-turn="assistant"\] \.markdown \[class\*="_tableContainer"\][\s\S]*overflow-x: auto !important/);
   assert.match(styles, /\[data-turn="assistant"\] \.markdown \[class\*="_tableWrapper"\][\s\S]*min-width: 0 !important/);
   assert.match(styles, /table :is\(th, td\)\[data-col-size\][\s\S]*min-width: 0 !important;[\s\S]*max-width: none !important;/);
+  assert.match(styles, /table \.product-table-sidebar-card[\s\S]*width: min\(100%, 200px\) !important/);
+  assert.match(styles, /data-shopping-product-image-pdp-click-target[\s\S]*height: auto !important;[\s\S]*aspect-ratio: 1 \/ 1/);
   assert.match(styles, /\[class~="grid"\]:has\([\s\S]*grid-template-columns: minmax\(0, 1fr\) !important/);
   assert.match(styles, /\[data-turn="assistant"\] \.markdown pre[\s\S]*overflow-x: auto/);
   assert.match(styles, /#prompt-textarea \{ max-height: 50vh !important; \}/);
