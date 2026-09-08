@@ -15,6 +15,7 @@
     collectNativeTocItems,
     getPromptIndexFromTestId,
     canCreateConversationGroup,
+    shouldPreserveDisconnectedGroup,
     createArrow
   } = shared;
 
@@ -164,16 +165,14 @@
           this.nativeIndexToGroup.delete(index);
           group.nativeIndex = null;
           group.nativeButton = null;
-          if (!group.assistant) this.removeGroup(group);
+          if (!group.assistant && !shouldPreserveDisconnectedGroup(group)) this.removeGroup(group);
         }
       }
 
       for (const [index, button] of items) {
         let group = this.nativeIndexToGroup.get(index);
         if (!group) {
-          group = this.groups.find((candidate) => candidate.nativeIndex === null &&
-            (this.getPromptIndexFromElement(candidate.prompt) ??
-              this.getPromptIndexFromElement(candidate.assistant)) === index);
+          group = this.groups.find((candidate) => candidate.nativeIndex === null && candidate.promptIndex === index);
           if (!group && this.groups.length === items.size) {
             group = this.groups[index]?.nativeIndex === null ? this.groups[index] : null;
           }
@@ -190,7 +189,7 @@
     removeNonNativeGroups() {
       if (!this.nativeTocItems.size) return;
       for (const group of [...this.groups]) {
-        if (group.nativeIndex === null) this.removeGroup(group);
+        if (group.nativeIndex === null && !shouldPreserveDisconnectedGroup(group)) this.removeGroup(group);
       }
     }
 
@@ -305,10 +304,9 @@
       this.removeNonNativeGroups();
 
       for (const group of [...this.groups]) {
-        const replacement = group.key && this.turnKeyToGroup.get(group.key);
-        if (group.assistant && !liveAssistants.has(group.assistant) && !group.nativeButton &&
-            (!group.key || replacement === group)) {
-          this.removeGroup(group);
+        if (group.assistant && !liveAssistants.has(group.assistant) && !group.nativeButton) {
+          if (shouldPreserveDisconnectedGroup(group)) this.disconnectGroupFromTurn(group);
+          else this.removeGroup(group);
         }
       }
 
@@ -374,6 +372,7 @@
         promptText,
         collapse,
         content,
+        promptIndex: nativeIndex,
         nativeIndex,
         nativeButton: null
       };
@@ -395,10 +394,24 @@
       }
       group.assistant = assistant;
       group.key = key;
+      const promptIndex = this.getPromptIndexFromElement(prompt) ?? this.getPromptIndexFromElement(assistant);
+      if (promptIndex !== null) group.promptIndex = promptIndex;
       if (assistant) this.turnToGroup.set(assistant, group);
       if (key) this.turnKeyToGroup.set(key, group);
       this.setGroupPrompt(group, prompt);
       if (assistant) this.reconcileAssistantTurn(assistant);
+    }
+
+    disconnectGroupFromTurn(group) {
+      if (group.prompt) {
+        this.detachPrompt(group, group.prompt);
+        group.prompt = null;
+      }
+      if (group.assistant) {
+        this.turnToGroup.delete(group.assistant);
+        group.assistant = null;
+      }
+      group.headings.forEach((heading) => this.headingObserver?.unobserve(heading));
     }
 
     removeGroup(group) {

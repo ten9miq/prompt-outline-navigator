@@ -5,7 +5,7 @@
   const shared = typeof module !== 'undefined' && module.exports
     ? require('./shared.js')
     : globalThis.TOCNavigator;
-  const { findRemountedHeading } = shared;
+  const { findRemountedHeading, NAVIGATION_RECOVERY_FRAMES } = shared;
 
   class NavigationMethods {
     handleTocClick(event) {
@@ -47,7 +47,9 @@
         this.setActive(null, group);
         group.nativeButton.click();
         this.waitForGroupDestination(group, requestId);
+        return;
       }
+      if (group) this.recoverVirtualizedDestination(group, requestId, () => this.waitForGroupDestination(group, requestId));
     }
 
     navigateToHeading(heading, group) {
@@ -76,6 +78,14 @@
         this.pendingNavigationRequestId = requestId;
         this.scrollToDestination(prompt);
         this.waitForHeadingDestination(group, descriptor, requestId);
+        return;
+      }
+      if (group) {
+        this.recoverVirtualizedDestination(
+          group,
+          requestId,
+          () => this.waitForHeadingDestination(group, descriptor, requestId)
+        );
       }
     }
 
@@ -84,7 +94,7 @@
     }
 
     waitForHeadingDestination(group, descriptor, requestId, attempts = 0) {
-      if (requestId !== this.navigationRequestId || attempts >= 120) {
+      if (requestId !== this.navigationRequestId || attempts >= NAVIGATION_RECOVERY_FRAMES) {
         if (this.pendingNavigationRequestId === requestId) this.pendingNavigationRequestId = null;
         return;
       }
@@ -103,8 +113,27 @@
       return group?.assistant?.isConnected ? group.assistant : null;
     }
 
+    getConversationScrollContainer() {
+      let element = this.thread;
+      while (element?.parentElement) {
+        element = element.parentElement;
+        const overflowY = getComputedStyle(element).overflowY;
+        if (/^(auto|scroll)$/.test(overflowY) && element.scrollHeight > element.clientHeight) return element;
+      }
+      return null;
+    }
+
+    recoverVirtualizedDestination(group, requestId, waitForDestination) {
+      const scroller = this.getConversationScrollContainer();
+      if (!scroller) return;
+      this.pendingNavigationRequestId = requestId;
+      this.setActive(null, group);
+      scroller.scrollTo({ top: 0, behavior: 'auto' });
+      waitForDestination();
+    }
+
     waitForGroupDestination(group, requestId, attempts = 0) {
-      if (requestId !== this.navigationRequestId || attempts >= 120) {
+      if (requestId !== this.navigationRequestId || attempts >= NAVIGATION_RECOVERY_FRAMES) {
         if (this.pendingNavigationRequestId === requestId) this.pendingNavigationRequestId = null;
         return;
       }

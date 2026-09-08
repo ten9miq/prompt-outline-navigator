@@ -41,6 +41,7 @@
   <script src="../content.js"></script>
   <script>
     const waitFrame = () => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+    const waitForStructureSync = () => new Promise((resolve) => setTimeout(resolve, 180));
     const results = [];
     function check(condition, label) {
       results.push(`${condition ? 'PASS' : 'FAIL'}: ${label}`);
@@ -82,6 +83,16 @@
         await waitFrame();
         check(sidebar.querySelectorAll('.toc-group').length === 2, 'new assistant turn adds one group');
         check(sidebar.querySelectorAll('.toc-group-title')[1].textContent === 'Prompt 2', 'groups stay in DOM order');
+
+        const firstUserTurn = thread.querySelector('[data-testid="conversation-turn-1"]');
+        const firstAssistantTurn = thread.querySelector('[data-testid="conversation-turn-2"]');
+        firstUserTurn.remove();
+        firstAssistantTurn.remove();
+        await waitForStructureSync();
+        check(sidebar.querySelectorAll('.toc-group').length === 2, 'virtualized stable turn remains in the TOC');
+        thread.prepend(firstUserTurn, firstAssistantTurn);
+        await waitForStructureSync();
+        check(sidebar.querySelectorAll('.toc-group').length === 2, 'remounted stable turn reconnects without duplication');
 
         sidebar.querySelector('.toc-close').click();
         check(!sidebar.classList.contains('is-open') && !document.body.classList.contains('chatgpt-toc-open'), 'close releases sidecar space');

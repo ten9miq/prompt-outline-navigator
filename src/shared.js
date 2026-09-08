@@ -17,6 +17,7 @@
     PROMPT_LIMIT: 200,
     ACTIVE_ROOT_MARGIN: '0px 0px -90% 0px',
     STRUCTURE_SETTLE_DELAY: 120,
+    NAVIGATION_RECOVERY_FRAMES: 300,
     SIDEBAR_VISIBILITY_KEY: 'sidebarVisible'
   };
 
@@ -106,6 +107,8 @@
   };
 
   api.canCreateConversationGroup = (nativeIndex, nativeTocCount) => nativeIndex !== null || nativeTocCount === 0;
+
+  api.shouldPreserveDisconnectedGroup = (group) => Boolean(group?.key);
 
   api.resolveDarkTheme = (className, colorScheme, prefersDark) => {
     const classes = String(className || '').split(/\s+/);

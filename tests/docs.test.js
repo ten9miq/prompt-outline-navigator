@@ -17,7 +17,7 @@ test('English and Japanese READMEs link to each other', () => {
 test('translated READMEs retain matching feature coverage', () => {
   const englishFeatures = english.match(/^- /gm) || [];
   const japaneseFeatures = japanese.match(/^- /gm) || [];
-  assert.equal(englishFeatures.length, 8);
+  assert.equal(englishFeatures.length, 9);
   assert.equal(japaneseFeatures.length, englishFeatures.length);
   assert.match(english, /## Development[\s\S]*## Origin/);
   assert.match(japanese, /## 開発[\s\S]*## 由来/);

@@ -21,6 +21,7 @@ const {
   getPromptIndexFromTestId,
   findRemountedHeading,
   canCreateConversationGroup,
+  shouldPreserveDisconnectedGroup,
   resolveDarkTheme,
   SIDEBAR_VISIBILITY_KEY
 } = require(sourcePath);
@@ -144,6 +145,49 @@ test('native TOC authority prevents unmatched fallback groups', () => {
   assert.equal(canCreateConversationGroup(null, 0), true);
 });
 
+test('stable turn groups survive temporary ChatGPT DOM virtualization', () => {
+  assert.equal(shouldPreserveDisconnectedGroup({ key: 'test:conversation-turn-2' }), true);
+  assert.equal(shouldPreserveDisconnectedGroup({ key: null }), false);
+  assert.equal(shouldPreserveDisconnectedGroup(null), false);
+});
+
+test('virtualized stable turns detach live nodes without discarding cached headings', () => {
+  const prompt = {};
+  const assistant = {};
+  const heading = {};
+  const detachedPrompts = [];
+  const unobservedHeadings = [];
+  const group = { prompt, assistant, headings: [heading] };
+  const context = {
+    detachPrompt: (candidateGroup, candidatePrompt) => detachedPrompts.push([candidateGroup, candidatePrompt]),
+    turnToGroup: new WeakMap([[assistant, group]]),
+    headingObserver: { unobserve: (candidate) => unobservedHeadings.push(candidate) }
+  };
+
+  ChatGPTTOC.prototype.disconnectGroupFromTurn.call(context, group);
+
+  assert.equal(group.prompt, null);
+  assert.equal(group.assistant, null);
+  assert.deepEqual(group.headings, [heading]);
+  assert.deepEqual(detachedPrompts, [[group, prompt]]);
+  assert.deepEqual(unobservedHeadings, [heading]);
+  assert.equal(context.turnToGroup.has(assistant), false);
+});
+
+test('navigation recovery selects the scrollable conversation ancestor', () => {
+  const previousGetComputedStyle = globalThis.getComputedStyle;
+  const scroller = { parentElement: null, scrollHeight: 2000, clientHeight: 800, overflowY: 'auto' };
+  const wrapper = { parentElement: scroller, scrollHeight: 2000, clientHeight: 800, overflowY: 'visible' };
+  const thread = { parentElement: wrapper };
+  globalThis.getComputedStyle = (element) => ({ overflowY: element.overflowY });
+  try {
+    assert.equal(ChatGPTTOC.prototype.getConversationScrollContainer.call({ thread }), scroller);
+  } finally {
+    if (previousGetComputedStyle === undefined) delete globalThis.getComputedStyle;
+    else globalThis.getComputedStyle = previousGetComputedStyle;
+  }
+});
+
 test('only a user followed by its first assistant creates a response pair', () => {
   const message = (role, id) => ({ id, matches: (selector) => selector === `[data-message-author-role="${role}"]` });
   const orphan = message('assistant', 'orphan');
@@ -251,6 +295,9 @@ test('dynamic content never uses innerHTML and polling is absent', () => {
   assert.match(source, /navigateToHeading/);
   assert.match(source, /findConnectedHeading/);
   assert.match(source, /waitForHeadingDestination/);
+  assert.match(source, /disconnectGroupFromTurn/);
+  assert.match(source, /recoverVirtualizedDestination/);
+  assert.match(source, /getConversationScrollContainer/);
   assert.match(source, /pendingNavigationRequestId/);
   assert.match(source, /removeNonNativeGroups/);
   assert.match(source, /reconcileNativeTocItems/);

@@ -14,6 +14,7 @@ Prompt Outline Navigator is an independent project and is not affiliated with or
 - Widens conversation responses, the composer, and the project home new-chat area through ChatGPT's content-width variable.
 - Keeps wide tables and preformatted content accessible with scoped overflow and wrapping rules.
 - Updates only changed turns and headings with `MutationObserver`.
+- Retains discovered TOC entries when ChatGPT temporarily removes older turns from the DOM, and reloads those turns when a retained entry is selected.
 - Tracks the nearest preceding prompt or heading with `IntersectionObserver`, avoiding early jumps caused by ChatGPT's native prompt state.
 - Keeps the active TOC entry visible inside the sidebar.
 - Renders prompt and heading text with `textContent`, including text that looks like HTML.
