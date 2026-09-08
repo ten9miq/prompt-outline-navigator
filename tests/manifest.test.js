@@ -21,7 +21,7 @@ function contrastRatio(foreground, background) {
 
 test('manifest identifies the navigator and only stores extension preferences', () => {
   assert.equal(manifest.name, 'Prompt Outline Navigator');
-  assert.equal(manifest.version, '1.3.34');
+  assert.equal(manifest.version, '1.3.35');
   assert.equal(manifest.author, 'ten9miq');
   assert.equal(packageJson.author, 'ten9miq');
   assert.deepEqual(manifest.permissions, ['storage']);
@@ -89,6 +89,7 @@ test('sidebar title stays on one compact line', () => {
 test('conversation and composer use ChatGPT content-width variables for wide mode', () => {
   assert.match(styles, /--chatgpt-toc-content-max-width:\s*80vw/);
   assert.match(styles, /#thread\s*\{\s*--wide-content-max-width:/);
+  assert.match(styles, /#thread \[class~="max-w-app-content"\]:has\(\[id\^="project-home-tabs-"\]\)[\s\S]*max-width:\s*var\(--wide-content-max-width\)\s*!important/);
   assert.match(styles, /--thread-content-max-width:\s*var\(--wide-content-max-width\)\s*!important/);
   assert.match(styles, /#thread-bottom-container \[class\*="max-w-\(--thread-content-max-width\)"\]/);
   assert.match(styles, /\[data-turn="assistant"\] \.markdown\.prose[\s\S]*max-width:\s*none\s*!important/);

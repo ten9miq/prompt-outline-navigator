@@ -11,7 +11,7 @@ Prompt Outline Navigator is an independent project and is not affiliated with or
 ## Features
 
 - Opens a dedicated 200px sidecar without moving ChatGPT's React root and remembers its open/closed state.
-- Widens conversation responses and the composer through ChatGPT's content-width variable.
+- Widens conversation responses, the composer, and the project home new-chat area through ChatGPT's content-width variable.
 - Keeps wide tables and preformatted content accessible with scoped overflow and wrapping rules.
 - Updates only changed turns and headings with `MutationObserver`.
 - Tracks the current prompt and heading with `IntersectionObserver`.

@@ -15,6 +15,12 @@ body.chatgpt-toc-open > .chatgpt-toc-app-root > :first-child {
 /* Widen ChatGPT through its content-width variable instead of reshaping its DOM. */
 #thread { --wide-content-max-width: var(--chatgpt-toc-content-max-width); }
 
+/* Project home uses a separate 800px app-content cap before a conversation exists. */
+#thread [class~="max-w-app-content"]:has([id^="project-home-tabs-"]) {
+  width: 100% !important;
+  max-width: var(--wide-content-max-width) !important;
+}
+
 [data-conversation-screenshot-content],
 #thread-bottom-container [class*="max-w-(--thread-content-max-width)"],
 #thread-bottom [class*="max-w-(--thread-content-max-width)"] {
