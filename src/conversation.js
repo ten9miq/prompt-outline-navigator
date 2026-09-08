@@ -189,7 +189,10 @@
     removeNonNativeGroups() {
       if (!this.nativeTocItems.size) return;
       for (const group of [...this.groups]) {
-        if (group.nativeIndex === null && !shouldPreserveDisconnectedGroup(group)) this.removeGroup(group);
+        if (group.nativeIndex !== null) continue;
+        const indexedGroup = this.nativeIndexToGroup.get(group.promptIndex);
+        const duplicatesIndexedGroup = indexedGroup && indexedGroup !== group;
+        if (duplicatesIndexedGroup || !shouldPreserveDisconnectedGroup(group)) this.removeGroup(group);
       }
     }
 

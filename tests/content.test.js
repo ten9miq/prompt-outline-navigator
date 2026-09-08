@@ -224,6 +224,22 @@ test('stable turn groups survive temporary ChatGPT DOM virtualization', () => {
   assert.equal(shouldPreserveDisconnectedGroup(null), false);
 });
 
+test('native TOC reconciliation removes a keyed duplicate for an indexed prompt', () => {
+  const canonical = { nativeIndex: 3, promptIndex: 3, key: 'message:canonical' };
+  const duplicate = { nativeIndex: null, promptIndex: 3, key: 'message:remounted' };
+  const disconnected = { nativeIndex: null, promptIndex: 8, key: 'message:disconnected' };
+  const removed = [];
+  const context = {
+    groups: [canonical, duplicate, disconnected],
+    nativeTocItems: new Map([[3, {}]]),
+    nativeIndexToGroup: new Map([[3, canonical]]),
+    removeGroup(group) { removed.push(group); }
+  };
+
+  ChatGPTTOC.prototype.removeNonNativeGroups.call(context);
+  assert.deepEqual(removed, [duplicate]);
+});
+
 test('virtualized stable turns detach live nodes without discarding cached headings', () => {
   const prompt = {};
   const assistant = {};
