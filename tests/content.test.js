@@ -206,6 +206,47 @@ test('virtualized navigation scrolls the conversation container to its start', (
   assert.equal(ChatGPTTOC.prototype.scrollConversationToStart.call({ getConversationScrollContainer: () => null }), false);
 });
 
+test('virtualized navigation loads earlier turns through the oldest rendered turn', () => {
+  const previousDocument = globalThis.document;
+  const scrollCalls = [];
+  const oldestRenderedTurn = {
+    isConnected: true,
+    scrollIntoView: (options) => scrollCalls.push(options)
+  };
+  const currentThread = {
+    querySelector: (selector) => selector === SELECTORS.conversationTurn ? oldestRenderedTurn : null
+  };
+  globalThis.document = {
+    querySelector: (selector) => selector === SELECTORS.thread ? currentThread : null
+  };
+  try {
+    assert.equal(ChatGPTTOC.prototype.loadEarlierConversationTurns.call({}), true);
+    assert.deepEqual(scrollCalls, [{ block: 'start', behavior: 'auto' }]);
+  } finally {
+    if (previousDocument === undefined) delete globalThis.document;
+    else globalThis.document = previousDocument;
+  }
+});
+
+test('virtualized navigation falls back when no rendered turn is available', () => {
+  const previousDocument = globalThis.document;
+  const fallbackCalls = [];
+  globalThis.document = { querySelector: () => null };
+  const context = {
+    scrollConversationToStart: () => {
+      fallbackCalls.push(true);
+      return true;
+    }
+  };
+  try {
+    assert.equal(ChatGPTTOC.prototype.loadEarlierConversationTurns.call(context), true);
+    assert.equal(fallbackCalls.length, 1);
+  } finally {
+    if (previousDocument === undefined) delete globalThis.document;
+    else globalThis.document = previousDocument;
+  }
+});
+
 test('only a user followed by its first assistant creates a response pair', () => {
   const message = (role, id) => ({ id, matches: (selector) => selector === `[data-message-author-role="${role}"]` });
   const orphan = message('assistant', 'orphan');
@@ -317,6 +358,7 @@ test('dynamic content never uses innerHTML and polling is absent', () => {
   assert.match(source, /recoverVirtualizedDestination/);
   assert.match(source, /getConversationScrollContainer/);
   assert.match(source, /scrollConversationToStart/);
+  assert.match(source, /loadEarlierConversationTurns/);
   assert.match(source, /pendingNavigationRequestId/);
   assert.match(source, /removeNonNativeGroups/);
   assert.match(source, /reconcileNativeTocItems/);

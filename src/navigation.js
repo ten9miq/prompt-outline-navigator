@@ -105,7 +105,7 @@
         this.scrollToDestination(heading);
         return;
       }
-      if (attempts > 0 && attempts % 30 === 0) this.scrollConversationToStart();
+      if (attempts > 0 && attempts % 30 === 0) this.loadEarlierConversationTurns();
       requestAnimationFrame(() => this.waitForHeadingDestination(group, descriptor, requestId, attempts + 1));
     }
 
@@ -142,8 +142,18 @@
       return true;
     }
 
+    loadEarlierConversationTurns() {
+      const currentThread = document.querySelector(SELECTORS.thread);
+      const oldestRenderedTurn = currentThread?.querySelector(SELECTORS.conversationTurn);
+      if (oldestRenderedTurn?.isConnected) {
+        oldestRenderedTurn.scrollIntoView({ block: 'start', behavior: 'auto' });
+        return true;
+      }
+      return this.scrollConversationToStart();
+    }
+
     recoverVirtualizedDestination(group, requestId, waitForDestination) {
-      if (!this.scrollConversationToStart()) return;
+      if (!this.loadEarlierConversationTurns()) return;
       this.pendingNavigationRequestId = requestId;
       this.setActive(null, group);
       waitForDestination();
@@ -160,7 +170,7 @@
         this.scrollToDestination(destination);
         return;
       }
-      if (attempts > 0 && attempts % 30 === 0) this.scrollConversationToStart();
+      if (attempts > 0 && attempts % 30 === 0) this.loadEarlierConversationTurns();
       requestAnimationFrame(() => this.waitForGroupDestination(group, requestId, attempts + 1));
     }
 
