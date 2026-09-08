@@ -437,6 +437,41 @@ test('earlier prompt loading prefers ChatGPT native Prompt 1 navigation', () => 
   assert.equal(waits, 1);
 });
 
+test('normal TOC navigation cancels a pending earlier prompt load', () => {
+  const heading = { isConnected: true };
+  const item = {};
+  const group = {};
+  const loader = {
+    disabled: true,
+    removeAttribute(name) { delete this[name]; },
+    'aria-busy': 'true'
+  };
+  const context = {
+    earlierPromptLoadRequestId: 7,
+    earlierPromptLoader: loader,
+    groups: [group],
+    tocItemToHeading: new WeakMap([[item, heading]]),
+    headingToGroup: new WeakMap([[heading, group]]),
+    cancelEarlierPromptLoading: ChatGPTTOC.prototype.cancelEarlierPromptLoading,
+    navigateToHeading(candidateHeading, candidateGroup) {
+      assert.equal(this.earlierPromptLoadRequestId, 8);
+      assert.equal(candidateHeading, heading);
+      assert.equal(candidateGroup, group);
+    }
+  };
+  const target = {
+    closest(selector) {
+      if (selector === '.toc-load-earlier' || selector === '.toc-group-collapse-icon' || selector === '.toc-collapse-icon') return null;
+      if (selector === '.toc-item') return item;
+      return null;
+    }
+  };
+
+  ChatGPTTOC.prototype.handleTocClick.call(context, { target });
+  assert.equal(loader.disabled, false);
+  assert.equal(loader['aria-busy'], undefined);
+});
+
 test('cached prompt header starts recovery without a native ChatGPT TOC button', () => {
   const header = {};
   const group = { header, nativeButton: null };
@@ -446,6 +481,9 @@ test('cached prompt header starts recovery without a native ChatGPT TOC button',
     groups: [group],
     navigationRequestId: 4,
     pendingNavigationRequestId: null,
+    earlierPromptLoadRequestId: 0,
+    earlierPromptLoader: null,
+    cancelEarlierPromptLoading: ChatGPTTOC.prototype.cancelEarlierPromptLoading,
     getConnectedGroupDestination: () => null,
     setActive: (...args) => activeCalls.push(args),
     recoverVirtualizedDestination: (...args) => recoveryCalls.push(args),

@@ -15,6 +15,8 @@
         return;
       }
 
+      this.cancelEarlierPromptLoading();
+
       const groupCollapse = event.target.closest('.toc-group-collapse-icon');
       if (groupCollapse) {
         event.stopPropagation();
@@ -175,6 +177,14 @@
       if (firstNativeButton?.isConnected) firstNativeButton.click();
       else this.loadEarlierConversationTurns();
       this.waitForEarlierPrompts(requestId);
+    }
+
+    cancelEarlierPromptLoading() {
+      this.earlierPromptLoadRequestId += 1;
+      if (this.earlierPromptLoader) {
+        this.earlierPromptLoader.disabled = false;
+        this.earlierPromptLoader.removeAttribute('aria-busy');
+      }
     }
 
     waitForEarlierPrompts(requestId, attempts = 0) {
