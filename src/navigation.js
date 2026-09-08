@@ -5,7 +5,7 @@
   const shared = typeof module !== 'undefined' && module.exports
     ? require('./shared.js')
     : globalThis.TOCNavigator;
-  const { findRemountedHeading, NAVIGATION_RECOVERY_FRAMES } = shared;
+  const { SELECTORS, findRemountedHeading, NAVIGATION_RECOVERY_FRAMES } = shared;
 
   class NavigationMethods {
     handleTocClick(event) {
@@ -105,6 +105,7 @@
         this.scrollToDestination(heading);
         return;
       }
+      if (attempts > 0 && attempts % 30 === 0) this.scrollConversationToStart();
       requestAnimationFrame(() => this.waitForHeadingDestination(group, descriptor, requestId, attempts + 1));
     }
 
@@ -114,21 +115,37 @@
     }
 
     getConversationScrollContainer() {
-      let element = this.thread;
-      while (element?.parentElement) {
-        element = element.parentElement;
-        const overflowY = getComputedStyle(element).overflowY;
-        if (/^(auto|scroll)$/.test(overflowY) && element.scrollHeight > element.clientHeight) return element;
+      const roots = [
+        document.querySelector(SELECTORS.thread),
+        this.thread,
+        document.querySelector(SELECTORS.main)
+      ];
+      const visited = new Set();
+      for (const root of roots) {
+        let element = root;
+        while (element?.parentElement) {
+          element = element.parentElement;
+          if (visited.has(element)) continue;
+          visited.add(element);
+          const overflowY = getComputedStyle(element).overflowY;
+          if (/^(auto|scroll)$/.test(overflowY) && element.scrollHeight > element.clientHeight) return element;
+        }
       }
-      return null;
+      const documentScroller = document.scrollingElement;
+      return documentScroller?.scrollHeight > documentScroller?.clientHeight ? documentScroller : null;
+    }
+
+    scrollConversationToStart() {
+      const scroller = this.getConversationScrollContainer();
+      if (!scroller) return false;
+      scroller.scrollTo({ top: 0, behavior: 'auto' });
+      return true;
     }
 
     recoverVirtualizedDestination(group, requestId, waitForDestination) {
-      const scroller = this.getConversationScrollContainer();
-      if (!scroller) return;
+      if (!this.scrollConversationToStart()) return;
       this.pendingNavigationRequestId = requestId;
       this.setActive(null, group);
-      scroller.scrollTo({ top: 0, behavior: 'auto' });
       waitForDestination();
     }
 
@@ -143,6 +160,7 @@
         this.scrollToDestination(destination);
         return;
       }
+      if (attempts > 0 && attempts % 30 === 0) this.scrollConversationToStart();
       requestAnimationFrame(() => this.waitForGroupDestination(group, requestId, attempts + 1));
     }
 

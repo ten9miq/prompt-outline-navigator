@@ -174,18 +174,36 @@ test('virtualized stable turns detach live nodes without discarding cached headi
   assert.equal(context.turnToGroup.has(assistant), false);
 });
 
-test('navigation recovery selects the scrollable conversation ancestor', () => {
+test('navigation recovery prefers the current DOM thread over a stale instance reference', () => {
+  const previousDocument = globalThis.document;
   const previousGetComputedStyle = globalThis.getComputedStyle;
   const scroller = { parentElement: null, scrollHeight: 2000, clientHeight: 800, overflowY: 'auto' };
   const wrapper = { parentElement: scroller, scrollHeight: 2000, clientHeight: 800, overflowY: 'visible' };
-  const thread = { parentElement: wrapper };
+  const currentThread = { parentElement: wrapper };
+  const staleThread = { parentElement: null };
+  globalThis.document = {
+    querySelector: (selector) => selector === SELECTORS.thread ? currentThread : null,
+    scrollingElement: null
+  };
   globalThis.getComputedStyle = (element) => ({ overflowY: element.overflowY });
   try {
-    assert.equal(ChatGPTTOC.prototype.getConversationScrollContainer.call({ thread }), scroller);
+    assert.equal(ChatGPTTOC.prototype.getConversationScrollContainer.call({ thread: staleThread }), scroller);
   } finally {
+    if (previousDocument === undefined) delete globalThis.document;
+    else globalThis.document = previousDocument;
     if (previousGetComputedStyle === undefined) delete globalThis.getComputedStyle;
     else globalThis.getComputedStyle = previousGetComputedStyle;
   }
+});
+
+test('virtualized navigation scrolls the conversation container to its start', () => {
+  const calls = [];
+  const scroller = { scrollTo: (options) => calls.push(options) };
+  const context = { getConversationScrollContainer: () => scroller };
+
+  assert.equal(ChatGPTTOC.prototype.scrollConversationToStart.call(context), true);
+  assert.deepEqual(calls, [{ top: 0, behavior: 'auto' }]);
+  assert.equal(ChatGPTTOC.prototype.scrollConversationToStart.call({ getConversationScrollContainer: () => null }), false);
 });
 
 test('only a user followed by its first assistant creates a response pair', () => {
@@ -298,6 +316,7 @@ test('dynamic content never uses innerHTML and polling is absent', () => {
   assert.match(source, /disconnectGroupFromTurn/);
   assert.match(source, /recoverVirtualizedDestination/);
   assert.match(source, /getConversationScrollContainer/);
+  assert.match(source, /scrollConversationToStart/);
   assert.match(source, /pendingNavigationRequestId/);
   assert.match(source, /removeNonNativeGroups/);
   assert.match(source, /reconcileNativeTocItems/);
