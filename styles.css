@@ -15,6 +15,12 @@ body.chatgpt-toc-open > .chatgpt-toc-app-root > :first-child {
 /* Widen ChatGPT through its content-width variable instead of reshaping its DOM. */
 #thread { --wide-content-max-width: var(--chatgpt-toc-content-max-width); }
 
+/* Project home uses a separate 800px app-content cap before a conversation exists. */
+#thread [class~="max-w-app-content"]:has([id^="project-home-tabs-"]) {
+  width: 100% !important;
+  max-width: var(--wide-content-max-width) !important;
+}
+
 [data-conversation-screenshot-content],
 #thread-bottom-container [class*="max-w-(--thread-content-max-width)"],
 #thread-bottom [class*="max-w-(--thread-content-max-width)"] {
@@ -77,6 +83,28 @@ body.chatgpt-toc-open > .chatgpt-toc-app-root > :first-child {
   min-width: 100% !important;
   max-width: none !important;
   table-layout: auto;
+}
+
+/* ChatGPT sizes data-col-size cells from --thread-content-width, which can be
+   wider than the table container after the TOC sidebar reserves its space. */
+[data-turn="assistant"] .markdown table :is(th, td)[data-col-size] {
+  min-width: 0 !important;
+  max-width: none !important;
+}
+
+/* Shopping tables may transiently write a 1px inline size to product cards.
+   Restore the card from the available cell width without affecting other images. */
+[data-turn="assistant"] .markdown table .product-table-sidebar-card {
+  width: min(100%, 200px) !important;
+  max-width: 100%;
+}
+
+[data-turn="assistant"] .markdown table .product-table-sidebar-card
+  > [data-shopping-product-image-pdp-click-target] {
+  width: 100% !important;
+  height: auto !important;
+  max-width: 200px !important;
+  aspect-ratio: 1 / 1;
 }
 
 /* Prevent long preformatted output from being clipped by the widened layout. */
@@ -229,6 +257,12 @@ body.chatgpt-toc-open > .chatgpt-toc-app-root > :first-child {
   outline-offset: -2px;
 }
 
+.toc-group-header.active.active-fallback {
+  color: #fff;
+  background: #6940c5;
+  outline-color: #60a5fa;
+}
+
 .toc-item.active { color: #fff; background: #6940c5; border-left-color: #60a5fa; }
 
 .toc-group-text { width: calc(100% - 20px); min-width: 0; flex: 1; margin-right: 0; }
@@ -373,6 +407,11 @@ body.chatgpt-toc-open > .chatgpt-toc-app-root > :first-child {
   color: var(--toc-active-prompt-color);
   background: var(--toc-active-prompt-bg);
   outline-color: var(--toc-active-prompt-outline);
+}
+.dark-mode .toc-group-header.active.active-fallback {
+  color: #fff;
+  background: #6940c5;
+  outline-color: #60a5fa;
 }
 .dark-mode .toc-item.active { color: #fff; background: #6940c5; border-left-color: #60a5fa; }
 

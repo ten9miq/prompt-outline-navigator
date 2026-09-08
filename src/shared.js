@@ -17,6 +17,7 @@
     PROMPT_LIMIT: 200,
     ACTIVE_ROOT_MARGIN: '0px 0px -90% 0px',
     STRUCTURE_SETTLE_DELAY: 120,
+    NAVIGATION_RECOVERY_FRAMES: 300,
     SIDEBAR_VISIBILITY_KEY: 'sidebarVisible'
   };
 
@@ -67,6 +68,14 @@
     return active;
   };
 
+  api.resolveActiveTrackingSelection = (nativeGroup, target, groups) => {
+    const group = target?.group || nativeGroup || groups[0] || null;
+    return {
+      group,
+      heading: target?.group === group ? target.heading : null
+    };
+  };
+
   api.getNativeTocIndex = (element) => {
     const value = element?.getAttribute?.('data-toc-item-index');
     return /^\d+$/.test(value || '') ? Number(value) : null;
@@ -98,6 +107,8 @@
   };
 
   api.canCreateConversationGroup = (nativeIndex, nativeTocCount) => nativeIndex !== null || nativeTocCount === 0;
+
+  api.shouldPreserveDisconnectedGroup = (group) => Boolean(group?.key);
 
   api.resolveDarkTheme = (className, colorScheme, prefersDark) => {
     const classes = String(className || '').split(/\s+/);
