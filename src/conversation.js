@@ -380,6 +380,7 @@
         title,
         promptText,
         promptTextCaptured: false,
+        contentCaptured: Boolean(assistant || prompt),
         collapse,
         content,
         promptIndex: nativeIndex,
@@ -405,6 +406,7 @@
       }
       group.assistant = assistant;
       group.key = key;
+      if (assistant || prompt) group.contentCaptured = true;
       const promptIndex = this.getPromptIndexFromElement(prompt) ?? this.getPromptIndexFromElement(assistant);
       if (promptIndex !== null) group.promptIndex = promptIndex;
       if (assistant) this.turnToGroup.set(assistant, group);
@@ -506,7 +508,43 @@
         group.title.textContent = `Prompt ${promptNumber}`;
         this.tocContent.append(group.section);
       });
+      this.updateEarlierPromptLoader();
       this.restoreTocScrollState(tocScrollState);
+    }
+
+    hasUnloadedEarlierPrompts() {
+      const indexedGroups = this.groups.filter((group) =>
+        Number.isInteger(group.nativeIndex) || Number.isInteger(group.promptIndex)
+      );
+      if (!indexedGroups.length) return false;
+
+      const firstKnownIndex = Math.min(...indexedGroups.map((group) =>
+        Number.isInteger(group.nativeIndex) ? group.nativeIndex : group.promptIndex
+      ));
+      if (firstKnownIndex > 0) return true;
+
+      const firstGroup = indexedGroups.find((group) =>
+        group.nativeIndex === 0 || (group.nativeIndex === null && group.promptIndex === 0)
+      );
+      return Boolean(firstGroup && !firstGroup.contentCaptured);
+    }
+
+    updateEarlierPromptLoader() {
+      const shouldShow = this.hasUnloadedEarlierPrompts();
+      if (!shouldShow) {
+        this.earlierPromptLoader?.remove();
+        return;
+      }
+
+      if (!this.earlierPromptLoader) {
+        const loader = document.createElement('button');
+        loader.type = 'button';
+        loader.className = 'toc-load-earlier';
+        loader.textContent = '↑ 以前のPROMPTを読み込む';
+        loader.setAttribute('aria-label', 'Load earlier prompts');
+        this.earlierPromptLoader = loader;
+      }
+      if (!this.earlierPromptLoader.isConnected) this.tocContent.prepend(this.earlierPromptLoader);
     }
 
     reconcileAssistantTurn(assistant) {
@@ -653,6 +691,9 @@
       this.headingObserver?.disconnect();
       this.promptObserver?.disconnect();
       this.groups.forEach((group) => group.section.remove());
+      this.earlierPromptLoader?.remove();
+      this.earlierPromptLoader = null;
+      this.earlierPromptLoadRequestId += 1;
       this.groups = [];
       this.turnToGroup = new WeakMap();
       this.turnKeyToGroup = new Map();

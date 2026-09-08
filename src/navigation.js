@@ -9,6 +9,12 @@
 
   class NavigationMethods {
     handleTocClick(event) {
+      const earlierPromptLoader = event.target.closest('.toc-load-earlier');
+      if (earlierPromptLoader) {
+        this.startEarlierPromptLoading();
+        return;
+      }
+
       const groupCollapse = event.target.closest('.toc-group-collapse-icon');
       if (groupCollapse) {
         event.stopPropagation();
@@ -151,6 +157,57 @@
         return true;
       }
       return this.scrollConversationToStart();
+    }
+
+    startEarlierPromptLoading() {
+      if (!this.hasUnloadedEarlierPrompts()) {
+        this.updateEarlierPromptLoader();
+        return;
+      }
+
+      const requestId = ++this.earlierPromptLoadRequestId;
+      if (this.earlierPromptLoader) {
+        this.earlierPromptLoader.disabled = true;
+        this.earlierPromptLoader.setAttribute('aria-busy', 'true');
+      }
+
+      const firstNativeButton = this.nativeTocItems.get(0);
+      if (firstNativeButton?.isConnected) firstNativeButton.click();
+      else this.loadEarlierConversationTurns();
+      this.waitForEarlierPrompts(requestId);
+    }
+
+    waitForEarlierPrompts(requestId, attempts = 0) {
+      if (requestId !== this.earlierPromptLoadRequestId) return;
+
+      if (!this.hasUnloadedEarlierPrompts()) {
+        const firstGroup = this.nativeIndexToGroup.get(0) ||
+          this.groups.find((group) => group.promptIndex === 0);
+        const destination = this.getConnectedGroupDestination(firstGroup);
+        this.finishEarlierPromptLoading();
+        if (destination) this.scrollToDestination(destination);
+        return;
+      }
+
+      if (attempts >= NAVIGATION_RECOVERY_FRAMES) {
+        this.finishEarlierPromptLoading();
+        this.updateEarlierPromptLoader();
+        return;
+      }
+
+      if (attempts > 0 && attempts % 30 === 0) {
+        this.loadEarlierConversationTurns();
+        this.syncConversationStructure();
+      }
+      requestAnimationFrame(() => this.waitForEarlierPrompts(requestId, attempts + 1));
+    }
+
+    finishEarlierPromptLoading() {
+      if (this.earlierPromptLoader) {
+        this.earlierPromptLoader.disabled = false;
+        this.earlierPromptLoader.removeAttribute('aria-busy');
+      }
+      this.updateEarlierPromptLoader();
     }
 
     recoverVirtualizedDestination(group, requestId, waitForDestination) {

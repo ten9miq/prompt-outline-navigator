@@ -394,6 +394,49 @@ test('virtualized navigation falls back when no rendered turn is available', () 
   }
 });
 
+test('earlier prompt loading is offered only before the first prompt has ever been captured', () => {
+  const unloadedFirst = { nativeIndex: 0, promptIndex: 0, contentCaptured: false };
+  const loadedFirst = { nativeIndex: 0, promptIndex: 0, contentCaptured: true };
+  const laterPrompt = { nativeIndex: null, promptIndex: 4, contentCaptured: true };
+
+  assert.equal(ChatGPTTOC.prototype.hasUnloadedEarlierPrompts.call({ groups: [unloadedFirst, laterPrompt] }), true);
+  assert.equal(ChatGPTTOC.prototype.hasUnloadedEarlierPrompts.call({ groups: [loadedFirst, laterPrompt] }), false);
+  assert.equal(ChatGPTTOC.prototype.hasUnloadedEarlierPrompts.call({ groups: [laterPrompt] }), true);
+  assert.equal(ChatGPTTOC.prototype.hasUnloadedEarlierPrompts.call({
+    groups: [{ nativeIndex: null, promptIndex: null, contentCaptured: true }]
+  }), false);
+});
+
+test('earlier prompt loading prefers ChatGPT native Prompt 1 navigation', () => {
+  let nativeClicks = 0;
+  let fallbackLoads = 0;
+  let waits = 0;
+  const loader = {
+    disabled: false,
+    setAttribute(name, value) { this[name] = value; }
+  };
+  const context = {
+    earlierPromptLoadRequestId: 2,
+    earlierPromptLoader: loader,
+    nativeTocItems: new Map([[0, { isConnected: true, click() { nativeClicks += 1; } }]]),
+    hasUnloadedEarlierPrompts: () => true,
+    updateEarlierPromptLoader() {},
+    loadEarlierConversationTurns() { fallbackLoads += 1; },
+    waitForEarlierPrompts(requestId) {
+      waits += 1;
+      assert.equal(requestId, 3);
+    }
+  };
+
+  ChatGPTTOC.prototype.startEarlierPromptLoading.call(context);
+  assert.equal(context.earlierPromptLoadRequestId, 3);
+  assert.equal(loader.disabled, true);
+  assert.equal(loader['aria-busy'], 'true');
+  assert.equal(nativeClicks, 1);
+  assert.equal(fallbackLoads, 0);
+  assert.equal(waits, 1);
+});
+
 test('cached prompt header starts recovery without a native ChatGPT TOC button', () => {
   const header = {};
   const group = { header, nativeButton: null };
