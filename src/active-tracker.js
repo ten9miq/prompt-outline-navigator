@@ -10,6 +10,7 @@
     ACTIVE_ROOT_MARGIN,
     getNavigationOffset,
     findActiveTrackingTarget,
+    resolveActiveTrackingSelection,
     getNativeTocIndex
   } = shared;
 
@@ -55,20 +56,22 @@
       );
       const nativeActive = document.querySelector(SELECTORS.nativeTocActive);
       const nativeGroup = this.nativeIndexToGroup.get(getNativeTocIndex(nativeActive));
-      const group = nativeGroup || target?.group || null;
-      const heading = target?.group === group ? target.heading : null;
-      this.setActive(heading || null, group);
+      const selection = resolveActiveTrackingSelection(nativeGroup, target, this.groups);
+      this.setActive(selection.heading, selection.group);
     }
 
     setActive(heading, group) {
       if (this.activeHeading === heading && this.activeGroup === group) return;
       this.headingToTocItem.get(this.activeHeading)?.classList.remove('active');
-      this.activeGroup?.header.classList.remove('active');
+      this.activeGroup?.header.classList.remove('active', 'active-fallback');
       this.activeHeading = heading;
       this.activeGroup = group;
       const item = this.headingToTocItem.get(heading);
       item?.classList.add('active');
-      group?.header.classList.add('active');
+      if (group) {
+        group.header.classList.add('active');
+        group.header.classList.toggle('active-fallback', !item);
+      }
       const visibleItem = item && !item.hidden && !group?.content.hidden ? item : group?.header;
       this.ensureTocItemVisible(visibleItem);
     }

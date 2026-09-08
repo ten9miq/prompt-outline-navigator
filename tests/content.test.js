@@ -15,6 +15,7 @@ const {
   pairConversationMessages,
   getNavigationOffset,
   findActiveTrackingTarget,
+  resolveActiveTrackingSelection,
   getNativeTocIndex,
   collectNativeTocItems,
   getPromptIndexFromTestId,
@@ -195,6 +196,25 @@ test('active tracking chooses exactly the last item above the navigation line', 
   assert.equal(findActiveTrackingTarget([first, previous, current, next], 100), current);
   assert.equal(findActiveTrackingTarget([first, previous, current, next], 50), previous);
   assert.equal(findActiveTrackingTarget([first, previous, current, next], -900), null);
+});
+
+test('active tracking falls back to the current prompt when no heading has been reached', () => {
+  const firstGroup = { id: 'first' };
+  const secondGroup = { id: 'second' };
+  const heading = { id: 'heading' };
+
+  assert.deepEqual(resolveActiveTrackingSelection(null, null, [firstGroup, secondGroup]), {
+    group: firstGroup,
+    heading: null
+  });
+  assert.deepEqual(resolveActiveTrackingSelection(secondGroup, { group: secondGroup, heading: null }, [firstGroup]), {
+    group: secondGroup,
+    heading: null
+  });
+  assert.deepEqual(resolveActiveTrackingSelection(secondGroup, { group: secondGroup, heading }, [firstGroup]), {
+    group: secondGroup,
+    heading
+  });
 });
 
 test('navigation line uses ten percent of the viewport within safe limits', () => {

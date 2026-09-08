@@ -21,7 +21,7 @@ function contrastRatio(foreground, background) {
 
 test('manifest identifies the navigator and only stores extension preferences', () => {
   assert.equal(manifest.name, 'Prompt Outline Navigator');
-  assert.equal(manifest.version, '1.3.32');
+  assert.equal(manifest.version, '1.3.33');
   assert.equal(manifest.author, 'ten9miq');
   assert.equal(packageJson.author, 'ten9miq');
   assert.deepEqual(manifest.permissions, ['storage']);
@@ -121,6 +121,7 @@ test('active prompt colors adapt to light and dark backgrounds', () => {
   assert.match(styles, /\.dark-mode#chatgpt-toc-sidebar[\s\S]*--toc-active-prompt-color: #fff/);
   assert.match(styles, /\.dark-mode#chatgpt-toc-sidebar[\s\S]*--toc-active-prompt-bg: #2b2f36/);
   assert.match(styles, /\.toc-group-header\.active \.toc-group-prompt \{ color: inherit; \}/);
+  assert.match(styles, /\.toc-group-header\.active\.active-fallback[\s\S]*background: #6940c5/);
   assert.ok(contrastRatio('#312e81', '#ede9fe') >= 4.5);
   assert.ok(contrastRatio('#ffffff', '#2b2f36') >= 4.5);
 });

@@ -236,6 +236,12 @@ body.chatgpt-toc-open > .chatgpt-toc-app-root > :first-child {
   outline-offset: -2px;
 }
 
+.toc-group-header.active.active-fallback {
+  color: #fff;
+  background: #6940c5;
+  outline-color: #60a5fa;
+}
+
 .toc-item.active { color: #fff; background: #6940c5; border-left-color: #60a5fa; }
 
 .toc-group-text { width: calc(100% - 20px); min-width: 0; flex: 1; margin-right: 0; }
@@ -380,6 +386,11 @@ body.chatgpt-toc-open > .chatgpt-toc-app-root > :first-child {
   color: var(--toc-active-prompt-color);
   background: var(--toc-active-prompt-bg);
   outline-color: var(--toc-active-prompt-outline);
+}
+.dark-mode .toc-group-header.active.active-fallback {
+  color: #fff;
+  background: #6940c5;
+  outline-color: #60a5fa;
 }
 .dark-mode .toc-item.active { color: #fff; background: #6940c5; border-left-color: #60a5fa; }
 

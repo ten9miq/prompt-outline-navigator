@@ -67,6 +67,14 @@
     return active;
   };
 
+  api.resolveActiveTrackingSelection = (nativeGroup, target, groups) => {
+    const group = nativeGroup || target?.group || groups[0] || null;
+    return {
+      group,
+      heading: target?.group === group ? target.heading : null
+    };
+  };
+
   api.getNativeTocIndex = (element) => {
     const value = element?.getAttribute?.('data-toc-item-index');
     return /^\d+$/.test(value || '') ? Number(value) : null;
