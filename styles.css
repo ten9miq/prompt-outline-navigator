@@ -248,7 +248,7 @@ body.chatgpt-toc-open > .chatgpt-toc-app-root > :first-child {
 }
 
 .toc-load-earlier:hover { background: var(--surface-hover, #ececf1); }
-.toc-load-earlier:disabled { cursor: wait; opacity: .65; }
+.toc-load-earlier:disabled { cursor: default; opacity: .65; }
 
 .toc-group { margin-bottom: 5px; padding-bottom: 5px; border-bottom: 1px solid var(--border-light, #e5e5e5); }
 .toc-group:last-child { border-bottom: 0; }
