@@ -25,6 +25,7 @@
       this.nativeTocItems = new Map();
       this.earlierPromptLoader = null;
       this.earlierPromptLoadRequestId = 0;
+      this.earlierPromptLoadTargetIndex = null;
       this.promptToGroups = new WeakMap();
       this.headingToGroup = new WeakMap();
       this.headingToTocItem = new WeakMap();

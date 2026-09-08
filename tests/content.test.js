@@ -394,33 +394,52 @@ test('virtualized navigation falls back when no rendered turn is available', () 
   }
 });
 
-test('earlier prompt loading is offered only before the first prompt has ever been captured', () => {
+test('earlier prompt loading remains available until all indexed prompt labels are captured', () => {
   const unloadedFirst = { nativeIndex: 0, promptIndex: 0, contentCaptured: false };
   const loadedFirst = { nativeIndex: 0, promptIndex: 0, contentCaptured: true };
   const laterPrompt = { nativeIndex: null, promptIndex: 4, contentCaptured: true };
+  const unloadedLaterPrompt = { nativeIndex: 3, promptIndex: 3, contentCaptured: false };
 
   assert.equal(ChatGPTTOC.prototype.hasUnloadedEarlierPrompts.call({ groups: [unloadedFirst, laterPrompt] }), true);
   assert.equal(ChatGPTTOC.prototype.hasUnloadedEarlierPrompts.call({ groups: [loadedFirst, laterPrompt] }), false);
+  assert.equal(ChatGPTTOC.prototype.hasUnloadedEarlierPrompts.call({
+    groups: [loadedFirst, unloadedLaterPrompt, laterPrompt]
+  }), true);
   assert.equal(ChatGPTTOC.prototype.hasUnloadedEarlierPrompts.call({ groups: [laterPrompt] }), true);
   assert.equal(ChatGPTTOC.prototype.hasUnloadedEarlierPrompts.call({
     groups: [{ nativeIndex: null, promptIndex: null, contentCaptured: true }]
   }), false);
 });
 
-test('earlier prompt loading prefers ChatGPT native Prompt 1 navigation', () => {
+test('earlier prompt loading resolves the newest missing native prompt first', () => {
   let nativeClicks = 0;
   let fallbackLoads = 0;
   let waits = 0;
+  const firstGroup = {
+    nativeIndex: 0,
+    promptIndex: 0,
+    contentCaptured: false,
+    nativeButton: { isConnected: true, click() { throw new Error('Prompt 1 should be loaded later'); } }
+  };
+  const laterGroup = {
+    nativeIndex: 4,
+    promptIndex: 4,
+    contentCaptured: false,
+    nativeButton: { isConnected: true, click() { nativeClicks += 1; } }
+  };
   const loader = {
     disabled: false,
     setAttribute(name, value) { this[name] = value; }
   };
   const context = {
     earlierPromptLoadRequestId: 2,
+    earlierPromptLoadTargetIndex: null,
     earlierPromptLoader: loader,
-    nativeTocItems: new Map([[0, { isConnected: true, click() { nativeClicks += 1; } }]]),
+    groups: [firstGroup, laterGroup],
     hasUnloadedEarlierPrompts: () => true,
     updateEarlierPromptLoader() {},
+    getUnresolvedPromptGroups: ChatGPTTOC.prototype.getUnresolvedPromptGroups,
+    loadNextUnresolvedPrompt: ChatGPTTOC.prototype.loadNextUnresolvedPrompt,
     loadEarlierConversationTurns() { fallbackLoads += 1; },
     waitForEarlierPrompts(requestId) {
       waits += 1;
@@ -432,6 +451,7 @@ test('earlier prompt loading prefers ChatGPT native Prompt 1 navigation', () => 
   assert.equal(context.earlierPromptLoadRequestId, 3);
   assert.equal(loader.disabled, true);
   assert.equal(loader['aria-busy'], 'true');
+  assert.equal(context.earlierPromptLoadTargetIndex, 4);
   assert.equal(nativeClicks, 1);
   assert.equal(fallbackLoads, 0);
   assert.equal(waits, 1);

@@ -15,7 +15,7 @@ Prompt Outline Navigator is an independent project and is not affiliated with or
 - Keeps wide tables and preformatted content accessible with scoped overflow and wrapping rules.
 - Updates only changed turns and headings with `MutationObserver`.
 - Retains discovered TOC entries and their first resolved prompt labels when ChatGPT temporarily removes or remounts older turns, and reloads those turns when a retained entry is selected.
-- Shows a "Load earlier prompts" control when ChatGPT has not yet rendered the beginning of a conversation. Selecting it progressively loads older turns and moves to the first prompt.
+- Shows a "Load earlier prompts" control when ChatGPT has not yet rendered every earlier prompt. Selecting it progressively resolves their prompt labels from the conversation turns and moves to the first prompt.
 - Tracks the nearest preceding prompt or heading with `IntersectionObserver`, avoiding early jumps caused by ChatGPT's native prompt state.
 - Keeps the active TOC entry visible during page navigation. When new entries are added, the TOC follows them only if it was already at the end; otherwise it preserves the current TOC scroll position.
 - Renders prompt and heading text with `textContent`, including text that looks like HTML.

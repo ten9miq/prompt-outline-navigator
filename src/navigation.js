@@ -173,18 +173,46 @@
         this.earlierPromptLoader.setAttribute('aria-busy', 'true');
       }
 
-      const firstNativeButton = this.nativeTocItems.get(0);
-      if (firstNativeButton?.isConnected) firstNativeButton.click();
-      else this.loadEarlierConversationTurns();
+      this.earlierPromptLoadTargetIndex = null;
+      this.loadNextUnresolvedPrompt();
       this.waitForEarlierPrompts(requestId);
     }
 
     cancelEarlierPromptLoading() {
       this.earlierPromptLoadRequestId += 1;
+      this.earlierPromptLoadTargetIndex = null;
       if (this.earlierPromptLoader) {
         this.earlierPromptLoader.disabled = false;
         this.earlierPromptLoader.removeAttribute('aria-busy');
       }
+    }
+
+    getUnresolvedPromptGroups() {
+      return this.groups
+        .filter((group) => !group.contentCaptured &&
+          (Number.isInteger(group.nativeIndex) || Number.isInteger(group.promptIndex)))
+        .sort((left, right) => {
+          const leftIndex = Number.isInteger(left.nativeIndex) ? left.nativeIndex : left.promptIndex;
+          const rightIndex = Number.isInteger(right.nativeIndex) ? right.nativeIndex : right.promptIndex;
+          return rightIndex - leftIndex;
+        });
+    }
+
+    loadNextUnresolvedPrompt(force = false) {
+      const group = this.getUnresolvedPromptGroups()[0];
+      if (!group) {
+        if (force || this.earlierPromptLoadTargetIndex !== -1) {
+          this.earlierPromptLoadTargetIndex = -1;
+          this.loadEarlierConversationTurns();
+        }
+        return;
+      }
+
+      const index = Number.isInteger(group.nativeIndex) ? group.nativeIndex : group.promptIndex;
+      if (!force && this.earlierPromptLoadTargetIndex === index) return;
+      this.earlierPromptLoadTargetIndex = index;
+      if (group.nativeButton?.isConnected) group.nativeButton.click();
+      else this.loadEarlierConversationTurns();
     }
 
     waitForEarlierPrompts(requestId, attempts = 0) {
@@ -205,14 +233,20 @@
         return;
       }
 
+      const unresolvedIndexes = new Set(this.getUnresolvedPromptGroups().map((group) =>
+        Number.isInteger(group.nativeIndex) ? group.nativeIndex : group.promptIndex
+      ));
+      if (!unresolvedIndexes.has(this.earlierPromptLoadTargetIndex)) this.loadNextUnresolvedPrompt();
+
       if (attempts > 0 && attempts % 30 === 0) {
-        this.loadEarlierConversationTurns();
+        this.loadNextUnresolvedPrompt(true);
         this.syncConversationStructure();
       }
       requestAnimationFrame(() => this.waitForEarlierPrompts(requestId, attempts + 1));
     }
 
     finishEarlierPromptLoading() {
+      this.earlierPromptLoadTargetIndex = null;
       if (this.earlierPromptLoader) {
         this.earlierPromptLoader.disabled = false;
         this.earlierPromptLoader.removeAttribute('aria-busy');
