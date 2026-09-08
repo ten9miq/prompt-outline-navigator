@@ -38,7 +38,7 @@
   api.elementMatchesOrContains = (node, selector) =>
     node instanceof Element && (node.matches(selector) || Boolean(node.querySelector(selector)));
 
-  api.pairConversationMessages = (messages, getKey = () => null) => {
+  api.pairConversationMessages = (messages, getKey = () => null, getPromptIndex = () => null) => {
     const pairs = [];
     const keyedPairIndexes = new Map();
     let pendingPrompt = null;
@@ -48,6 +48,12 @@
         continue;
       }
       if (pendingPrompt) {
+        const promptIndex = getPromptIndex(pendingPrompt);
+        const assistantIndex = getPromptIndex(message);
+        if (promptIndex !== null && assistantIndex !== null && promptIndex !== assistantIndex) {
+          pendingPrompt = null;
+          continue;
+        }
         const key = getKey(message);
         const pair = key ? { prompt: pendingPrompt, assistant: message, key } : { prompt: pendingPrompt, assistant: message };
         if (key && keyedPairIndexes.has(key)) pairs[keyedPairIndexes.get(key)] = pair;

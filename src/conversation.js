@@ -81,7 +81,11 @@
 
     collectResponsePairs() {
       const messages = this.thread.querySelectorAll(`${SELECTORS.userMessage},${SELECTORS.assistantMessage}`);
-      return pairConversationMessages(messages, (assistant) => this.getStableTurnKey(assistant));
+      return pairConversationMessages(
+        messages,
+        (assistant) => this.getStableTurnKey(assistant),
+        (message) => this.getPromptIndexFromElement(message)
+      );
     }
 
     getStableTurnKey(message) {

@@ -446,6 +446,21 @@ test('only a user followed by its first assistant creates a response pair', () =
   ]);
 });
 
+test('virtualized messages with different prompt indices are not paired', () => {
+  const createMessage = (role, id) => ({
+    id,
+    matches: (selector) => selector === `[data-message-author-role="${role}"]`
+  });
+  const prompt = createMessage('user', 'prompt');
+  const assistant = createMessage('assistant', 'assistant');
+  const indexes = new Map([[prompt, 1], [assistant, 4]]);
+
+  assert.deepEqual(
+    pairConversationMessages([prompt, assistant], () => null, (item) => indexes.get(item) ?? null),
+    []
+  );
+});
+
 test('remounted assistants with the same stable turn key are deduplicated', () => {
   const message = (role, id, turnKey) => ({
     id,
