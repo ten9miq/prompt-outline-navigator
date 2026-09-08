@@ -7,6 +7,7 @@
       thread: '#thread',
       main: 'main',
       userMessage: '[data-message-author-role="user"]',
+      promptText: '.whitespace-pre-wrap',
       assistantMessage: '[data-message-author-role="assistant"]',
       headings: 'h1,h2,h3,h4,h5,h6',
       turn: '[data-message-id],[data-turn-id],[data-testid^="conversation-turn-"]',
@@ -25,6 +26,13 @@
   api.truncateText = (value, limit = api.PROMPT_LIMIT) => {
     const text = String(value || '').trim();
     return text.length > limit ? `${text.slice(0, limit)}…` : text;
+  };
+
+  api.getPromptText = (prompt) => {
+    if (!prompt) return '';
+    const body = prompt.querySelector?.(api.SELECTORS.promptText);
+    if (body) return api.truncateText(body.textContent);
+    return typeof prompt.querySelector === 'function' ? '' : api.truncateText(prompt.textContent);
   };
 
   api.elementMatchesOrContains = (node, selector) =>

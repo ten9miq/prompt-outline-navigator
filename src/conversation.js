@@ -8,7 +8,7 @@
   const {
     SELECTORS,
     STRUCTURE_SETTLE_DELAY,
-    truncateText,
+    getPromptText,
     elementMatchesOrContains,
     pairConversationMessages,
     getNativeTocIndex,
@@ -455,7 +455,7 @@
       const promptIndex = this.getPromptIndexFromElement(prompt);
       const promptMatchesGroup = group.nativeIndex === null || promptIndex === group.nativeIndex;
       if (prompt && promptMatchesGroup && !group.promptTextCaptured) {
-        const text = truncateText(prompt.textContent);
+        const text = getPromptText(prompt);
         if (text) {
           group.promptText.textContent = text;
           group.promptTextCaptured = true;
@@ -478,7 +478,7 @@
       this.promptToGroups.get(prompt)?.forEach((group) => {
         if (group.promptTextCaptured) return;
         if (group.nativeIndex !== null && promptIndex !== group.nativeIndex) return;
-        const text = truncateText(prompt.textContent);
+        const text = getPromptText(prompt);
         if (!text) return;
         group.promptText.textContent = text;
         group.promptTextCaptured = true;

@@ -12,6 +12,7 @@ const {
   ChatGPTTOC,
   SELECTORS,
   truncateText,
+  getPromptText,
   pairConversationMessages,
   getNavigationOffset,
   findActiveTrackingTarget,
@@ -117,8 +118,24 @@ test('long prompts are bounded without changing shorter prompts', () => {
   assert.equal(truncateText('a'.repeat(201)), `${'a'.repeat(200)}…`);
 });
 
+test('prompt labels use the message body without attachment card text', () => {
+  const body = { textContent: 'Actual prompt text' };
+  const prompt = {
+    textContent: 'attached.mdFileActual prompt text',
+    querySelector: (selector) => selector === SELECTORS.promptText ? body : null
+  };
+  const attachmentOnly = {
+    textContent: 'attached.mdFile',
+    querySelector: () => null
+  };
+
+  assert.equal(getPromptText(prompt), 'Actual prompt text');
+  assert.equal(getPromptText(attachmentOnly), '');
+});
+
 test('DOM-dependent selectors are centralized', () => {
   assert.equal(SELECTORS.thread, '#thread');
+  assert.equal(SELECTORS.promptText, '.whitespace-pre-wrap');
   assert.equal(SELECTORS.assistantMessage, '[data-message-author-role="assistant"]');
   assert.equal(SELECTORS.headings, 'h1,h2,h3,h4,h5,h6');
   assert.equal(SELECTORS.conversationTurn, '[data-testid^="conversation-turn-"]');
