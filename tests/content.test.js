@@ -202,6 +202,7 @@ test('active tracking falls back to the current prompt when no heading has been 
   const firstGroup = { id: 'first' };
   const secondGroup = { id: 'second' };
   const heading = { id: 'heading' };
+  const previousHeading = { id: 'previous-heading' };
 
   assert.deepEqual(resolveActiveTrackingSelection(null, null, [firstGroup, secondGroup]), {
     group: firstGroup,
@@ -214,6 +215,10 @@ test('active tracking falls back to the current prompt when no heading has been 
   assert.deepEqual(resolveActiveTrackingSelection(secondGroup, { group: secondGroup, heading }, [firstGroup]), {
     group: secondGroup,
     heading
+  });
+  assert.deepEqual(resolveActiveTrackingSelection(secondGroup, { group: firstGroup, heading: previousHeading }, [firstGroup, secondGroup]), {
+    group: firstGroup,
+    heading: previousHeading
   });
 });
 
