@@ -5,7 +5,13 @@
   const shared = typeof module !== 'undefined' && module.exports
     ? require('./shared.js')
     : globalThis.TOCNavigator;
-  const { SELECTORS, SIDEBAR_VISIBILITY_KEY, resolveDarkTheme, createCloseIcon } = shared;
+  const {
+    SELECTORS,
+    SIDEBAR_VISIBILITY_KEY,
+    resolveDarkTheme,
+    isTocScrolledToEnd,
+    createCloseIcon
+  } = shared;
 
   const sidebarMethods = {
     createSidebar() {
@@ -92,6 +98,28 @@
       this.refreshAppRoot();
       if (options.persist !== false) this.saveSidebarVisibility(visible);
       if (visible && options.focus !== false) this.sidebar.querySelector('.toc-close')?.focus();
+    },
+
+    captureTocScrollState() {
+      if (!this.tocContent) return null;
+      return {
+        scrollTop: this.tocContent.scrollTop,
+        followTail: isTocScrolledToEnd(
+          this.tocContent.scrollTop,
+          this.tocContent.scrollHeight,
+          this.tocContent.clientHeight
+        )
+      };
+    },
+
+    restoreTocScrollState(state) {
+      if (!state || !this.tocContent) return;
+      if (state.followTail) {
+        this.tocContent.scrollTop = this.tocContent.scrollHeight;
+        return;
+      }
+      this.tocContent.scrollTop = state.scrollTop;
+      this.preserveTocScrollOnActiveUpdate = true;
     },
 
     refreshAppRoot() {

@@ -16,6 +16,7 @@ const {
   getNavigationOffset,
   findActiveTrackingTarget,
   resolveActiveTrackingSelection,
+  isTocScrolledToEnd,
   getNativeTocIndex,
   collectNativeTocItems,
   getPromptIndexFromTestId,
@@ -25,6 +26,48 @@ const {
   resolveDarkTheme,
   SIDEBAR_VISIBILITY_KEY
 } = require(sourcePath);
+
+test('TOC tail detection includes non-scrollable content and a small rounding margin', () => {
+  assert.equal(isTocScrolledToEnd(0, 100, 200), true);
+  assert.equal(isTocScrolledToEnd(92, 200, 100), true);
+  assert.equal(isTocScrolledToEnd(91, 200, 100), false);
+});
+
+test('TOC updates follow the tail only when it was already visible', () => {
+  const atTail = { scrollTop: 0, scrollHeight: 100, clientHeight: 200 };
+  const tailContext = { tocContent: atTail, preserveTocScrollOnActiveUpdate: false };
+  const tailState = ChatGPTTOC.prototype.captureTocScrollState.call(tailContext);
+  atTail.scrollHeight = 320;
+  ChatGPTTOC.prototype.restoreTocScrollState.call(tailContext, tailState);
+  assert.equal(atTail.scrollTop, 320);
+  assert.equal(tailContext.preserveTocScrollOnActiveUpdate, false);
+
+  const browsing = { scrollTop: 40, scrollHeight: 500, clientHeight: 100 };
+  const browsingContext = { tocContent: browsing, preserveTocScrollOnActiveUpdate: false };
+  const browsingState = ChatGPTTOC.prototype.captureTocScrollState.call(browsingContext);
+  browsing.scrollHeight = 650;
+  ChatGPTTOC.prototype.restoreTocScrollState.call(browsingContext, browsingState);
+  assert.equal(browsing.scrollTop, 40);
+  assert.equal(browsingContext.preserveTocScrollOnActiveUpdate, true);
+});
+
+test('active tracking does not override a preserved TOC browsing position', () => {
+  const classList = { add() {}, remove() {}, toggle() {} };
+  const heading = {};
+  const item = { hidden: false, classList };
+  const group = { header: { classList }, content: { hidden: false } };
+  let ensureCalls = 0;
+  const context = {
+    activeHeading: null,
+    activeGroup: null,
+    headingToTocItem: new WeakMap([[heading, item]]),
+    preserveTocScrollOnActiveUpdate: true,
+    ensureTocItemVisible: () => { ensureCalls += 1; }
+  };
+
+  ChatGPTTOC.prototype.setActive.call(context, heading, group);
+  assert.equal(ensureCalls, 0);
+});
 
 test('prompt and heading edge-case strings remain plain text inputs', () => {
   const values = [

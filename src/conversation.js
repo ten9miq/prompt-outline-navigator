@@ -334,6 +334,8 @@
         return group;
       }
 
+      const tocScrollState = this.captureTocScrollState();
+
       const section = document.createElement('section');
       section.className = 'toc-group';
       const header = document.createElement('div');
@@ -380,6 +382,7 @@
       if (nativeIndex !== null) this.nativeIndexToGroup.set(nativeIndex, group);
       this.tocContent.append(section);
       this.bindGroupToTurn(group, assistant, prompt, key);
+      this.restoreTocScrollState(tocScrollState);
       return group;
     }
 
@@ -466,6 +469,7 @@
     }
 
     updateGroupOrderAndLabels(fallbackOrder = this.groups) {
+      const tocScrollState = this.captureTocScrollState();
       const originalIndexes = new Map(this.groups.map((group, index) => [group, index]));
       const fallbackIndexes = new Map(fallbackOrder.map((group, index) => [group, index]));
       this.groups.sort((left, right) => {
@@ -480,34 +484,40 @@
         group.title.textContent = `Prompt ${promptNumber}`;
         this.tocContent.append(group.section);
       });
+      this.restoreTocScrollState(tocScrollState);
     }
 
     reconcileAssistantTurn(assistant) {
-      let group = this.turnToGroup.get(assistant);
-      if (!group) {
-        const nativeIndex = this.getPromptIndexFromElement(assistant);
-        group = this.nativeIndexToGroup.get(nativeIndex);
-        if (group) {
-          const key = this.getStableTurnKey(assistant);
-          this.bindGroupToTurn(group, assistant, group.prompt, key || group.key);
-          return;
+      const tocScrollState = this.captureTocScrollState();
+      try {
+        let group = this.turnToGroup.get(assistant);
+        if (!group) {
+          const nativeIndex = this.getPromptIndexFromElement(assistant);
+          group = this.nativeIndexToGroup.get(nativeIndex);
+          if (group) {
+            const key = this.getStableTurnKey(assistant);
+            this.bindGroupToTurn(group, assistant, group.prompt, key || group.key);
+            return;
+          }
         }
+        if (!group || !assistant.isConnected) return;
+
+        const current = Array.from(assistant.querySelectorAll(SELECTORS.headings));
+        const currentSet = new Set(current);
+        group.headings.filter((heading) => !currentSet.has(heading)).forEach((heading) => this.removeHeading(group, heading));
+
+        current.forEach((heading, index) => {
+          if (!this.headingToTocItem.has(heading)) this.addHeading(group, heading, index);
+          this.updateHeading(heading);
+        });
+
+        group.headings = current;
+        current.forEach((heading) => group.content.append(this.headingToTocItem.get(heading)));
+        this.refreshHeadingHierarchy(group);
+        this.scheduleActiveUpdate();
+      } finally {
+        this.restoreTocScrollState(tocScrollState);
       }
-      if (!group || !assistant.isConnected) return;
-
-      const current = Array.from(assistant.querySelectorAll(SELECTORS.headings));
-      const currentSet = new Set(current);
-      group.headings.filter((heading) => !currentSet.has(heading)).forEach((heading) => this.removeHeading(group, heading));
-
-      current.forEach((heading, index) => {
-        if (!this.headingToTocItem.has(heading)) this.addHeading(group, heading, index);
-        this.updateHeading(heading);
-      });
-
-      group.headings = current;
-      current.forEach((heading) => group.content.append(this.headingToTocItem.get(heading)));
-      this.refreshHeadingHierarchy(group);
-      this.scheduleActiveUpdate();
     }
 
     addHeading(group, heading, index) {
@@ -543,13 +553,18 @@
     }
 
     updateHeading(heading) {
-      const item = this.headingToTocItem.get(heading);
-      if (!item) {
-        const assistant = heading.closest(SELECTORS.assistantMessage);
-        if (assistant) this.reconcileAssistantTurn(assistant);
-        return;
+      const tocScrollState = this.captureTocScrollState();
+      try {
+        const item = this.headingToTocItem.get(heading);
+        if (!item) {
+          const assistant = heading.closest(SELECTORS.assistantMessage);
+          if (assistant) this.reconcileAssistantTurn(assistant);
+          return;
+        }
+        item.querySelector('.toc-text').textContent = heading.textContent.trim();
+      } finally {
+        this.restoreTocScrollState(tocScrollState);
       }
-      item.querySelector('.toc-text').textContent = heading.textContent.trim();
     }
 
     refreshHeadingHierarchy(group) {

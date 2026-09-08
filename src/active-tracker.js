@@ -33,7 +33,11 @@
       if (this.activeUpdateFrame !== null) return;
       this.activeUpdateFrame = requestAnimationFrame(() => {
         this.activeUpdateFrame = null;
-        this.updateActiveFromScrollPosition();
+        try {
+          this.updateActiveFromScrollPosition();
+        } finally {
+          this.preserveTocScrollOnActiveUpdate = false;
+        }
       });
     }
 
@@ -73,7 +77,7 @@
         group.header.classList.toggle('active-fallback', !item);
       }
       const visibleItem = item && !item.hidden && !group?.content.hidden ? item : group?.header;
-      this.ensureTocItemVisible(visibleItem);
+      if (!this.preserveTocScrollOnActiveUpdate) this.ensureTocItemVisible(visibleItem);
     }
 
     ensureTocItemVisible(item) {

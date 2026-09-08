@@ -18,6 +18,7 @@
     ACTIVE_ROOT_MARGIN: '0px 0px -90% 0px',
     STRUCTURE_SETTLE_DELAY: 120,
     NAVIGATION_RECOVERY_FRAMES: 300,
+    TOC_TAIL_THRESHOLD: 8,
     SIDEBAR_VISIBILITY_KEY: 'sidebarVisible'
   };
 
@@ -53,6 +54,9 @@
   };
 
   api.getNavigationOffset = (viewportHeight) => Math.max(72, Math.min(120, viewportHeight * 0.1));
+
+  api.isTocScrolledToEnd = (scrollTop, scrollHeight, clientHeight, threshold = api.TOC_TAIL_THRESHOLD) =>
+    scrollHeight - clientHeight - scrollTop <= threshold;
 
   api.findActiveTrackingTarget = (targets, activationY) => {
     let low = 0;
