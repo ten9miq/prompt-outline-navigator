@@ -247,6 +247,36 @@ test('virtualized navigation falls back when no rendered turn is available', () 
   }
 });
 
+test('cached prompt header starts recovery without a native ChatGPT TOC button', () => {
+  const header = {};
+  const group = { header, nativeButton: null };
+  const recoveryCalls = [];
+  const activeCalls = [];
+  const context = {
+    groups: [group],
+    navigationRequestId: 4,
+    pendingNavigationRequestId: null,
+    getConnectedGroupDestination: () => null,
+    setActive: (...args) => activeCalls.push(args),
+    recoverVirtualizedDestination: (...args) => recoveryCalls.push(args),
+    waitForGroupDestination: () => {}
+  };
+  const event = {
+    target: {
+      closest: (selector) => selector === '.toc-group-header' ? header : null
+    }
+  };
+
+  assert.doesNotThrow(() => ChatGPTTOC.prototype.handleTocClick.call(context, event));
+  assert.equal(context.navigationRequestId, 5);
+  assert.equal(context.pendingNavigationRequestId, 5);
+  assert.deepEqual(activeCalls, [[null, group]]);
+  assert.equal(recoveryCalls.length, 1);
+  assert.equal(recoveryCalls[0][0], group);
+  assert.equal(recoveryCalls[0][1], 5);
+  assert.equal(typeof recoveryCalls[0][2], 'function');
+});
+
 test('only a user followed by its first assistant creates a response pair', () => {
   const message = (role, id) => ({ id, matches: (selector) => selector === `[data-message-author-role="${role}"]` });
   const orphan = message('assistant', 'orphan');

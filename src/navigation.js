@@ -33,6 +33,7 @@
 
       const header = event.target.closest('.toc-group-header');
       const group = this.groups.find((candidate) => candidate.header === header);
+      if (!group) return;
       const destination = this.getConnectedGroupDestination(group);
       if (destination) {
         this.navigationRequestId += 1;
@@ -41,15 +42,15 @@
         this.scrollToDestination(destination);
         return;
       }
-      if (group?.nativeButton?.isConnected) {
-        const requestId = ++this.navigationRequestId;
-        this.pendingNavigationRequestId = requestId;
-        this.setActive(null, group);
+      const requestId = ++this.navigationRequestId;
+      this.pendingNavigationRequestId = requestId;
+      this.setActive(null, group);
+      if (group.nativeButton?.isConnected) {
         group.nativeButton.click();
         this.waitForGroupDestination(group, requestId);
         return;
       }
-      if (group) this.recoverVirtualizedDestination(group, requestId, () => this.waitForGroupDestination(group, requestId));
+      this.recoverVirtualizedDestination(group, requestId, () => this.waitForGroupDestination(group, requestId));
     }
 
     navigateToHeading(heading, group) {
