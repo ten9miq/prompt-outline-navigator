@@ -526,7 +526,7 @@
       const firstGroup = indexedGroups.find((group) =>
         group.nativeIndex === 0 || (group.nativeIndex === null && group.promptIndex === 0)
       );
-      return !firstGroup || indexedGroups.some((group) => !group.contentCaptured);
+      return Boolean(firstGroup && !firstGroup.contentCaptured);
     }
 
     updateEarlierPromptLoader() {
@@ -694,7 +694,6 @@
       this.earlierPromptLoader?.remove();
       this.earlierPromptLoader = null;
       this.earlierPromptLoadRequestId += 1;
-      this.earlierPromptLoadTargetIndex = null;
       this.groups = [];
       this.turnToGroup = new WeakMap();
       this.turnKeyToGroup = new Map();

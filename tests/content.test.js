@@ -16,7 +16,7 @@ const {
   pairConversationMessages,
   getNavigationOffset,
   findActiveTrackingTarget,
-  resolveActiveTrackingSelection,
+  findActiveGroupRange,
   isTocScrolledToEnd,
   getNativeTocIndex,
   collectNativeTocItems,
@@ -394,7 +394,7 @@ test('virtualized navigation falls back when no rendered turn is available', () 
   }
 });
 
-test('earlier prompt loading remains available until all indexed prompt labels are captured', () => {
+test('earlier prompt loading is based on the first prompt rather than numbered placeholders', () => {
   const unloadedFirst = { nativeIndex: 0, promptIndex: 0, contentCaptured: false };
   const loadedFirst = { nativeIndex: 0, promptIndex: 0, contentCaptured: true };
   const laterPrompt = { nativeIndex: null, promptIndex: 4, contentCaptured: true };
@@ -404,42 +404,27 @@ test('earlier prompt loading remains available until all indexed prompt labels a
   assert.equal(ChatGPTTOC.prototype.hasUnloadedEarlierPrompts.call({ groups: [loadedFirst, laterPrompt] }), false);
   assert.equal(ChatGPTTOC.prototype.hasUnloadedEarlierPrompts.call({
     groups: [loadedFirst, unloadedLaterPrompt, laterPrompt]
-  }), true);
+  }), false);
   assert.equal(ChatGPTTOC.prototype.hasUnloadedEarlierPrompts.call({ groups: [laterPrompt] }), true);
   assert.equal(ChatGPTTOC.prototype.hasUnloadedEarlierPrompts.call({
     groups: [{ nativeIndex: null, promptIndex: null, contentCaptured: true }]
   }), false);
 });
 
-test('earlier prompt loading resolves the newest missing native prompt first', () => {
+test('earlier prompt loading prefers ChatGPT native Prompt 1 navigation', () => {
   let nativeClicks = 0;
   let fallbackLoads = 0;
   let waits = 0;
-  const firstGroup = {
-    nativeIndex: 0,
-    promptIndex: 0,
-    contentCaptured: false,
-    nativeButton: { isConnected: true, click() { throw new Error('Prompt 1 should be loaded later'); } }
-  };
-  const laterGroup = {
-    nativeIndex: 4,
-    promptIndex: 4,
-    contentCaptured: false,
-    nativeButton: { isConnected: true, click() { nativeClicks += 1; } }
-  };
   const loader = {
     disabled: false,
     setAttribute(name, value) { this[name] = value; }
   };
   const context = {
     earlierPromptLoadRequestId: 2,
-    earlierPromptLoadTargetIndex: null,
     earlierPromptLoader: loader,
-    groups: [firstGroup, laterGroup],
+    nativeTocItems: new Map([[0, { isConnected: true, click() { nativeClicks += 1; } }]]),
     hasUnloadedEarlierPrompts: () => true,
     updateEarlierPromptLoader() {},
-    getUnresolvedPromptGroups: ChatGPTTOC.prototype.getUnresolvedPromptGroups,
-    loadNextUnresolvedPrompt: ChatGPTTOC.prototype.loadNextUnresolvedPrompt,
     loadEarlierConversationTurns() { fallbackLoads += 1; },
     waitForEarlierPrompts(requestId) {
       waits += 1;
@@ -451,7 +436,6 @@ test('earlier prompt loading resolves the newest missing native prompt first', (
   assert.equal(context.earlierPromptLoadRequestId, 3);
   assert.equal(loader.disabled, true);
   assert.equal(loader['aria-busy'], 'true');
-  assert.equal(context.earlierPromptLoadTargetIndex, 4);
   assert.equal(nativeClicks, 1);
   assert.equal(fallbackLoads, 0);
   assert.equal(waits, 1);
@@ -590,37 +574,71 @@ test('active tracking chooses exactly the last item above the navigation line', 
   const next = target(240, 'next');
 
   assert.equal(findActiveTrackingTarget([first, previous, current, next], 100), current);
+  assert.equal(findActiveTrackingTarget([next, first, current, previous], 100), current);
   assert.equal(findActiveTrackingTarget([first, previous, current, next], 50), previous);
   assert.equal(findActiveTrackingTarget([first, previous, current, next], -900), null);
 });
 
-test('active tracking falls back to the current prompt when no heading has been reached', () => {
-  const firstGroup = { id: 'first' };
-  const secondGroup = { id: 'second' };
-  const staleNativeGroup = { id: 'stale-native' };
-  const heading = { id: 'heading' };
-  const previousHeading = { id: 'previous-heading' };
+test('active tracking chooses a containing response range and rejects distant stale prompts', () => {
+  const stale = { id: 'stale', top: -30000, bottom: -29950 };
+  const current = { id: 'current', top: -500, bottom: 900 };
+  const next = { id: 'next', top: 940, bottom: 1500 };
 
-  assert.deepEqual(resolveActiveTrackingSelection(null, null, [firstGroup, secondGroup]), {
-    group: firstGroup,
-    heading: null
-  });
-  assert.deepEqual(resolveActiveTrackingSelection(secondGroup, { group: secondGroup, heading: null }, [firstGroup]), {
-    group: secondGroup,
-    heading: null
-  });
-  assert.deepEqual(resolveActiveTrackingSelection(secondGroup, { group: secondGroup, heading }, [firstGroup]), {
-    group: secondGroup,
-    heading
-  });
-  assert.deepEqual(resolveActiveTrackingSelection(secondGroup, { group: firstGroup, heading: previousHeading }, [firstGroup, secondGroup]), {
-    group: firstGroup,
-    heading: previousHeading
-  });
-  assert.deepEqual(resolveActiveTrackingSelection(staleNativeGroup, null, [firstGroup, secondGroup], secondGroup), {
-    group: secondGroup,
-    heading: null
-  });
+  assert.equal(findActiveGroupRange([next, stale, current], 100, 120), current);
+  assert.equal(findActiveGroupRange([stale], 100, 120), null);
+  assert.equal(findActiveGroupRange([{ id: 'near', top: 20, bottom: 80 }], 100, 40).id, 'near');
+  assert.equal(findActiveGroupRange([{ id: 'far', top: 0, bottom: 40 }], 100, 40), null);
+});
+
+test('group tracking uses assistant coverage and ignores a far offscreen prompt fragment', () => {
+  const group = { prompt: null, assistant: null };
+  const promptOnlyGroup = { prompt: null, assistant: null };
+  const assistant = {
+    isConnected: true,
+    getBoundingClientRect: () => ({ top: -400, bottom: 700 })
+  };
+  const prompt = {
+    isConnected: true,
+    getBoundingClientRect: () => ({ top: -450, bottom: -410 })
+  };
+  const stalePrompt = {
+    isConnected: true,
+    getBoundingClientRect: () => ({ top: -30000, bottom: -29950 })
+  };
+  group.prompt = prompt;
+  group.assistant = assistant;
+  promptOnlyGroup.prompt = stalePrompt;
+  const live = new Set([prompt, assistant, stalePrompt]);
+  const context = {
+    groups: [promptOnlyGroup, group],
+    thread: { contains: (element) => live.has(element) },
+    isLiveConversationElement: ChatGPTTOC.prototype.isLiveConversationElement
+  };
+
+  assert.deepEqual(ChatGPTTOC.prototype.getLiveGroupRanges.call(context, 900), [
+    { group, top: -450, bottom: 700 }
+  ]);
+});
+
+test('active tracking keeps the current hierarchy selection during a transient remount gap', () => {
+  const group = { id: 'current-group' };
+  const heading = { id: 'current-heading' };
+  const updates = [];
+  const previousWindow = globalThis.window;
+  try {
+    globalThis.window = { innerHeight: 900 };
+    ChatGPTTOC.prototype.updateActiveFromScrollPosition.call({
+      activeGroup: group,
+      activeHeading: heading,
+      getLiveGroupRanges: () => [],
+      setActive: (nextHeading, nextGroup) => updates.push([nextHeading, nextGroup])
+    });
+  } finally {
+    if (previousWindow === undefined) delete globalThis.window;
+    else globalThis.window = previousWindow;
+  }
+
+  assert.deepEqual(updates, [[heading, group]]);
 });
 
 test('navigation line uses ten percent of the viewport within safe limits', () => {
@@ -638,6 +656,7 @@ test('dynamic content never uses innerHTML and polling is absent', () => {
   assert.match(source, /0px 0px -90% 0px/);
   assert.match(source, /collectResponsePairs/);
   assert.match(source, /findActiveTrackingTarget/);
+  assert.match(source, /findActiveGroupRange/);
   assert.match(source, /addEventListener\('scroll'/);
   assert.match(source, /STRUCTURE_SETTLE_DELAY/);
   assert.match(source, /turnKeyToGroup/);

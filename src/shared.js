@@ -73,25 +73,35 @@
     scrollHeight - clientHeight - scrollTop <= threshold;
 
   api.findActiveTrackingTarget = (targets, activationY) => {
+    const orderedTargets = targets
+      .map((target) => ({ target, top: target.element.getBoundingClientRect().top }))
+      .sort((left, right) => left.top - right.top);
     let low = 0;
-    let high = targets.length - 1;
+    let high = orderedTargets.length - 1;
     let active = null;
     while (low <= high) {
       const middle = Math.floor((low + high) / 2);
-      if (targets[middle].element.getBoundingClientRect().top <= activationY) {
-        active = targets[middle];
+      if (orderedTargets[middle].top <= activationY) {
+        active = orderedTargets[middle].target;
         low = middle + 1;
       } else high = middle - 1;
     }
     return active;
   };
 
-  api.resolveActiveTrackingSelection = (nativeGroup, target, groups, firstConnectedGroup = null) => {
-    const group = target?.group || firstConnectedGroup || nativeGroup || groups[0] || null;
-    return {
-      group,
-      heading: target?.group === group ? target.heading : null
-    };
+  api.findActiveGroupRange = (ranges, activationY, maxGap) => {
+    const orderedRanges = [...ranges].sort((left, right) =>
+      left.top - right.top || left.bottom - right.bottom
+    );
+    let containing = null;
+    let preceding = null;
+    for (const range of orderedRanges) {
+      if (range.top <= activationY) preceding = range;
+      if (range.top <= activationY && range.bottom >= activationY) containing = range;
+      if (range.top > activationY) break;
+    }
+    if (containing) return containing;
+    return preceding && activationY - preceding.bottom <= maxGap ? preceding : null;
   };
 
   api.getNativeTocIndex = (element) => {

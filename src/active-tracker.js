@@ -10,7 +10,7 @@
     ACTIVE_ROOT_MARGIN,
     getNavigationOffset,
     findActiveTrackingTarget,
-    resolveActiveTrackingSelection,
+    findActiveGroupRange,
     getNativeTocIndex
   } = shared;
 
@@ -41,25 +41,65 @@
       });
     }
 
-    getTrackingTargets() {
-      const targets = [];
+    isLiveConversationElement(element) {
+      return Boolean(element?.isConnected && this.thread?.contains(element));
+    }
+
+    getLiveGroupRanges(viewportHeight) {
+      const ranges = [];
       this.groups.forEach((group) => {
-        const prompt = group.prompt?.isConnected ? group.prompt : group.assistant;
-        if (prompt?.isConnected) targets.push({ element: prompt, heading: null, group });
-        group.headings.forEach((heading) => {
-          if (heading.isConnected) targets.push({ element: heading, heading, group });
-        });
+        const prompt = this.isLiveConversationElement(group.prompt) ? group.prompt : null;
+        const assistant = this.isLiveConversationElement(group.assistant) ? group.assistant : null;
+        if (!prompt && !assistant) return;
+
+        const assistantRect = assistant?.getBoundingClientRect();
+        const promptRect = prompt?.getBoundingClientRect();
+        if (assistantRect && assistantRect.bottom > assistantRect.top) {
+          ranges.push({
+            group,
+            top: promptRect ? Math.min(promptRect.top, assistantRect.top) : assistantRect.top,
+            bottom: Math.max(promptRect?.bottom ?? assistantRect.bottom, assistantRect.bottom)
+          });
+          return;
+        }
+
+        if (promptRect && promptRect.bottom > promptRect.top &&
+            promptRect.bottom >= 0 && promptRect.top <= viewportHeight) {
+          ranges.push({ group, top: promptRect.top, bottom: promptRect.bottom });
+        }
       });
-      return targets;
+      return ranges;
+    }
+
+    getActiveHeadingInGroup(group, activationY) {
+      const targets = group.headings
+        .filter((heading) => this.isLiveConversationElement(heading))
+        .map((heading) => ({ element: heading, heading, group }));
+      return findActiveTrackingTarget(targets, activationY)?.heading || null;
     }
 
     updateActiveFromScrollPosition() {
-      const targets = this.getTrackingTargets();
-      const target = findActiveTrackingTarget(targets, getNavigationOffset(window.innerHeight));
+      const activationY = getNavigationOffset(window.innerHeight);
+      const ranges = this.getLiveGroupRanges(window.innerHeight);
+      const activeRange = findActiveGroupRange(
+        ranges,
+        activationY,
+        Math.max(96, window.innerHeight * 0.15)
+      );
+      if (activeRange) {
+        const heading = this.getActiveHeadingInGroup(activeRange.group, activationY);
+        this.setActive(heading, activeRange.group);
+        return;
+      }
+
+      if (this.activeGroup) {
+        this.setActive(this.activeHeading, this.activeGroup);
+        return;
+      }
+
       const nativeActive = document.querySelector(SELECTORS.nativeTocActive);
       const nativeGroup = this.nativeIndexToGroup.get(getNativeTocIndex(nativeActive));
-      const selection = resolveActiveTrackingSelection(nativeGroup, target, this.groups, targets[0]?.group);
-      this.setActive(selection.heading, selection.group);
+      this.setActive(null, nativeGroup || this.groups[0] || null);
     }
 
     setActive(heading, group) {
