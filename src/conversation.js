@@ -108,8 +108,8 @@
     }
 
     resolveNativeIndex(prompt, assistant, fallbackIndex, pairCount) {
-      if (!this.nativeTocItems.size) return null;
       const parsed = this.getPromptIndexFromElement(prompt) ?? this.getPromptIndexFromElement(assistant);
+      if (!this.nativeTocItems.size) return parsed;
       if (parsed !== null && this.nativeTocItems.has(parsed)) return parsed;
       return pairCount === this.nativeTocItems.size && this.nativeTocItems.has(fallbackIndex)
         ? fallbackIndex
@@ -386,7 +386,8 @@
         content,
         promptIndex: nativeIndex,
         nativeIndex,
-        nativeButton: null
+        nativeButton: null,
+        lastKnownScrollTop: null
       };
       this.groups.splice(Math.min(index, this.groups.length), 0, group);
       if (nativeIndex !== null) this.nativeIndexToGroup.set(nativeIndex, group);
@@ -425,9 +426,11 @@
       if (key) this.turnKeyToGroup.set(key, group);
       this.setGroupPrompt(group, prompt);
       if (assistant) this.reconcileAssistantTurn(assistant);
+      this.rememberGroupDestination(group);
     }
 
     disconnectGroupFromTurn(group) {
+      this.rememberGroupDestination(group);
       if (group.prompt) {
         this.detachPrompt(group, group.prompt);
         group.prompt = null;

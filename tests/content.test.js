@@ -215,6 +215,20 @@ test('conversation turn test ids map user and assistant nodes to one prompt inde
   assert.equal(getPromptIndexFromTestId('conversation-turn-x'), null);
 });
 
+test('conversation turn indices remain authoritative while the native TOC is absent', () => {
+  const prompt = {};
+  const assistant = {};
+  const context = {
+    nativeTocItems: new Map(),
+    getPromptIndexFromElement: (element) => element === prompt || element === assistant ? 5 : null
+  };
+
+  assert.equal(
+    ChatGPTTOC.prototype.resolveNativeIndex.call(context, prompt, assistant, 0, 1),
+    5
+  );
+});
+
 test('a disconnected heading is replaced by its remounted counterpart', () => {
   const heading = (text, tagName, isConnected) => ({ textContent: text, tagName, isConnected });
   const stale = heading('Details', 'H2', false);
@@ -296,7 +310,8 @@ test('virtualized stable turns detach live nodes without discarding cached headi
   const context = {
     detachPrompt: (candidateGroup, candidatePrompt) => detachedPrompts.push([candidateGroup, candidatePrompt]),
     turnToGroup: new WeakMap([[assistant, group]]),
-    headingObserver: { unobserve: (candidate) => unobservedHeadings.push(candidate) }
+    headingObserver: { unobserve: (candidate) => unobservedHeadings.push(candidate) },
+    rememberGroupDestination() {}
   };
 
   ChatGPTTOC.prototype.disconnectGroupFromTurn.call(context, group);
@@ -323,7 +338,8 @@ test('rebinding a remounted assistant clears its stale group and heading ownersh
     },
     setGroupPrompt() {},
     getPromptIndexFromElement: () => 3,
-    reconcileAssistantTurn: () => { reconciled += 1; }
+    reconcileAssistantTurn: () => { reconciled += 1; },
+    rememberGroupDestination() {}
   };
 
   ChatGPTTOC.prototype.bindGroupToTurn.call(
@@ -553,6 +569,7 @@ test('cached prompt header starts recovery without a native ChatGPT TOC button',
     earlierPromptLoader: null,
     cancelEarlierPromptLoading: ChatGPTTOC.prototype.cancelEarlierPromptLoading,
     getConnectedGroupDestination: () => null,
+    getConnectedNativeButton: () => null,
     setActive: (...args) => activeCalls.push(args),
     recoverVirtualizedDestination: (...args) => recoveryCalls.push(args),
     waitForGroupDestination: () => {}
@@ -580,7 +597,8 @@ test('group navigation only uses a connected destination with the same prompt in
   const promptIndexes = new Map([[prompt, 5], [assistant, 2]]);
   const context = {
     thread: { contains: () => true },
-    getPromptIndexFromElement: (element) => promptIndexes.get(element)
+    getPromptIndexFromElement: (element) => promptIndexes.get(element),
+    rememberGroupDestination() {}
   };
 
   assert.equal(ChatGPTTOC.prototype.getConnectedGroupDestination.call(context, group), prompt);
@@ -589,6 +607,22 @@ test('group navigation only uses a connected destination with the same prompt in
   assert.equal(ChatGPTTOC.prototype.getConnectedGroupDestination.call(context, group), assistant);
   promptIndexes.set(assistant, 4);
   assert.equal(ChatGPTTOC.prototype.getConnectedGroupDestination.call(context, group), null);
+});
+
+test('virtualized prompt recovery prefers its remembered position over page start', () => {
+  const group = { lastKnownScrollTop: 1234 };
+  const calls = [];
+  const scroller = { scrollTo: (options) => calls.push(options) };
+  const context = {
+    getConnectedNativeButton: () => null,
+    scrollToRememberedGroupDestination:
+      ChatGPTTOC.prototype.scrollToRememberedGroupDestination,
+    getConversationScrollContainer: () => scroller,
+    loadEarlierConversationTurns() { throw new Error('must not jump to the oldest turn'); }
+  };
+
+  assert.equal(ChatGPTTOC.prototype.retryGroupRecovery.call(context, group), true);
+  assert.deepEqual(calls, [{ top: 1234, behavior: 'auto' }]);
 });
 
 test('only a user followed by its first assistant creates a response pair', () => {

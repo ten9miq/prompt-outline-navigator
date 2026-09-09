@@ -5,7 +5,7 @@
   const shared = typeof module !== 'undefined' && module.exports
     ? require('./shared.js')
     : globalThis.TOCNavigator;
-  const { SELECTORS, findRemountedHeading, NAVIGATION_RECOVERY_FRAMES } = shared;
+  const { SELECTORS, findRemountedHeading, getNativeTocIndex, NAVIGATION_RECOVERY_FRAMES } = shared;
 
   class NavigationMethods {
     handleTocClick(event) {
@@ -53,8 +53,9 @@
       const requestId = ++this.navigationRequestId;
       this.pendingNavigationRequestId = requestId;
       this.setActive(null, group);
-      if (group.nativeButton?.isConnected) {
-        group.nativeButton.click();
+      const nativeButton = this.getConnectedNativeButton(group);
+      if (nativeButton) {
+        nativeButton.click();
         this.waitForGroupDestination(group, requestId);
         return;
       }
@@ -75,9 +76,10 @@
         tagName: heading.tagName,
         text: heading.textContent.trim()
       };
-      if (group?.nativeButton?.isConnected) {
+      const nativeButton = this.getConnectedNativeButton(group);
+      if (nativeButton) {
         this.pendingNavigationRequestId = requestId;
-        group.nativeButton.click();
+        nativeButton.click();
         this.waitForHeadingDestination(group, descriptor, requestId);
         return;
       }
@@ -114,7 +116,7 @@
         this.scrollToDestination(heading);
         return;
       }
-      if (attempts > 0 && attempts % 30 === 0) this.loadEarlierConversationTurns();
+      if (attempts > 0 && attempts % 30 === 0) this.retryGroupRecovery(group);
       requestAnimationFrame(() => this.waitForHeadingDestination(group, descriptor, requestId, attempts + 1));
     }
 
@@ -124,8 +126,57 @@
         if (!Number.isInteger(group?.nativeIndex)) return true;
         return this.getPromptIndexFromElement(element) === group.nativeIndex;
       };
-      if (belongsToGroup(group?.prompt)) return group.prompt;
-      return belongsToGroup(group?.assistant) ? group.assistant : null;
+      const destination = belongsToGroup(group?.prompt)
+        ? group.prompt
+        : (belongsToGroup(group?.assistant) ? group.assistant : null);
+      if (destination) this.rememberGroupDestination(group, destination);
+      return destination;
+    }
+
+    getConnectedNativeButton(group) {
+      if (!Number.isInteger(group?.nativeIndex)) return null;
+      if (group.nativeButton?.isConnected && getNativeTocIndex(group.nativeButton) === group.nativeIndex) {
+        return group.nativeButton;
+      }
+      const button = Array.from(document.querySelectorAll(SELECTORS.nativeTocItem))
+        .find((candidate) => getNativeTocIndex(candidate) === group.nativeIndex) || null;
+      if (button) {
+        group.nativeButton = button;
+        this.nativeTocItems.set(group.nativeIndex, button);
+      }
+      return button;
+    }
+
+    rememberGroupDestination(group, destination = null) {
+      if (!group) return false;
+      const target = destination || (group.prompt?.isConnected ? group.prompt : group.assistant);
+      if (!target?.isConnected || !this.thread?.contains(target)) return false;
+      const scroller = this.getConversationScrollContainer();
+      if (!scroller) return false;
+      const scrollerTop = scroller.getBoundingClientRect?.().top || 0;
+      group.lastKnownScrollTop = Math.max(
+        0,
+        scroller.scrollTop + target.getBoundingClientRect().top - scrollerTop
+      );
+      return true;
+    }
+
+    scrollToRememberedGroupDestination(group) {
+      if (!Number.isFinite(group?.lastKnownScrollTop)) return false;
+      const scroller = this.getConversationScrollContainer();
+      if (!scroller) return false;
+      scroller.scrollTo({ top: group.lastKnownScrollTop, behavior: 'auto' });
+      return true;
+    }
+
+    retryGroupRecovery(group) {
+      const nativeButton = this.getConnectedNativeButton(group);
+      if (nativeButton) {
+        nativeButton.click();
+        return true;
+      }
+      if (this.scrollToRememberedGroupDestination(group)) return true;
+      return this.loadEarlierConversationTurns();
     }
 
     getConversationScrollContainer() {
@@ -226,7 +277,7 @@
     }
 
     recoverVirtualizedDestination(group, requestId, waitForDestination) {
-      if (!this.loadEarlierConversationTurns()) return;
+      if (!this.retryGroupRecovery(group)) return;
       this.pendingNavigationRequestId = requestId;
       this.setActive(null, group);
       waitForDestination();
@@ -243,7 +294,7 @@
         this.scrollToDestination(destination);
         return;
       }
-      if (attempts > 0 && attempts % 30 === 0) this.loadEarlierConversationTurns();
+      if (attempts > 0 && attempts % 30 === 0) this.retryGroupRecovery(group);
       requestAnimationFrame(() => this.waitForGroupDestination(group, requestId, attempts + 1));
     }
 
