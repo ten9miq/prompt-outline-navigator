@@ -66,9 +66,10 @@
       const responsePairs = this.collectResponsePairs();
       responsePairs.forEach(({ assistant, prompt, key }, index) => {
         const nativeIndex = this.resolveNativeIndex(prompt, assistant, index, responsePairs.length);
-        const group = (key && this.turnKeyToGroup.get(key)) ||
+        const group = (nativeIndex !== null && this.nativeIndexToGroup.get(nativeIndex)) ||
+          (key && this.turnKeyToGroup.get(key)) ||
           this.turnToGroup.get(assistant) ||
-          (nativeIndex !== null && this.nativeIndexToGroup.get(nativeIndex));
+          null;
         if (group) this.bindGroupToTurn(group, assistant, prompt, key || null);
         else if (canCreateConversationGroup(nativeIndex, this.nativeTocItems.size)) {
           this.addGroup(assistant, index, prompt, key || null, nativeIndex);
@@ -298,9 +299,10 @@
 
       responsePairs.forEach(({ assistant, prompt, key }, index) => {
         const nativeIndex = this.resolveNativeIndex(prompt, assistant, index, responsePairs.length);
-        const group = (key && this.turnKeyToGroup.get(key)) ||
+        const group = (nativeIndex !== null && this.nativeIndexToGroup.get(nativeIndex)) ||
+          (key && this.turnKeyToGroup.get(key)) ||
           this.turnToGroup.get(assistant) ||
-          (nativeIndex !== null && this.nativeIndexToGroup.get(nativeIndex));
+          null;
         if (group) {
           this.bindGroupToTurn(group, assistant, prompt, key || null);
         } else if (canCreateConversationGroup(nativeIndex, this.nativeTocItems.size)) {
@@ -400,6 +402,17 @@
     }
 
     bindGroupToTurn(group, assistant, prompt, key) {
+      const previousGroup = assistant ? this.turnToGroup.get(assistant) : null;
+      if (previousGroup && previousGroup !== group) {
+        previousGroup.headings
+          .filter((heading) => heading.closest(SELECTORS.assistantMessage) === assistant)
+          .forEach((heading) => this.removeHeading(previousGroup, heading));
+        if (previousGroup.assistant === assistant) previousGroup.assistant = null;
+        if (key && previousGroup.key === key) {
+          if (this.turnKeyToGroup.get(key) === previousGroup) this.turnKeyToGroup.delete(key);
+          previousGroup.key = null;
+        }
+      }
       if (group.assistant && group.assistant !== assistant) this.turnToGroup.delete(group.assistant);
       if (group.key && group.key !== key && this.turnKeyToGroup.get(group.key) === group) {
         this.turnKeyToGroup.delete(group.key);
@@ -550,15 +563,13 @@
     reconcileAssistantTurn(assistant) {
       const tocScrollState = this.captureTocScrollState();
       try {
-        let group = this.turnToGroup.get(assistant);
-        if (!group) {
-          const nativeIndex = this.getPromptIndexFromElement(assistant);
-          group = this.nativeIndexToGroup.get(nativeIndex);
-          if (group) {
-            const key = this.getStableTurnKey(assistant);
-            this.bindGroupToTurn(group, assistant, group.prompt, key || group.key);
-            return;
-          }
+        const nativeIndex = this.getPromptIndexFromElement(assistant);
+        const indexedGroup = nativeIndex === null ? null : this.nativeIndexToGroup.get(nativeIndex);
+        const group = indexedGroup || this.turnToGroup.get(assistant);
+        if (group && this.turnToGroup.get(assistant) !== group) {
+          const key = this.getStableTurnKey(assistant);
+          this.bindGroupToTurn(group, assistant, group.prompt, key || group.key);
+          return;
         }
         if (!group || !assistant.isConnected) return;
 

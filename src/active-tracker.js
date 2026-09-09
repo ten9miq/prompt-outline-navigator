@@ -47,34 +47,49 @@
 
     getLiveGroupRanges(viewportHeight) {
       const ranges = [];
+      const groupsWithAssistant = new Set();
+      this.thread.querySelectorAll(SELECTORS.assistantMessage).forEach((assistant) => {
+        const promptIndex = this.getPromptIndexFromElement(assistant);
+        const indexedGroup = promptIndex === null ? null : this.nativeIndexToGroup.get(promptIndex);
+        const group = indexedGroup || this.turnToGroup.get(assistant);
+        if (!group || groupsWithAssistant.has(group)) return;
+
+        const turn = assistant.closest(SELECTORS.conversationTurn);
+        const assistantRect = (turn || assistant).getBoundingClientRect();
+        if (assistantRect.bottom <= assistantRect.top) return;
+
+        const prompt = this.isLiveConversationElement(group.prompt) &&
+          (promptIndex === null || this.getPromptIndexFromElement(group.prompt) === promptIndex)
+          ? group.prompt
+          : null;
+        const promptTurn = prompt?.closest(SELECTORS.conversationTurn);
+        const promptRect = (promptTurn || prompt)?.getBoundingClientRect();
+        ranges.push({
+          group,
+          assistant,
+          top: promptRect ? Math.min(promptRect.top, assistantRect.top) : assistantRect.top,
+          bottom: Math.max(promptRect?.bottom ?? assistantRect.bottom, assistantRect.bottom)
+        });
+        groupsWithAssistant.add(group);
+      });
+
       this.groups.forEach((group) => {
+        if (groupsWithAssistant.has(group)) return;
         const prompt = this.isLiveConversationElement(group.prompt) ? group.prompt : null;
-        const assistant = this.isLiveConversationElement(group.assistant) ? group.assistant : null;
-        if (!prompt && !assistant) return;
-
-        const assistantRect = assistant?.getBoundingClientRect();
-        const promptRect = prompt?.getBoundingClientRect();
-        if (assistantRect && assistantRect.bottom > assistantRect.top) {
-          ranges.push({
-            group,
-            top: promptRect ? Math.min(promptRect.top, assistantRect.top) : assistantRect.top,
-            bottom: Math.max(promptRect?.bottom ?? assistantRect.bottom, assistantRect.bottom)
-          });
-          return;
-        }
-
+        const promptTurn = prompt?.closest(SELECTORS.conversationTurn);
+        const promptRect = (promptTurn || prompt)?.getBoundingClientRect();
         if (promptRect && promptRect.bottom > promptRect.top &&
             promptRect.bottom >= 0 && promptRect.top <= viewportHeight) {
-          ranges.push({ group, top: promptRect.top, bottom: promptRect.bottom });
+          ranges.push({ group, assistant: null, top: promptRect.top, bottom: promptRect.bottom });
         }
       });
       return ranges;
     }
 
-    getActiveHeadingInGroup(group, activationY) {
-      const targets = group.headings
-        .filter((heading) => this.isLiveConversationElement(heading))
-        .map((heading) => ({ element: heading, heading, group }));
+    getActiveHeadingInRange(range, activationY) {
+      const targets = Array.from(range.assistant?.querySelectorAll(SELECTORS.headings) || [])
+        .filter((heading) => this.headingToTocItem.has(heading))
+        .map((heading) => ({ element: heading, heading, group: range.group }));
       return findActiveTrackingTarget(targets, activationY)?.heading || null;
     }
 
@@ -87,7 +102,7 @@
         Math.max(96, window.innerHeight * 0.15)
       );
       if (activeRange) {
-        const heading = this.getActiveHeadingInGroup(activeRange.group, activationY);
+        const heading = this.getActiveHeadingInRange(activeRange, activationY);
         this.setActive(heading, activeRange.group);
         return;
       }

@@ -280,6 +280,41 @@ test('virtualized stable turns detach live nodes without discarding cached headi
   assert.equal(context.turnToGroup.has(assistant), false);
 });
 
+test('rebinding a remounted assistant clears its stale group and heading ownership', () => {
+  const assistant = {};
+  const heading = { closest: () => assistant };
+  const previousGroup = { assistant, headings: [heading], key: 'test:turn-8' };
+  const indexedGroup = { assistant: null, headings: [], key: null, promptIndex: null };
+  let reconciled = 0;
+  const context = {
+    turnToGroup: new Map([[assistant, previousGroup]]),
+    turnKeyToGroup: new Map([['test:turn-8', previousGroup]]),
+    removeHeading(group, candidate) {
+      group.headings = group.headings.filter((item) => item !== candidate);
+    },
+    setGroupPrompt() {},
+    getPromptIndexFromElement: () => 3,
+    reconcileAssistantTurn: () => { reconciled += 1; }
+  };
+
+  ChatGPTTOC.prototype.bindGroupToTurn.call(
+    context,
+    indexedGroup,
+    assistant,
+    null,
+    'test:turn-8'
+  );
+
+  assert.equal(previousGroup.assistant, null);
+  assert.equal(previousGroup.key, null);
+  assert.deepEqual(previousGroup.headings, []);
+  assert.equal(indexedGroup.assistant, assistant);
+  assert.equal(indexedGroup.promptIndex, 3);
+  assert.equal(context.turnToGroup.get(assistant), indexedGroup);
+  assert.equal(context.turnKeyToGroup.get('test:turn-8'), indexedGroup);
+  assert.equal(reconciled, 1);
+});
+
 test('the first resolved prompt label stays fixed across remounted prompt nodes', () => {
   const firstPrompt = { textContent: 'Original prompt' };
   const remountedPrompt = { textContent: 'Incorrect remounted prompt' };
@@ -593,16 +628,20 @@ test('active tracking chooses a containing response range and rejects distant st
 test('group tracking uses assistant coverage and ignores a far offscreen prompt fragment', () => {
   const group = { prompt: null, assistant: null };
   const promptOnlyGroup = { prompt: null, assistant: null };
+  const staleMappedGroup = { prompt: null, assistant: null };
   const assistant = {
     isConnected: true,
+    closest: () => null,
     getBoundingClientRect: () => ({ top: -400, bottom: 700 })
   };
   const prompt = {
     isConnected: true,
+    closest: () => null,
     getBoundingClientRect: () => ({ top: -450, bottom: -410 })
   };
   const stalePrompt = {
     isConnected: true,
+    closest: () => null,
     getBoundingClientRect: () => ({ top: -30000, bottom: -29950 })
   };
   group.prompt = prompt;
@@ -610,13 +649,19 @@ test('group tracking uses assistant coverage and ignores a far offscreen prompt 
   promptOnlyGroup.prompt = stalePrompt;
   const live = new Set([prompt, assistant, stalePrompt]);
   const context = {
-    groups: [promptOnlyGroup, group],
-    thread: { contains: (element) => live.has(element) },
+    groups: [promptOnlyGroup, group, staleMappedGroup],
+    thread: {
+      contains: (element) => live.has(element),
+      querySelectorAll: () => [assistant]
+    },
+    nativeIndexToGroup: new Map([[1, group]]),
+    turnToGroup: new Map([[assistant, staleMappedGroup]]),
+    getPromptIndexFromElement: (element) => element === assistant || element === prompt ? 1 : 0,
     isLiveConversationElement: ChatGPTTOC.prototype.isLiveConversationElement
   };
 
   assert.deepEqual(ChatGPTTOC.prototype.getLiveGroupRanges.call(context, 900), [
-    { group, top: -450, bottom: 700 }
+    { group, assistant, top: -450, bottom: 700 }
   ]);
 });
 
