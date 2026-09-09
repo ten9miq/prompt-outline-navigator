@@ -111,13 +111,35 @@
       }
       const heading = this.findConnectedHeading(group, descriptor);
       if (heading) {
-        if (this.pendingNavigationRequestId === requestId) this.pendingNavigationRequestId = null;
         this.setActive(heading, group);
         this.scrollToDestination(heading);
+        this.settleHeadingDestination(group, descriptor, requestId);
         return;
       }
       if (attempts > 0 && attempts % 30 === 0) this.retryGroupRecovery(group);
       requestAnimationFrame(() => this.waitForHeadingDestination(group, descriptor, requestId, attempts + 1));
+    }
+
+    settleHeadingDestination(group, descriptor, requestId, attempts = 0, stableFrames = 0) {
+      const heading = this.findConnectedHeading(group, descriptor);
+      if (!heading) {
+        this.waitForHeadingDestination(group, descriptor, requestId, attempts);
+        return;
+      }
+      this.settleDestination(
+        heading,
+        requestId,
+        attempts,
+        stableFrames,
+        (nextStableFrames) => this.settleHeadingDestination(
+          group,
+          descriptor,
+          requestId,
+          attempts + 1,
+          nextStableFrames
+        ),
+        () => this.setActive(heading, group)
+      );
     }
 
     getConnectedGroupDestination(group) {
@@ -290,12 +312,62 @@
       }
       const destination = this.getConnectedGroupDestination(group);
       if (destination) {
-        if (this.pendingNavigationRequestId === requestId) this.pendingNavigationRequestId = null;
         this.scrollToDestination(destination);
+        this.settleGroupDestination(group, requestId);
         return;
       }
       if (attempts > 0 && attempts % 30 === 0) this.retryGroupRecovery(group);
       requestAnimationFrame(() => this.waitForGroupDestination(group, requestId, attempts + 1));
+    }
+
+    settleGroupDestination(group, requestId, attempts = 0, stableFrames = 0) {
+      const destination = this.getConnectedGroupDestination(group);
+      if (!destination) {
+        this.waitForGroupDestination(group, requestId, attempts);
+        return;
+      }
+      this.settleDestination(
+        destination,
+        requestId,
+        attempts,
+        stableFrames,
+        (nextStableFrames) => this.settleGroupDestination(
+          group,
+          requestId,
+          attempts + 1,
+          nextStableFrames
+        ),
+        () => this.setActive(null, group)
+      );
+    }
+
+    settleDestination(element, requestId, attempts, stableFrames, continueSettling, onSettled) {
+      if (requestId !== this.navigationRequestId || attempts >= NAVIGATION_RECOVERY_FRAMES) {
+        if (this.pendingNavigationRequestId === requestId) this.pendingNavigationRequestId = null;
+        return;
+      }
+
+      const scroller = this.getConversationScrollContainer();
+      if (!scroller || !element?.isConnected) {
+        requestAnimationFrame(() => continueSettling(0));
+        return;
+      }
+
+      const offset = shared.getNavigationOffset(window.innerHeight);
+      const delta = element.getBoundingClientRect().top - offset;
+      if (Math.abs(delta) > 2) {
+        scroller.scrollTo({ top: Math.max(0, scroller.scrollTop + delta), behavior: 'auto' });
+        requestAnimationFrame(() => continueSettling(0));
+        return;
+      }
+
+      if (stableFrames < 2) {
+        requestAnimationFrame(() => continueSettling(stableFrames + 1));
+        return;
+      }
+      if (this.pendingNavigationRequestId === requestId) this.pendingNavigationRequestId = null;
+      onSettled();
+      this.scheduleActiveUpdate();
     }
 
     scrollToDestination(element) {

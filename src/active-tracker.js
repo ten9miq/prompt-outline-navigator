@@ -94,6 +94,10 @@
     }
 
     updateActiveFromScrollPosition() {
+      if (this.pendingNavigationRequestId !== null && this.activeGroup) {
+        this.setActive(this.activeHeading, this.activeGroup);
+        return;
+      }
       const activationY = getNavigationOffset(window.innerHeight);
       const ranges = this.getLiveGroupRanges(window.innerHeight);
       const activeRange = findActiveGroupRange(

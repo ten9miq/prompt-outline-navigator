@@ -625,6 +625,49 @@ test('virtualized prompt recovery prefers its remembered position over page star
   assert.deepEqual(calls, [{ top: 1234, behavior: 'auto' }]);
 });
 
+test('navigation settling corrects a native TOC scroll that lands on the wrong response', () => {
+  const previousWindow = globalThis.window;
+  const previousAnimationFrame = globalThis.requestAnimationFrame;
+  const scrollCalls = [];
+  const continuationCalls = [];
+  globalThis.window = { innerHeight: 1200 };
+  globalThis.requestAnimationFrame = (callback) => callback();
+  const scroller = {
+    scrollTop: 100,
+    scrollTo: (options) => scrollCalls.push(options)
+  };
+  const context = {
+    navigationRequestId: 3,
+    pendingNavigationRequestId: 3,
+    getConversationScrollContainer: () => scroller
+  };
+  const element = {
+    isConnected: true,
+    getBoundingClientRect: () => ({ top: 900 })
+  };
+
+  try {
+    ChatGPTTOC.prototype.settleDestination.call(
+      context,
+      element,
+      3,
+      0,
+      0,
+      (stableFrames) => continuationCalls.push(stableFrames),
+      () => { throw new Error('not settled yet'); }
+    );
+  } finally {
+    if (previousWindow === undefined) delete globalThis.window;
+    else globalThis.window = previousWindow;
+    if (previousAnimationFrame === undefined) delete globalThis.requestAnimationFrame;
+    else globalThis.requestAnimationFrame = previousAnimationFrame;
+  }
+
+  assert.deepEqual(scrollCalls, [{ top: 880, behavior: 'auto' }]);
+  assert.deepEqual(continuationCalls, [0]);
+  assert.equal(context.pendingNavigationRequestId, 3);
+});
+
 test('only a user followed by its first assistant creates a response pair', () => {
   const message = (role, id) => ({ id, matches: (selector) => selector === `[data-message-author-role="${role}"]` });
   const orphan = message('assistant', 'orphan');
@@ -763,6 +806,20 @@ test('active tracking keeps the current hierarchy selection during a transient r
     if (previousWindow === undefined) delete globalThis.window;
     else globalThis.window = previousWindow;
   }
+
+  assert.deepEqual(updates, [[heading, group]]);
+});
+
+test('active tracking keeps the requested prompt selected while navigation is settling', () => {
+  const group = { id: 'requested-group' };
+  const heading = { id: 'requested-heading' };
+  const updates = [];
+  ChatGPTTOC.prototype.updateActiveFromScrollPosition.call({
+    pendingNavigationRequestId: 12,
+    activeGroup: group,
+    activeHeading: heading,
+    setActive: (nextHeading, nextGroup) => updates.push([nextHeading, nextGroup])
+  });
 
   assert.deepEqual(updates, [[heading, group]]);
 });
