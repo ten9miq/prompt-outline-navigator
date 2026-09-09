@@ -164,14 +164,13 @@
     }
 
     reconcileNativeTocItems(items) {
-      this.nativeTocItems = items;
-      for (const [index, group] of [...this.nativeIndexToGroup]) {
-        if (!items.has(index)) {
-          this.nativeIndexToGroup.delete(index);
-          group.nativeIndex = null;
-          group.nativeButton = null;
-          if (!group.assistant && !shouldPreserveDisconnectedGroup(group)) this.removeGroup(group);
-        }
+      const knownItems = new Map(this.nativeTocItems);
+      for (const [index, button] of items) knownItems.set(index, button);
+      this.nativeTocItems = knownItems;
+
+      for (const [index, group] of this.nativeIndexToGroup) {
+        if (items.has(index)) continue;
+        if (!group.nativeButton?.isConnected) group.nativeButton = null;
       }
 
       for (const [index, button] of items) {

@@ -257,6 +257,35 @@ test('native TOC reconciliation removes a keyed duplicate for an indexed prompt'
   assert.deepEqual(removed, [duplicate]);
 });
 
+test('a partial native TOC snapshot does not discard previously discovered prompt groups', () => {
+  const oldButton = { isConnected: false };
+  const currentButton = { isConnected: true };
+  const replacementButton = { isConnected: true };
+  const firstGroup = { nativeIndex: 0, nativeButton: oldButton };
+  const secondGroup = { nativeIndex: 1, nativeButton: currentButton };
+  let cleanupCalls = 0;
+  const context = {
+    nativeTocItems: new Map([[0, oldButton], [1, currentButton]]),
+    nativeIndexToGroup: new Map([[0, firstGroup], [1, secondGroup]]),
+    groups: [firstGroup, secondGroup],
+    addGroup() { throw new Error('No group should be recreated'); },
+    removeNonNativeGroups() { cleanupCalls += 1; }
+  };
+
+  ChatGPTTOC.prototype.reconcileNativeTocItems.call(
+    context,
+    new Map([[1, replacementButton]])
+  );
+
+  assert.equal(context.nativeTocItems.size, 2);
+  assert.equal(context.nativeTocItems.get(0), oldButton);
+  assert.equal(context.nativeIndexToGroup.get(0), firstGroup);
+  assert.equal(firstGroup.nativeIndex, 0);
+  assert.equal(firstGroup.nativeButton, null);
+  assert.equal(secondGroup.nativeButton, replacementButton);
+  assert.equal(cleanupCalls, 1);
+});
+
 test('virtualized stable turns detach live nodes without discarding cached headings', () => {
   const prompt = {};
   const assistant = {};
@@ -542,6 +571,24 @@ test('cached prompt header starts recovery without a native ChatGPT TOC button',
   assert.equal(recoveryCalls[0][0], group);
   assert.equal(recoveryCalls[0][1], 5);
   assert.equal(typeof recoveryCalls[0][2], 'function');
+});
+
+test('group navigation only uses a connected destination with the same prompt index', () => {
+  const prompt = { isConnected: true };
+  const assistant = { isConnected: true };
+  const group = { nativeIndex: 5, prompt, assistant };
+  const promptIndexes = new Map([[prompt, 5], [assistant, 2]]);
+  const context = {
+    thread: { contains: () => true },
+    getPromptIndexFromElement: (element) => promptIndexes.get(element)
+  };
+
+  assert.equal(ChatGPTTOC.prototype.getConnectedGroupDestination.call(context, group), prompt);
+  promptIndexes.set(prompt, 3);
+  promptIndexes.set(assistant, 5);
+  assert.equal(ChatGPTTOC.prototype.getConnectedGroupDestination.call(context, group), assistant);
+  promptIndexes.set(assistant, 4);
+  assert.equal(ChatGPTTOC.prototype.getConnectedGroupDestination.call(context, group), null);
 });
 
 test('only a user followed by its first assistant creates a response pair', () => {

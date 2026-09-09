@@ -119,8 +119,13 @@
     }
 
     getConnectedGroupDestination(group) {
-      if (group?.prompt?.isConnected) return group.prompt;
-      return group?.assistant?.isConnected ? group.assistant : null;
+      const belongsToGroup = (element) => {
+        if (!element?.isConnected || !this.thread?.contains(element)) return false;
+        if (!Number.isInteger(group?.nativeIndex)) return true;
+        return this.getPromptIndexFromElement(element) === group.nativeIndex;
+      };
+      if (belongsToGroup(group?.prompt)) return group.prompt;
+      return belongsToGroup(group?.assistant) ? group.assistant : null;
     }
 
     getConversationScrollContainer() {
