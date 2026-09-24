@@ -8,6 +8,8 @@ Prompt Outline Navigator is an independent project and is not affiliated with or
 
 [Privacy Policy](PRIVACY.md)
 
+[![Get it on the Chrome Web Store](https://img.shields.io/badge/Chrome%20Web%20Store-Get%20it-blue?logo=googlechrome)](https://chromewebstore.google.com/detail/prompt-outline-navigator/nleamodjnjbpcemdbcemfpbaelkkmmpe)
+
 ## Features
 
 - Opens a dedicated 200px sidecar without moving ChatGPT's React root and remembers its open/closed state.

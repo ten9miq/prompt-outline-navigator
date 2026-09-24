@@ -8,6 +8,8 @@ Prompt Outline Navigatorは独立したプロジェクトであり、OpenAIと�
 
 [プライバシーポリシー](PRIVACY.ja.md)
 
+[![Chromeウェブストアで入手](https://img.shields.io/badge/Chrome%20Web%20Store-入手-blue?logo=googlechrome)](https://chromewebstore.google.com/detail/prompt-outline-navigator/nleamodjnjbpcemdbcemfpbaelkkmmpe)
+
 ## 機能
 
 - ChatGPTのReactルートを移動せず、専用の200pxサイドバーを表示し、開閉状態を保存します。
