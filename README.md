@@ -39,6 +39,8 @@ The content scripts are split by responsibility: shared helpers, content-source 
 
 Load this directory with **Chrome > Extensions > Developer mode > Load unpacked**.
 
+For the Windows workflow used to develop against the live ChatGPT UI, see [Chrome DevTools MCP development and verification (Japanese)](docs/CHROME_DEVTOOLS_MCP.md). It covers a dedicated Chrome profile, Codex connection setup, extension/page reloads, geometry and scrolling measurements, and Console error attribution.
+
 The Playwright tests serve `tests/browser-fixture.html` at a simulated ChatGPT conversation URL in Chromium and check its anonymized conversation DOM, sidebar initialization, safe text rendering, incremental updates, virtualized turn retention, and close/reopen behavior. They also check document and message-feed adapters on unfamiliar URLs, preview exclusion, initial composer width and first-message DOM transitions, repeated upper/lower navigation, temporary page/dialog suspension for both saved visibility states without storage writes, and conversation-root replacement. `tests/layout-fixture.html` verifies conversation and unavailable-screen widths and the sidebar's top clearance at 1280px and 1920px viewport widths. Additional layout checks cover an app shell with an inline viewport width and a composer outside the conversation root. The layout fixture supports manual inspection in a browser; these checks do not replace testing on the live ChatGPT UI.
 
 ### Chrome Web Store package
