@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Layout CSS fixture</title>
+  <link id="extension-styles" rel="stylesheet" href="../styles.css">
+  <style>
+    html, body { margin: 0; }
+    #app { width: 100vw; height: 100vh; }
+    #thread { width: 100%; min-height: 100vh; }
+    .max-w-app-content { width: 100%; max-width: 800px; margin: auto; }
+    [data-thread-user-message-navigation-content="true"] { width: 100%; max-width: 800px; }
+    #results { position: fixed; left: 0; bottom: 0; background: white; }
+  </style>
+</head>
+<body>
+  <div id="app" class="chatgpt-toc-app-root">
+    <main id="thread" data-chatgpt-conversation-selection-target="true" data-thread-find-target="conversation">
+      <div class="max-w-app-content" data-thread-user-message-navigation-content="true" id="content-probe">
+        <div id="variable-probe" style="width:var(--thread-content-width, 800px);height:1px"></div>
+        <form data-chatgpt-composer data-composer-placement="thread"></form>
+      </div>
+    </main>
+  </div>
+  <aside id="chatgpt-toc-sidebar" class="is-open"></aside>
+  <button id="chatgpt-toc-toggle"></button>
+  <pre id="results">RUNNING</pre>
+  <script>
+    const styles = document.getElementById('extension-styles');
+    const app = document.getElementById('app');
+    const content = document.getElementById('content-probe');
+    const variable = document.getElementById('variable-probe');
+    const composer = document.querySelector('[data-chatgpt-composer]');
+    const sidebar = document.getElementById('chatgpt-toc-sidebar');
+    const toggle = document.getElementById('chatgpt-toc-toggle');
+    const measure = () => ({
+      appWidth: Math.round(app.getBoundingClientRect().width),
+      contentWidth: Math.round(content.getBoundingClientRect().width),
+      variableWidth: Math.round(variable.getBoundingClientRect().width),
+      composerWidth: Math.round(composer.getBoundingClientRect().width),
+      variable: getComputedStyle(document.getElementById('thread')).getPropertyValue('--thread-content-width').trim(),
+      sidebarTop: Math.round(sidebar.getBoundingClientRect().top),
+      sidebarHeight: Math.round(sidebar.getBoundingClientRect().height),
+      toggleTop: Math.round(toggle.getBoundingClientRect().top)
+    });
+    const output = document.getElementById('results');
+    try {
+      styles.disabled = true;
+      const off = measure();
+      styles.disabled = false;
+      document.body.classList.add('chatgpt-toc-open', 'chatgpt-toc-conversation', 'chatgpt-toc-wide');
+      const open = measure();
+      document.body.classList.remove('chatgpt-toc-open');
+      const closed = measure();
+      document.body.classList.remove('chatgpt-toc-conversation', 'chatgpt-toc-wide');
+      const unavailable = measure();
+      const expectedWideWidth = Math.round(Math.min(innerWidth * 0.8, innerWidth - 200 - 80));
+      const passed = off.contentWidth === Math.min(800, innerWidth) && open.variableWidth === expectedWideWidth &&
+        open.contentWidth === expectedWideWidth && closed.contentWidth === expectedWideWidth &&
+        open.composerWidth === expectedWideWidth && closed.composerWidth === expectedWideWidth &&
+        open.appWidth === Math.round(innerWidth - 200) &&
+        open.sidebarTop === 0 && open.sidebarHeight === innerHeight &&
+        open.toggleTop === 72 && closed.toggleTop === 72 &&
+        unavailable.appWidth === innerWidth && unavailable.contentWidth === Math.min(800, innerWidth) &&
+        unavailable.composerWidth === Math.min(800, innerWidth);
+      output.textContent = JSON.stringify({ passed, viewport: { width: innerWidth, height: innerHeight }, off, open, closed, unavailable }, null, 2);
+      output.dataset.result = passed ? 'PASS' : 'FAIL';
+      document.title = `${passed ? 'PASS' : 'FAIL'} - Layout CSS fixture`;
+    } catch (error) {
+      output.dataset.result = 'FAIL';
+      output.textContent = error.stack;
+      document.title = 'FAIL - Layout CSS fixture';
+    }
+  </script>
+</body>
+</html>

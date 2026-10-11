@@ -1,7 +1,9 @@
 /* Prompt Outline Navigator */
 :root {
   --chatgpt-toc-width: 200px;
-  --chatgpt-toc-content-max-width: 80vw;
+  --chatgpt-toc-top-offset: 0px;
+  --chatgpt-toc-toggle-top-offset: 72px;
+  --chatgpt-toc-content-max-width: min(80vw, calc(100vw - var(--chatgpt-toc-width) - 80px));
 }
 
 body.chatgpt-toc-open > .chatgpt-toc-app-root,
@@ -12,24 +14,59 @@ body.chatgpt-toc-open > .chatgpt-toc-app-root > :first-child {
   transition: width 180ms ease, max-width 180ms ease;
 }
 
-/* Widen ChatGPT through its content-width variable instead of reshaping its DOM. */
-#thread { --wide-content-max-width: var(--chatgpt-toc-content-max-width); }
+/* The app shell's inline viewport width must respect the reserved sidecar. */
+body.chatgpt-toc-open > .chatgpt-toc-app-root [data-app-shell-frame="true"] {
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+}
 
-/* Project home uses a separate 800px app-content cap before a conversation exists. */
-#thread [class~="max-w-app-content"]:has([id^="project-home-tabs-"]) {
+body.chatgpt-toc-open > .chatgpt-toc-app-root [data-app-shell-titlebar="true"] {
+  right: var(--chatgpt-toc-width) !important;
+}
+
+/* Initial composers use the same width independently of TOC visibility. */
+:where(body.chatgpt-toc-wide) .chatgpt-toc-home-composer-root,
+:where(body.chatgpt-toc-wide) [data-chatgpt-composer][data-composer-placement="home"] {
+  --wide-content-max-width: var(--chatgpt-toc-content-max-width);
+  --thread-content-max-width: var(--wide-content-max-width);
+  min-width: 0 !important;
   width: 100% !important;
   max-width: var(--wide-content-max-width) !important;
 }
 
-[data-conversation-screenshot-content],
-#thread-bottom-container [class*="max-w-(--thread-content-max-width)"],
-#thread-bottom [class*="max-w-(--thread-content-max-width)"] {
+/* Widen ChatGPT through its content-width variable instead of reshaping its DOM. */
+:where(body.chatgpt-toc-wide) #thread,
+:where(body.chatgpt-toc-wide) [data-app-action-timeline-scroll],
+:where(body.chatgpt-toc-wide) [data-chatgpt-conversation-selection-target="true"][data-thread-find-target="conversation"] {
+  --wide-content-max-width: var(--chatgpt-toc-content-max-width);
+  --thread-content-responsive-max-width: var(--wide-content-max-width);
+  --thread-content-max-width: var(--wide-content-max-width);
+  --thread-content-width: var(--wide-content-max-width);
+  --user-chat-width: var(--wide-content-max-width);
+}
+
+/* Project home uses a separate 800px app-content cap before a conversation exists. */
+:where(body.chatgpt-toc-wide) #thread [class~="max-w-app-content"]:has([id^="project-home-tabs-"]),
+:where(body.chatgpt-toc-wide) [data-chatgpt-conversation-selection-target="true"][data-thread-find-target="conversation"] [class~="max-w-app-content"]:has([id^="project-home-tabs-"]) {
+  width: 100% !important;
+  max-width: var(--wide-content-max-width) !important;
+}
+:where(body.chatgpt-toc-wide) [data-chatgpt-conversation-selection-target="true"][data-thread-find-target="conversation"] [data-thread-user-message-navigation-content="true"] {
+  min-width: 0 !important;
+  width: 100% !important;
+  max-width: var(--thread-content-responsive-max-width) !important;
+}
+:where(body.chatgpt-toc-wide) [data-conversation-screenshot-content],
+:where(body.chatgpt-toc-wide) #thread-bottom-container [class*="max-w-(--thread-content-max-width)"],
+:where(body.chatgpt-toc-wide) #thread-bottom [class*="max-w-(--thread-content-max-width)"],
+:where(body.chatgpt-toc-wide) [data-thread-scroll-footer="true"] [data-chatgpt-composer][data-composer-placement="thread"] {
   --thread-content-max-width: var(--wide-content-max-width) !important;
   width: 100% !important;
   max-width: var(--thread-content-max-width) !important;
 }
-
-[data-turn="assistant"] .markdown.prose {
+:where(body.chatgpt-toc-wide) [data-turn="assistant"] .markdown.prose,
+:where(body.chatgpt-toc-wide) [data-markdown-text-style="assistant-message"] {
   width: 100% !important;
   max-width: none !important;
   padding-inline: 10px;
@@ -37,32 +74,58 @@ body.chatgpt-toc-open > .chatgpt-toc-app-root > :first-child {
   word-break: normal;
   overflow-wrap: anywhere;
 }
+:where(body.chatgpt-toc-wide) [data-user-message-bubble="true"] {
+  max-width: var(--user-chat-width) !important;
+}
+:where(body.chatgpt-toc-wide) [data-chatgpt-composer][data-composer-placement="thread"] {
+  --wide-content-max-width: var(--chatgpt-toc-content-max-width);
+  --thread-content-responsive-max-width: var(--wide-content-max-width);
+  --thread-content-max-width: var(--wide-content-max-width);
+  --thread-content-width: var(--wide-content-max-width);
+  min-width: 0 !important;
+  width: 100% !important;
+  max-width: var(--wide-content-max-width) !important;
+}
 
 /* Keep project pages and rich response content from widening their grid tracks. */
-#thread [class~="grid"]:has(
+:where(body.chatgpt-toc-wide) #thread [class~="grid"]:has(
+    > [class~="min-h-0"] > [class~="group/page-table-scroll"]
+  ),
+:where(body.chatgpt-toc-wide) [data-chatgpt-conversation-selection-target="true"][data-thread-find-target="conversation"] [class~="grid"]:has(
     > [class~="min-h-0"] > [class~="group/page-table-scroll"]
   ) {
   min-width: 0 !important;
   grid-template-columns: minmax(0, 1fr) !important;
 }
-
-#thread > [class~="composer-parent"]
+:where(body.chatgpt-toc-wide) #thread > [class~="composer-parent"]
   > [class~="grid"][class~="basis-auto"]
   > div {
   min-width: 0 !important;
   width: 100% !important;
   max-width: 100% !important;
 }
-
-#thread [class~="max-w-app-content"] {
+:where(body.chatgpt-toc-wide) #thread [class~="max-w-app-content"],
+:where(body.chatgpt-toc-wide) [data-chatgpt-conversation-selection-target="true"][data-thread-find-target="conversation"] [class~="max-w-app-content"] {
   min-width: 0 !important;
   width: 100% !important;
   max-width: none !important;
   margin-inline: 0 !important;
 }
 
+/* Keep the content-width limit on ChatGPT's message wrapper after lifting its app-content cap. */
+:where(body.chatgpt-toc-wide) #thread [class~="max-w-app-content"]:is(
+    [data-thread-user-message-navigation-content="true"],
+    :has([data-thread-user-message-navigation-content="true"])
+  ),
+:where(body.chatgpt-toc-wide) [data-chatgpt-conversation-selection-target="true"][data-thread-find-target="conversation"] [class~="max-w-app-content"]:is(
+    [data-thread-user-message-navigation-content="true"],
+    :has([data-thread-user-message-navigation-content="true"])
+  ) {
+  max-width: var(--thread-content-responsive-max-width) !important;
+}
+
 /* Fit tables to the response width and scroll only when their contents need more room. */
-[data-turn="assistant"] .markdown [class*="_tableContainer"] {
+:where(body.chatgpt-toc-wide) :is([data-turn="assistant"] .markdown, [data-markdown-text-style="assistant-message"]) [class*="_tableContainer"] {
   width: 100% !important;
   max-width: 100% !important;
   margin-inline: 0 !important;
@@ -70,15 +133,13 @@ body.chatgpt-toc-open > .chatgpt-toc-app-root > :first-child {
   overflow-x: auto !important;
   overscroll-behavior-inline: contain;
 }
-
-[data-turn="assistant"] .markdown [class*="_tableWrapper"] {
+:where(body.chatgpt-toc-wide) :is([data-turn="assistant"] .markdown, [data-markdown-text-style="assistant-message"]) [class*="_tableWrapper"] {
   min-width: 0 !important;
   width: 100% !important;
   max-width: none !important;
   margin-inline: 0 !important;
 }
-
-[data-turn="assistant"] .markdown [class*="_tableWrapper"] > table {
+:where(body.chatgpt-toc-wide) :is([data-turn="assistant"] .markdown, [data-markdown-text-style="assistant-message"]) [class*="_tableWrapper"] > table {
   width: 100% !important;
   min-width: 100% !important;
   max-width: none !important;
@@ -87,19 +148,18 @@ body.chatgpt-toc-open > .chatgpt-toc-app-root > :first-child {
 
 /* ChatGPT sizes data-col-size cells from --thread-content-width, which can be
    wider than the table container after the TOC sidebar reserves its space. */
-[data-turn="assistant"] .markdown table :is(th, td)[data-col-size] {
+:where(body.chatgpt-toc-wide) :is([data-turn="assistant"] .markdown, [data-markdown-text-style="assistant-message"]) table :is(th, td)[data-col-size] {
   min-width: 0 !important;
   max-width: none !important;
 }
 
 /* Shopping tables may transiently write a 1px inline size to product cards.
    Restore the card from the available cell width without affecting other images. */
-[data-turn="assistant"] .markdown table .product-table-sidebar-card {
+:where(body.chatgpt-toc-wide) :is([data-turn="assistant"] .markdown, [data-markdown-text-style="assistant-message"]) table .product-table-sidebar-card {
   width: min(100%, 200px) !important;
   max-width: 100%;
 }
-
-[data-turn="assistant"] .markdown table .product-table-sidebar-card
+:where(body.chatgpt-toc-wide) :is([data-turn="assistant"] .markdown, [data-markdown-text-style="assistant-message"]) table .product-table-sidebar-card
   > [data-shopping-product-image-pdp-click-target] {
   width: 100% !important;
   height: auto !important;
@@ -108,32 +168,29 @@ body.chatgpt-toc-open > .chatgpt-toc-app-root > :first-child {
 }
 
 /* Prevent long preformatted output from being clipped by the widened layout. */
-[data-turn="assistant"] .markdown pre {
+:where(body.chatgpt-toc-wide) :is([data-turn="assistant"] .markdown, [data-markdown-text-style="assistant-message"]) pre {
   max-width: 100%;
   overflow-x: auto;
 }
-
-[data-turn="assistant"] .markdown .whitespace-pre\!,
-[data-turn="assistant"] .markdown code.whitespace-pre\! span {
+:where(body.chatgpt-toc-wide) :is([data-turn="assistant"] .markdown, [data-markdown-text-style="assistant-message"]) .whitespace-pre\!,
+:where(body.chatgpt-toc-wide) :is([data-turn="assistant"] .markdown, [data-markdown-text-style="assistant-message"]) code.whitespace-pre\! span {
   white-space: pre-wrap !important;
   overflow-wrap: anywhere;
 }
-
-#thread > div pre div.w-full.overflow-y-auto { max-height: 75vh !important; }
+:where(body.chatgpt-toc-wide) #thread > div pre div.w-full.overflow-y-auto { max-height: 75vh !important; }
 
 /* Retain the useful editor height limits without applying broad utility-class overrides. */
-#prompt-textarea { max-height: 50vh !important; }
-
-[data-testid="cot-v5-pinned-row"] > button {
+:where(body.chatgpt-toc-wide) #prompt-textarea,
+:where(body.chatgpt-toc-wide) [data-composer-markdown] { max-height: 50vh !important; }
+:where(body.chatgpt-toc-wide) [data-testid="cot-v5-pinned-row"] > button {
   width: auto !important;
   max-width: none !important;
   padding-left: 0 !important;
   flex: 0 0 auto !important;
 }
-
-.markdown hr { margin-block: 5px; }
-.markdown h2 { margin-block: 10px 6px; }
-.markdown h3 { margin-block: 5px 3px; }
+:where(body.chatgpt-toc-wide) .markdown hr { margin-block: 5px; }
+:where(body.chatgpt-toc-wide) .markdown h2 { margin-block: 10px 6px; }
+:where(body.chatgpt-toc-wide) .markdown h3 { margin-block: 5px 3px; }
 
 #chatgpt-toc-sidebar {
   --toc-title-color: #1f2937;
@@ -148,11 +205,11 @@ body.chatgpt-toc-open > .chatgpt-toc-app-root > :first-child {
   --toc-active-prompt-bg: #ede9fe;
   --toc-active-prompt-outline: #6940c5;
   position: fixed;
-  inset: 0 0 0 auto;
+  inset: var(--chatgpt-toc-top-offset) 0 0 auto;
   z-index: 40;
   display: flex;
   width: var(--chatgpt-toc-width);
-  height: 100dvh;
+  height: calc(100dvh - var(--chatgpt-toc-top-offset));
   flex-direction: column;
   overflow: hidden;
   color: var(--tw-prose-body, var(--text-primary, #2f2f2f));
@@ -230,6 +287,25 @@ body.chatgpt-toc-open > .chatgpt-toc-app-root > :first-child {
   overscroll-behavior: contain;
   scrollbar-width: thin;
 }
+
+.toc-load-earlier {
+  display: block;
+  width: calc(100% - 6px);
+  margin: 5px 3px 7px;
+  padding: 6px 7px;
+  color: var(--toc-group-title-color);
+  background: var(--bg-secondary, var(--main-surface-secondary, #f4f4f4));
+  border: 1px solid var(--border-light, #d9d9d9);
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.25;
+  text-align: left;
+}
+
+.toc-load-earlier:hover { background: var(--surface-hover, #ececf1); }
+.toc-load-earlier:disabled { cursor: default; opacity: .65; }
 
 .toc-group { margin-bottom: 5px; padding-bottom: 5px; border-bottom: 1px solid var(--border-light, #e5e5e5); }
 .toc-group:last-child { border-bottom: 0; }
@@ -358,7 +434,7 @@ body.chatgpt-toc-open > .chatgpt-toc-app-root > :first-child {
 
 #chatgpt-toc-toggle {
   position: fixed;
-  top: 70px;
+  top: var(--chatgpt-toc-toggle-top-offset);
   right: 14px;
   z-index: 40;
   padding: 7px 10px;
@@ -403,6 +479,11 @@ body.chatgpt-toc-open > .chatgpt-toc-app-root > :first-child {
 .dark-mode .toc-collapse-icon:hover,
 .dark-mode .toc-group-collapse-icon:hover { background: var(--surface-hover, #2f2f2f); }
 
+.dark-mode .toc-load-earlier {
+  background: var(--bg-secondary, var(--main-surface-secondary, #2b2b2b));
+  border-color: var(--border-light, #424242);
+}
+
 .dark-mode .toc-group-header.active {
   color: var(--toc-active-prompt-color);
   background: var(--toc-active-prompt-bg);
@@ -416,11 +497,15 @@ body.chatgpt-toc-open > .chatgpt-toc-app-root > :first-child {
 .dark-mode .toc-item.active { color: #fff; background: #6940c5; border-left-color: #60a5fa; }
 
 .toc-item:focus-visible,
+.toc-load-earlier:focus-visible,
 .toc-group-header:focus-visible,
 .toc-close:focus-visible,
 .toc-collapse-icon:focus-visible,
 .toc-group-collapse-icon:focus-visible,
 #chatgpt-toc-toggle:focus-visible { outline: 2px solid #60a5fa; outline-offset: -2px; }
+
+#chatgpt-toc-sidebar[hidden],
+#chatgpt-toc-toggle[hidden] { display: none !important; }
 
 @media (max-width: 700px) { :root { --chatgpt-toc-width: min(200px, 55vw); } }
 

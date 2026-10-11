@@ -5,12 +5,21 @@
   const shared = typeof module !== 'undefined' && module.exports
     ? require('./shared.js')
     : globalThis.TOCNavigator;
-  const { SELECTORS, SIDEBAR_VISIBILITY_KEY, resolveDarkTheme, createCloseIcon } = shared;
+  const {
+    SELECTORS,
+    SIDEBAR_VISIBILITY_KEY,
+    findConversationRoot,
+    hasVisibleDialog,
+    resolveDarkTheme,
+    isTocScrolledToEnd,
+    createCloseIcon
+  } = shared;
 
   const sidebarMethods = {
     createSidebar() {
       this.sidebar = document.createElement('aside');
       this.sidebar.id = 'chatgpt-toc-sidebar';
+      this.sidebar.hidden = true;
       this.sidebar.setAttribute('aria-labelledby', 'chatgpt-toc-title');
       const extensionVersion = globalThis.chrome?.runtime?.getManifest?.().version;
       if (extensionVersion) this.sidebar.dataset.tocVersion = extensionVersion;
@@ -83,26 +92,90 @@
     },
 
     setSidebarVisible(visible, options = {}) {
+      this.sidebarPreferenceVisible = Boolean(visible);
+      this.updateSidebarAvailability();
+      if (options.persist !== false) this.saveSidebarVisibility(visible);
+      if (this.isVisible && options.focus !== false) this.sidebar.querySelector('.toc-close')?.focus();
+    },
+
+    updateSidebarAvailability() {
+      const pathname = globalThis.location?.pathname || '';
+      const source = shared.findTocSource(document);
+      if (source) this.sidebarConversationPath = pathname;
+      const suppressed = /^\/settings(?:\/|$)/.test(pathname) ||
+        /^#(?:settings|\/settings)(?:\b|\/)/.test(globalThis.location?.hash || '') ||
+        hasVisibleDialog(document, source?.kind === 'document' ? source.root : null);
+      const available = this.sidebarConversationPath === pathname && !suppressed;
+      const kind = source?.kind || (this.sourcePath === pathname ? this.source?.kind : null);
+      const homeComposer = Array.from(document.querySelectorAll('[data-chatgpt-composer][data-composer-placement="home"]'))
+        .find((element) => element.getBoundingClientRect().width > 0 && !element.closest('[hidden],[aria-hidden="true"],[inert]'));
+      const wide = !suppressed && (available && kind === 'conversation' || !kind && Boolean(homeComposer));
+      this.refreshHomeComposerRoot(wide ? homeComposer : null);
+      const visible = available && this.sidebarPreferenceVisible;
+      const state = `${available}:${visible}:${kind || 'none'}:${wide}`;
+      if (this.sidebarAvailabilityState === state) return;
+      this.sidebarAvailabilityState = state;
       this.isVisible = visible;
+      this.sidebar.hidden = !available;
       this.sidebar.classList.toggle('is-open', visible);
       this.sidebar.setAttribute('aria-hidden', String(!visible));
-      this.toggleButton.hidden = visible;
+      this.toggleButton.hidden = !available || this.sidebarPreferenceVisible;
       this.toggleButton.setAttribute('aria-expanded', String(visible));
       document.body.classList.toggle('chatgpt-toc-open', visible);
+      document.body.classList.toggle('chatgpt-toc-conversation', available && (source?.kind || this.source?.kind) === 'conversation');
+      document.body.classList.toggle('chatgpt-toc-wide', wide);
       this.refreshAppRoot();
-      if (options.persist !== false) this.saveSidebarVisibility(visible);
-      if (visible && options.focus !== false) this.sidebar.querySelector('.toc-close')?.focus();
+    },
+
+    refreshHomeComposerRoot(composer) {
+      let root = null;
+      for (let element = composer?.parentElement; element && element !== document.body; element = element.parentElement) {
+        const style = getComputedStyle(element);
+        if (style.display !== 'contents' && style.maxWidth !== 'none' && element.getBoundingClientRect().width > 0) {
+          root = element;
+          break;
+        }
+      }
+      if (root === this.homeComposerRoot && (!root || root.classList.contains('chatgpt-toc-home-composer-root'))) return;
+      this.homeComposerRoot?.classList.remove('chatgpt-toc-home-composer-root');
+      this.homeComposerRoot = root;
+      root?.classList.add('chatgpt-toc-home-composer-root');
+    },
+
+    captureTocScrollState() {
+      if (!this.tocContent) return null;
+      return {
+        scrollTop: this.tocContent.scrollTop,
+        followTail: isTocScrolledToEnd(
+          this.tocContent.scrollTop,
+          this.tocContent.scrollHeight,
+          this.tocContent.clientHeight
+        )
+      };
+    },
+
+    restoreTocScrollState(state) {
+      if (!state || !this.tocContent) return;
+      if (state.followTail) {
+        this.tocContent.scrollTop = this.tocContent.scrollHeight;
+        return;
+      }
+      this.tocContent.scrollTop = state.scrollTop;
+      this.preserveTocScrollOnActiveUpdate = true;
     },
 
     refreshAppRoot() {
-      const main = document.querySelector(SELECTORS.main);
+      const thread = findConversationRoot(document);
+      const main = thread?.closest('main,[role="main"]') ||
+        document.querySelector('[role="main"]') ||
+        document.querySelector(SELECTORS.main);
       if (!main) return;
       let candidate = main;
       while (candidate.parentElement && candidate.parentElement !== document.body) candidate = candidate.parentElement;
       if (candidate === this.sidebar || candidate === this.toggleButton) return;
       if (this.appRoot && this.appRoot !== candidate) this.appRoot.classList.remove('chatgpt-toc-app-root');
       this.appRoot = candidate;
-      this.appRoot.classList.add('chatgpt-toc-app-root');
+      if (!this.appRoot.classList.contains('chatgpt-toc-app-root')) this.appRoot.classList.add('chatgpt-toc-app-root');
     },
 
     observeTheme() {

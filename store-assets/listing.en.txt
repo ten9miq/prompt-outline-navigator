@@ -1,0 +1,16 @@
+Prompt Outline Navigator adds a live outline and navigation sidebar to supported ChatGPT content.
+
+Features:
+• Generate an outline from user prompts and response headings in normal and GPT/project conversations.
+• Navigate active Space documents and dot message feeds when their supported content structure is present.
+• Track your current prompt and heading, and collapse prompt groups and heading levels.
+• Scroll smoothly to rendered destinations; restore older virtualized conversation destinations when possible.
+• Remember whether the sidebar is open or closed. Hide it temporarily for settings and operation dialogs, then restore your preference.
+• Use a full-height sidebar with light and dark themes.
+• Widen conversation responses and composers, including initial messages on new-chat and project home screens.
+
+The outline is built from content rendered in the page. Long conversations may load older messages as you navigate; the extension retains entries it has already discovered. ChatGPT features and page structures may vary by account and change over time. Not every page produces an outline.
+
+Conversation, document, and message-feed content is processed locally in your browser. It is not sent to the developer or any external server. Only the sidebar's open/closed preference is saved in local extension storage.
+
+Prompt Outline Navigator is an independent project and is not affiliated with or endorsed by OpenAI. ChatGPT access and features are provided by OpenAI; this extension does not supply an account or subscription.

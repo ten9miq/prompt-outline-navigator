@@ -2,9 +2,9 @@
 
 [English](PRIVACY.md) | [日本語](PRIVACY.ja.md)
 
-Effective date: September 6, 2026
+Effective date: October 11, 2026.
 
-Prompt Outline Navigator is a browser extension that creates a table of contents for conversations displayed on ChatGPT. This policy explains how the extension handles data.
+Prompt Outline Navigator is a browser extension that creates a table of contents for supported conversations, active Space documents, and dot message feeds displayed on ChatGPT. This policy explains how the extension handles data.
 
 ## Data processed
 
@@ -12,6 +12,7 @@ To provide its table-of-contents and navigation features, the extension reads th
 
 - User prompt text
 - Assistant response text and headings
+- Active document text and headings, and visible message-feed text
 - The current prompt position exposed by ChatGPT's page interface
 
 This content is processed locally in the browser only. It is not collected by the developer, transmitted to an external server, sold, or shared with third parties.
@@ -20,7 +21,7 @@ This content is processed locally in the browser only. It is not collected by th
 
 The extension stores only a boolean preference indicating whether its sidebar is open or closed. This preference is stored locally using `chrome.storage.local`.
 
-Conversation content is not written to extension storage. It remains in page memory only while the supported ChatGPT page is open and is discarded when the page is closed or reloaded.
+Conversation, document, and message-feed content is not written to extension storage. It remains in page memory only while the supported ChatGPT page is open and is discarded when the page is closed or reloaded.
 
 The sidebar preference remains until the user removes the extension, clears the extension's stored data, or changes the preference through the extension.
 
@@ -29,7 +30,7 @@ The sidebar preference remains until the user removes the extension, clears the 
 The extension uses:
 
 - `storage`: to remember the sidebar's open or closed state.
-- Access to `https://chatgpt.com/*` and `https://chat.openai.com/*`: to detect prompts and headings and display navigation on supported ChatGPT pages.
+- Access to `https://chatgpt.com/*` and `https://chat.openai.com/*`: to detect supported conversation, document, and message-feed content and display its outline and navigation.
 
 ## Remote code and external services
 
