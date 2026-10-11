@@ -18,12 +18,10 @@ const {
   findActiveTrackingTarget,
   findActiveGroupRange,
   isTocScrolledToEnd,
-  getNativeTocIndex,
-  collectNativeTocItems,
-  getPromptIndexFromTestId,
   findRemountedHeading,
-  canCreateConversationGroup,
   shouldPreserveDisconnectedGroup,
+  getConversationIdentity,
+  findConversationRoot,
   resolveDarkTheme,
   SIDEBAR_VISIBILITY_KEY
 } = require(sourcePath);
@@ -118,6 +116,11 @@ test('long prompts are bounded without changing shorter prompts', () => {
   assert.equal(truncateText('a'.repeat(201)), `${'a'.repeat(200)}…`);
 });
 
+test('observed user bubble takes precedence over wrapper labels and controls', () => {
+  const prompt = { querySelector: (selector) => selector === SELECTORS.userPromptContent ? { textContent: 'Anonymous prompt' } : { textContent: 'Edit Delete' } };
+  assert.equal(getPromptText(prompt), 'Anonymous prompt');
+});
+
 test('prompt labels use the message body without attachment card text', () => {
   const body = { textContent: 'Actual prompt text' };
   const prompt = {
@@ -133,14 +136,76 @@ test('prompt labels use the message body without attachment card text', () => {
   assert.equal(getPromptText(attachmentOnly), '');
 });
 
+test('assistant role marker is not collected as response content', () => {
+  const marker = { hasAttribute: (name) => name === 'data-conversation-role' };
+  const heading = { hasAttribute: () => false };
+  const assistant = { isConnected: true, querySelectorAll: () => [marker, heading] };
+  const added = [], maps = new WeakMap();
+  const group = { headings: [], content: { append() {} } };
+  const context = {
+    captureTocScrollState: () => null, restoreTocScrollState() {}, getPromptIndexFromElement: () => null,
+    nativeIndexToGroup: new Map(), turnToGroup: new Map([[assistant, group]]), headingToTocItem: maps,
+    addHeading: (g, h) => { added.push(h); g.headings.push(h); maps.set(h, {}); }, updateHeading() {},
+    refreshHeadingHierarchy() {}, scheduleActiveUpdate() {}
+  };
+  ChatGPTTOC.prototype.reconcileAssistantTurn.call(context, assistant);
+  assert.deepEqual(added, [heading]); assert.deepEqual(group.headings, [heading]);
+});
+
 test('DOM-dependent selectors are centralized', () => {
-  assert.equal(SELECTORS.thread, '#thread');
+  assert.match(SELECTORS.thread, /\[data-chatgpt-conversation-selection-target="true"\]\[data-thread-find-target="conversation"\]/);
+  assert.match(SELECTORS.userMessage, /\[data-user-message-bubble="true"\]/);
+  assert.match(SELECTORS.assistantMessage, /\[data-chatgpt-search-unit-key\]:has\(\[data-conversation-role="assistant"\]\)/);
   assert.equal(SELECTORS.promptText, '.whitespace-pre-wrap');
-  assert.equal(SELECTORS.assistantMessage, '[data-message-author-role="assistant"]');
-  assert.equal(SELECTORS.headings, 'h1,h2,h3,h4,h5,h6');
-  assert.equal(SELECTORS.conversationTurn, '[data-testid^="conversation-turn-"]');
-  assert.equal(SELECTORS.nativeTocItem, 'button[data-toc-item-index]');
-  assert.equal(SELECTORS.nativeTocActive, 'button[data-toc-item-index][data-toc-active]');
+  assert.match(SELECTORS.headings, /h1,h2,h3,h4,h5,h6/);
+  assert.match(SELECTORS.conversationTurn, /\[data-turn-key\]/);
+  assert.doesNotMatch(SELECTORS.stableTurn, /data-testid/);
+  assert.equal(SELECTORS.conversationScroll, '[data-app-action-timeline-scroll]');
+  assert.equal(SELECTORS.threadComposer, '[data-chatgpt-composer][data-composer-placement="thread"]');
+  assert.equal(SELECTORS.nativeTocItem, undefined);
+  assert.equal(SELECTORS.nativeTocActive, undefined);
+});
+
+test('conversation identity uses rendered id and falls back to route path', () => {
+  assert.equal(getConversationIdentity({ querySelector: () => ({ getAttribute: () => 'fixture-conversation' }) }, '/ignored'), 'conversation:fixture-conversation');
+  assert.equal(getConversationIdentity({ querySelector: () => null }, '/c/fixture-route'), 'path:/c/fixture-route');
+});
+
+test('visible conversation root wins over hidden or empty home roots', () => {
+  const candidate = (visible, turns) => ({ getClientRects: () => ({ length: visible ? 1 : 0 }), querySelectorAll: (selector) => selector === SELECTORS.conversationTurn ? Array(turns).fill({}) : [] });
+  const hidden = candidate(false, 4), empty = candidate(true, 0), populated = candidate(true, 2);
+  const doc = { querySelectorAll: () => [hidden, empty, populated], defaultView: { getComputedStyle: (el) => ({ display: el.getClientRects().length ? 'block' : 'none' }) } };
+  assert.equal(findConversationRoot(doc), populated);
+});
+
+test('modern turn key remains stable when an assistant is remounted', () => {
+  const makeAssistant = () => ({ closest: () => ({ getAttribute: (name) => name === 'data-turn-key' ? 'fixture-key' : null }) });
+  assert.equal(ChatGPTTOC.prototype.getStableTurnKey.call({}, makeAssistant()), 'turn:fixture-key');
+  assert.equal(ChatGPTTOC.prototype.getStableTurnKey.call({}, makeAssistant()), 'turn:fixture-key');
+});
+
+test('numeric turn test ids are not used as stable prompt identity', () => {
+  const assistant = { closest: () => ({ getAttribute: (name) => name === 'data-testid' ? 'conversation-turn-44' : null }) };
+  assert.equal(ChatGPTTOC.prototype.getStableTurnKey.call({}, assistant), null);
+});
+
+test('same-root conversation id changes reset the existing conversation state', () => {
+  const previousDocument = globalThis.document, previousObserver = globalThis.MutationObserver, previousLocation = globalThis.location;
+  let id = 'first', clears = 0, scans = 0, disconnects = 0;
+  const thread = { isConnected: true, getClientRects: () => ({ length: 1 }), querySelector: (selector) => selector === SELECTORS.conversationIdentity ? { getAttribute: () => id } : null, querySelectorAll: () => [] };
+  globalThis.document = { querySelectorAll: (selector) => selector === SELECTORS.thread ? [thread] : [], querySelector: () => null };
+  globalThis.location = { pathname: '/c/reused-root' };
+  globalThis.MutationObserver = class { observe() {} disconnect() { disconnects++; } };
+  const context = { thread, conversationIdentity: 'conversation:first', conversationObserver: { disconnect() { disconnects++; } }, clearConversation() { clears++; }, scanConversation() { scans++; }, syncNativePrompts() {}, getConversationIdentity: ChatGPTTOC.prototype.getConversationIdentity };
+  try {
+    ChatGPTTOC.prototype.bindCurrentThread.call(context); assert.equal(clears, 0);
+    id = 'second'; ChatGPTTOC.prototype.bindCurrentThread.call(context);
+    assert.equal(context.conversationIdentity, 'conversation:second'); assert.equal(clears, 1); assert.equal(scans, 1); assert.equal(disconnects, 1);
+  } finally {
+    if (previousDocument === undefined) delete globalThis.document; else globalThis.document = previousDocument;
+    if (previousObserver === undefined) delete globalThis.MutationObserver; else globalThis.MutationObserver = previousObserver;
+    if (previousLocation === undefined) delete globalThis.location; else globalThis.location = previousLocation;
+  }
 });
 
 test('sidebar heading uses the extension branding', () => {
@@ -191,44 +256,6 @@ test('sidebar visibility storage reads closed state and writes later changes', a
   }
 });
 
-test('native prompt TOC indices are parsed and deduplicated in DOM order', () => {
-  const button = (value) => ({ getAttribute: (name) => name === 'data-toc-item-index' ? value : null });
-  const first = button('0');
-  const duplicate = button('0');
-  const second = button('1');
-  const invalid = button('-1');
-  const items = collectNativeTocItems([first, duplicate, invalid, second]);
-
-  assert.equal(getNativeTocIndex(first), 0);
-  assert.equal(getNativeTocIndex(invalid), null);
-  assert.deepEqual([...items.keys()], [0, 1]);
-  assert.equal(items.get(0), first);
-});
-
-test('conversation turn test ids map user and assistant nodes to one prompt index', () => {
-  assert.equal(getPromptIndexFromTestId('conversation-turn-1', 'user'), 0);
-  assert.equal(getPromptIndexFromTestId('conversation-turn-2', 'assistant'), 0);
-  assert.equal(getPromptIndexFromTestId('conversation-turn-7', 'user'), 3);
-  assert.equal(getPromptIndexFromTestId('conversation-turn-8', 'assistant'), 3);
-  assert.equal(getPromptIndexFromTestId('conversation-turn-6', 'user'), 3);
-  assert.equal(getPromptIndexFromTestId('conversation-turn-7', 'assistant'), 3);
-  assert.equal(getPromptIndexFromTestId('conversation-turn-x'), null);
-});
-
-test('conversation turn indices remain authoritative while the native TOC is absent', () => {
-  const prompt = {};
-  const assistant = {};
-  const context = {
-    nativeTocItems: new Map(),
-    getPromptIndexFromElement: (element) => element === prompt || element === assistant ? 5 : null
-  };
-
-  assert.equal(
-    ChatGPTTOC.prototype.resolveNativeIndex.call(context, prompt, assistant, 0, 1),
-    5
-  );
-});
-
 test('a disconnected heading is replaced by its remounted counterpart', () => {
   const heading = (text, tagName, isConnected) => ({ textContent: text, tagName, isConnected });
   const stale = heading('Details', 'H2', false);
@@ -243,61 +270,54 @@ test('a disconnected heading is replaced by its remounted counterpart', () => {
   assert.equal(findRemountedHeading([], { index: 0, tagName: 'H2', text: 'Details' }), null);
 });
 
-test('native TOC authority prevents unmatched fallback groups', () => {
-  assert.equal(canCreateConversationGroup(null, 5), false);
-  assert.equal(canCreateConversationGroup(3, 5), true);
-  assert.equal(canCreateConversationGroup(null, 0), true);
-});
-
 test('stable turn groups survive temporary ChatGPT DOM virtualization', () => {
   assert.equal(shouldPreserveDisconnectedGroup({ key: 'test:conversation-turn-2' }), true);
   assert.equal(shouldPreserveDisconnectedGroup({ key: null }), false);
   assert.equal(shouldPreserveDisconnectedGroup(null), false);
 });
 
-test('native TOC reconciliation removes a keyed duplicate for an indexed prompt', () => {
-  const canonical = { nativeIndex: 3, promptIndex: 3, key: 'message:canonical' };
-  const duplicate = { nativeIndex: null, promptIndex: 3, key: 'message:remounted' };
-  const disconnected = { nativeIndex: null, promptIndex: 8, key: 'message:disconnected' };
-  const removed = [];
+test('virtualized group labels are based on the discovered TOC order', () => {
+  const makeGroup = (promptIndex, nativeIndex = null) => ({
+    nativeIndex,
+    promptIndex,
+    title: { textContent: '' },
+    section: { promptIndex }
+  });
+  const promptTen = makeGroup(9, 9);
+  const promptSix = makeGroup(5);
+  const promptFive = makeGroup(4);
+  const appended = [];
   const context = {
-    groups: [canonical, duplicate, disconnected],
-    nativeTocItems: new Map([[3, {}]]),
-    nativeIndexToGroup: new Map([[3, canonical]]),
-    removeGroup(group) { removed.push(group); }
+    groups: [promptTen, promptSix, promptFive],
+    tocContent: { append: (section) => appended.push(section.promptIndex) },
+    captureTocScrollState: () => null,
+    restoreTocScrollState() {},
+    updateEarlierPromptLoader() {}
   };
 
-  ChatGPTTOC.prototype.removeNonNativeGroups.call(context);
-  assert.deepEqual(removed, [duplicate]);
+  ChatGPTTOC.prototype.updateGroupOrderAndLabels.call(context);
+
+  assert.deepEqual(context.groups, [promptTen, promptSix, promptFive]);
+  assert.deepEqual(appended, [9, 5, 4]);
+  assert.equal(promptTen.title.textContent, 'Prompt 1');
+  assert.equal(promptSix.title.textContent, 'Prompt 2');
+  assert.equal(promptFive.title.textContent, 'Prompt 3');
 });
 
-test('a partial native TOC snapshot does not discard previously discovered prompt groups', () => {
-  const oldButton = { isConnected: false };
-  const currentButton = { isConnected: true };
-  const replacementButton = { isConnected: true };
-  const firstGroup = { nativeIndex: 0, nativeButton: oldButton };
-  const secondGroup = { nativeIndex: 1, nativeButton: currentButton };
-  let cleanupCalls = 0;
+test('sparse remounted turns do not move a late prompt ahead of cached earlier prompts', () => {
+  const earlier = { lastKnownScrollTop: -2400, title: {}, section: {} };
+  const cachedMiddle = { lastKnownScrollTop: -1500, title: {}, section: {} };
+  const later = { lastKnownScrollTop: -300, title: {}, section: {} };
   const context = {
-    nativeTocItems: new Map([[0, oldButton], [1, currentButton]]),
-    nativeIndexToGroup: new Map([[0, firstGroup], [1, secondGroup]]),
-    groups: [firstGroup, secondGroup],
-    addGroup() { throw new Error('No group should be recreated'); },
-    removeNonNativeGroups() { cleanupCalls += 1; }
+    groups: [cachedMiddle, earlier, later],
+    tocContent: { append() {} },
+    captureTocScrollState: () => null,
+    restoreTocScrollState() {},
+    updateEarlierPromptLoader() {}
   };
-
-  ChatGPTTOC.prototype.reconcileNativeTocItems.call(
-    context,
-    new Map([[1, replacementButton]])
-  );
-
-  assert.equal(context.nativeTocItems.size, 2);
-  assert.equal(context.nativeTocItems.get(0), oldButton);
-  assert.equal(context.nativeIndexToGroup.get(0), firstGroup);
-  assert.equal(firstGroup.nativeIndex, 0);
-  assert.equal(firstGroup.nativeButton, null);
-  assert.equal(secondGroup.nativeButton, replacementButton);
-  assert.equal(cleanupCalls, 1);
+  ChatGPTTOC.prototype.updateGroupOrderAndLabels.call(context, [earlier, later]);
+  assert.deepEqual(context.groups, [earlier, cachedMiddle, later]);
+  assert.equal(later.title.textContent, 'Prompt 3');
 });
 
 test('virtualized stable turns detach live nodes without discarding cached headings', () => {
@@ -354,7 +374,7 @@ test('rebinding a remounted assistant clears its stale group and heading ownersh
   assert.equal(previousGroup.key, null);
   assert.deepEqual(previousGroup.headings, []);
   assert.equal(indexedGroup.assistant, assistant);
-  assert.equal(indexedGroup.promptIndex, 3);
+  assert.equal(indexedGroup.promptIndex, null);
   assert.equal(context.turnToGroup.get(assistant), indexedGroup);
   assert.equal(context.turnKeyToGroup.get('test:turn-8'), indexedGroup);
   assert.equal(reconciled, 1);
@@ -385,7 +405,7 @@ test('the first resolved prompt label stays fixed across remounted prompt nodes'
   assert.equal(promptText.textContent, 'Original prompt');
 });
 
-test('a mismatched native prompt cannot become the fixed group label', () => {
+test('prompt capture uses the rendered message without relying on a turn index', () => {
   const prompt = { textContent: 'Prompt from another group' };
   const promptText = { textContent: '', hidden: true };
   const group = { prompt: null, promptText, promptTextCaptured: false, nativeIndex: 2 };
@@ -393,12 +413,11 @@ test('a mismatched native prompt cannot become the fixed group label', () => {
     promptToGroups: new WeakMap(),
     promptObserver: { observe() {} },
     detachPrompt() {},
-    getPromptIndexFromElement: () => 8
   };
 
   ChatGPTTOC.prototype.setGroupPrompt.call(context, group, prompt);
-  assert.equal(promptText.textContent, '');
-  assert.equal(group.promptTextCaptured, false);
+  assert.equal(promptText.textContent, 'Prompt from another group');
+  assert.equal(group.promptTextCaptured, true);
 });
 
 test('navigation recovery prefers the current DOM thread over a stale instance reference', () => {
@@ -410,9 +429,10 @@ test('navigation recovery prefers the current DOM thread over a stale instance r
   const staleThread = { parentElement: null };
   globalThis.document = {
     querySelector: (selector) => selector === SELECTORS.thread ? currentThread : null,
+    querySelectorAll: (selector) => selector === SELECTORS.thread ? [currentThread] : [],
     scrollingElement: null
   };
-  globalThis.getComputedStyle = (element) => ({ overflowY: element.overflowY });
+  globalThis.getComputedStyle = (element) => ({ overflowY: element.overflowY, flexDirection: 'column' });
   try {
     assert.equal(ChatGPTTOC.prototype.getConversationScrollContainer.call({ thread: staleThread }), scroller);
   } finally {
@@ -423,32 +443,60 @@ test('navigation recovery prefers the current DOM thread over a stale instance r
   }
 });
 
+test('reverse conversation scrolling retains negative offsets and maps target geometry', () => {
+  const previousGetComputedStyle = globalThis.getComputedStyle, previousWindow = globalThis.window, calls = [];
+  const scroller = { scrollTop: -757, scrollHeight: 3920, clientHeight: 705, clientTop: 0, scrollTo: (value) => calls.push(value), getBoundingClientRect: () => ({ top: 100 }) };
+  globalThis.getComputedStyle = () => ({ flexDirection: 'column-reverse' }); globalThis.window = { innerHeight: 1000 };
+  try { ChatGPTTOC.prototype.scrollConversationToElement.call({ getConversationScrollContainer: () => scroller }, { getBoundingClientRect: () => ({ top: 250 }) }, 'auto'); assert.deepEqual(calls[0], { top: -707, behavior: 'auto' }); }
+  finally { if (previousGetComputedStyle === undefined) delete globalThis.getComputedStyle; else globalThis.getComputedStyle = previousGetComputedStyle; if (previousWindow === undefined) delete globalThis.window; else globalThis.window = previousWindow; }
+});
+
+test('conversation root is detected as the scroller when it owns overflow', () => {
+  const previousDocument = globalThis.document, previousStyle = globalThis.getComputedStyle;
+  const root = { parentElement: null, scrollHeight: 1800, clientHeight: 800, overflowY: 'auto', getClientRects: () => ({ length: 1 }), querySelectorAll: () => [] };
+  globalThis.document = { querySelectorAll: (selector) => selector === SELECTORS.thread ? [root] : [], querySelector: () => null, scrollingElement: null };
+  globalThis.getComputedStyle = (el) => ({ overflowY: el.overflowY, flexDirection: 'column' });
+  try { assert.equal(ChatGPTTOC.prototype.getConversationScrollContainer.call({ thread: null }), root); }
+  finally { if (previousDocument === undefined) delete globalThis.document; else globalThis.document = previousDocument; if (previousStyle === undefined) delete globalThis.getComputedStyle; else globalThis.getComputedStyle = previousStyle; }
+});
+
 test('virtualized navigation scrolls the conversation container to its start', () => {
   const calls = [];
-  const scroller = { scrollTo: (options) => calls.push(options) };
+  const previousGetComputedStyle = globalThis.getComputedStyle;
+  const scroller = { scrollHeight: 2000, clientHeight: 800, flexDirection: 'column', scrollTo: (options) => calls.push(options) };
+  globalThis.getComputedStyle = (element) => ({ flexDirection: element.flexDirection });
   const context = { getConversationScrollContainer: () => scroller };
 
-  assert.equal(ChatGPTTOC.prototype.scrollConversationToStart.call(context), true);
-  assert.deepEqual(calls, [{ top: 0, behavior: 'auto' }]);
+  try {
+    assert.equal(ChatGPTTOC.prototype.scrollConversationToStart.call(context), true);
+    assert.deepEqual(calls, [{ top: 0, behavior: 'auto' }]);
+    scroller.flexDirection = 'column-reverse';
+    assert.equal(ChatGPTTOC.prototype.scrollConversationToStart.call(context), true);
+    assert.deepEqual(calls[1], { top: -1200, behavior: 'auto' });
+  } finally {
+    if (previousGetComputedStyle === undefined) delete globalThis.getComputedStyle;
+    else globalThis.getComputedStyle = previousGetComputedStyle;
+  }
   assert.equal(ChatGPTTOC.prototype.scrollConversationToStart.call({ getConversationScrollContainer: () => null }), false);
 });
 
 test('virtualized navigation loads earlier turns through the oldest rendered turn', () => {
   const previousDocument = globalThis.document;
   const scrollCalls = [];
-  const oldestRenderedTurn = {
-    isConnected: true,
-    scrollIntoView: (options) => scrollCalls.push(options)
-  };
+  const oldestRenderedTurn = { isConnected: true };
   const currentThread = {
-    querySelector: (selector) => selector === SELECTORS.conversationTurn ? oldestRenderedTurn : null
+    querySelector: (selector) => selector === SELECTORS.conversationTurn ? oldestRenderedTurn : null,
+    getClientRects: () => ({ length: 1 }),
+    querySelectorAll: (selector) => selector === SELECTORS.conversationTurn ? [oldestRenderedTurn] : []
   };
   globalThis.document = {
-    querySelector: (selector) => selector === SELECTORS.thread ? currentThread : null
+    querySelector: (selector) => selector === SELECTORS.thread ? currentThread : null,
+    querySelectorAll: (selector) => selector === SELECTORS.thread ? [currentThread] : []
   };
   try {
-    assert.equal(ChatGPTTOC.prototype.loadEarlierConversationTurns.call({}), true);
-    assert.deepEqual(scrollCalls, [{ block: 'start', behavior: 'auto' }]);
+    const context = { scrollConversationToElement: (...args) => scrollCalls.push(args) };
+    assert.equal(ChatGPTTOC.prototype.loadEarlierConversationTurns.call(context), true);
+    assert.deepEqual(scrollCalls, [[oldestRenderedTurn, 'auto']]);
   } finally {
     if (previousDocument === undefined) delete globalThis.document;
     else globalThis.document = previousDocument;
@@ -458,7 +506,7 @@ test('virtualized navigation loads earlier turns through the oldest rendered tur
 test('virtualized navigation falls back when no rendered turn is available', () => {
   const previousDocument = globalThis.document;
   const fallbackCalls = [];
-  globalThis.document = { querySelector: () => null };
+  globalThis.document = { querySelector: () => null, querySelectorAll: () => [] };
   const context = {
     scrollConversationToStart: () => {
       fallbackCalls.push(true);
@@ -474,27 +522,9 @@ test('virtualized navigation falls back when no rendered turn is available', () 
   }
 });
 
-test('earlier prompt loading is based on the first prompt rather than numbered placeholders', () => {
-  const unloadedFirst = { nativeIndex: 0, promptIndex: 0, contentCaptured: false };
-  const loadedFirst = { nativeIndex: 0, promptIndex: 0, contentCaptured: true };
-  const laterPrompt = { nativeIndex: null, promptIndex: 4, contentCaptured: true };
-  const unloadedLaterPrompt = { nativeIndex: 3, promptIndex: 3, contentCaptured: false };
-
-  assert.equal(ChatGPTTOC.prototype.hasUnloadedEarlierPrompts.call({ groups: [unloadedFirst, laterPrompt] }), true);
-  assert.equal(ChatGPTTOC.prototype.hasUnloadedEarlierPrompts.call({ groups: [loadedFirst, laterPrompt] }), false);
-  assert.equal(ChatGPTTOC.prototype.hasUnloadedEarlierPrompts.call({
-    groups: [loadedFirst, unloadedLaterPrompt, laterPrompt]
-  }), false);
-  assert.equal(ChatGPTTOC.prototype.hasUnloadedEarlierPrompts.call({ groups: [laterPrompt] }), true);
-  assert.equal(ChatGPTTOC.prototype.hasUnloadedEarlierPrompts.call({
-    groups: [{ nativeIndex: null, promptIndex: null, contentCaptured: true }]
-  }), false);
-});
-
-test('earlier prompt loading prefers ChatGPT native Prompt 1 navigation', () => {
-  let nativeClicks = 0;
-  let fallbackLoads = 0;
-  let waits = 0;
+test('earlier content navigation scrolls the conversation to its beginning', () => {
+  let scrollsToStart = 0;
+  let finishes = 0;
   const loader = {
     disabled: false,
     setAttribute(name, value) { this[name] = value; }
@@ -502,23 +532,62 @@ test('earlier prompt loading prefers ChatGPT native Prompt 1 navigation', () => 
   const context = {
     earlierPromptLoadRequestId: 2,
     earlierPromptLoader: loader,
-    nativeTocItems: new Map([[0, { isConnected: true, click() { nativeClicks += 1; } }]]),
-    hasUnloadedEarlierPrompts: () => true,
-    updateEarlierPromptLoader() {},
-    loadEarlierConversationTurns() { fallbackLoads += 1; },
-    waitForEarlierPrompts(requestId) {
-      waits += 1;
-      assert.equal(requestId, 3);
-    }
+    isConversationScrolledFromStart: () => true,
+    scrollConversationToStart() { scrollsToStart += 1; },
+    finishEarlierPromptLoading() { finishes += 1; }
   };
+  const previousRAF = globalThis.requestAnimationFrame;
+  globalThis.requestAnimationFrame = (callback) => callback();
+  try {
+    ChatGPTTOC.prototype.startEarlierPromptLoading.call(context);
+    assert.equal(context.earlierPromptLoadRequestId, 3);
+    assert.equal(loader.disabled, true);
+    assert.equal(loader['aria-busy'], 'true');
+    assert.equal(scrollsToStart, 1);
+    assert.equal(finishes, 1);
+  } finally {
+    if (previousRAF === undefined) delete globalThis.requestAnimationFrame;
+    else globalThis.requestAnimationFrame = previousRAF;
+  }
+});
 
-  ChatGPTTOC.prototype.startEarlierPromptLoading.call(context);
-  assert.equal(context.earlierPromptLoadRequestId, 3);
-  assert.equal(loader.disabled, true);
-  assert.equal(loader['aria-busy'], 'true');
-  assert.equal(nativeClicks, 1);
-  assert.equal(fallbackLoads, 0);
-  assert.equal(waits, 1);
+test('conversation-start control follows normal and reverse scroll boundaries', () => {
+  const scroller = { scrollHeight: 1200, clientHeight: 600, scrollTop: 30 };
+  const context = { groups: [{}], getConversationScrollContainer: () => scroller };
+  const previousGetComputedStyle = globalThis.getComputedStyle;
+  globalThis.getComputedStyle = () => ({ flexDirection: 'column' });
+  try {
+    assert.equal(ChatGPTTOC.prototype.isConversationScrolledFromStart.call(context), true);
+    scroller.scrollTop = 0;
+    assert.equal(ChatGPTTOC.prototype.isConversationScrolledFromStart.call(context), false);
+    globalThis.getComputedStyle = () => ({ flexDirection: 'column-reverse' });
+    scroller.scrollTop = -597;
+    assert.equal(ChatGPTTOC.prototype.isConversationScrolledFromStart.call(context), true);
+    scroller.scrollTop = -600;
+    assert.equal(ChatGPTTOC.prototype.isConversationScrolledFromStart.call(context), false);
+  } finally {
+    if (previousGetComputedStyle === undefined) delete globalThis.getComputedStyle;
+    else globalThis.getComputedStyle = previousGetComputedStyle;
+  }
+});
+
+test('conversation-start control is removed when the scroll boundary reaches the beginning', () => {
+  let removed = 0;
+  const scroller = { scrollHeight: 1200, clientHeight: 600, scrollTop: 0 };
+  const context = Object.assign(Object.create(ChatGPTTOC.prototype), {
+    groups: [{}],
+    earlierPromptLoader: { remove() { removed += 1; } },
+    getConversationScrollContainer: () => scroller
+  });
+  const previousGetComputedStyle = globalThis.getComputedStyle;
+  globalThis.getComputedStyle = () => ({ flexDirection: 'column' });
+  try {
+    ChatGPTTOC.prototype.updateEarlierPromptLoader.call(context);
+  } finally {
+    if (previousGetComputedStyle === undefined) delete globalThis.getComputedStyle;
+    else globalThis.getComputedStyle = previousGetComputedStyle;
+  }
+  assert.equal(removed, 1);
 });
 
 test('normal TOC navigation cancels a pending earlier prompt load', () => {
@@ -556,6 +625,71 @@ test('normal TOC navigation cancels a pending earlier prompt load', () => {
   assert.equal(loader['aria-busy'], undefined);
 });
 
+test('connected prompt navigation keeps settling after an earlier prompt load is cancelled', () => {
+  const header = {};
+  const destination = { isConnected: true };
+  const group = { header, prompt: destination };
+  const calls = [];
+  const context = {
+    groups: [group],
+    navigationRequestId: 9,
+    pendingNavigationRequestId: null,
+    earlierPromptLoadRequestId: 4,
+    earlierPromptLoader: null,
+    cancelEarlierPromptLoading: ChatGPTTOC.prototype.cancelEarlierPromptLoading,
+    getConnectedGroupDestination: () => destination,
+    setActive: (...args) => calls.push(['active', ...args]),
+    scrollToDestination: (element) => calls.push(['scroll', element]),
+    waitForSmoothScrollEnd: (_requestId, onComplete) => onComplete(),
+    settleGroupDestination: (candidateGroup, requestId) => calls.push(['settle', candidateGroup, requestId])
+  };
+  const event = {
+    target: {
+      closest: (selector) => selector === '.toc-group-header' ? header : null
+    }
+  };
+
+  ChatGPTTOC.prototype.handleTocClick.call(context, event);
+
+  assert.equal(context.earlierPromptLoadRequestId, 5);
+  assert.equal(context.navigationRequestId, 10);
+  assert.equal(context.pendingNavigationRequestId, 10);
+  assert.deepEqual(calls, [
+    ['active', null, group],
+    ['scroll', destination],
+    ['settle', group, 10]
+  ]);
+});
+
+test('connected heading navigation keeps settling against delayed native scrolling', () => {
+  const heading = {
+    isConnected: true,
+    tagName: 'H2',
+    textContent: 'Target heading'
+  };
+  const group = { headings: [heading] };
+  const calls = [];
+  const context = {
+    navigationRequestId: 2,
+    pendingNavigationRequestId: null,
+    setActive: (...args) => calls.push(['active', ...args]),
+    scrollToDestination: (element) => calls.push(['scroll', element]),
+    waitForSmoothScrollEnd: (_requestId, onComplete) => onComplete(),
+    settleHeadingDestination: (candidateGroup, descriptor, requestId) =>
+      calls.push(['settle', candidateGroup, descriptor, requestId])
+  };
+
+  ChatGPTTOC.prototype.navigateToHeading.call(context, heading, group);
+
+  assert.equal(context.navigationRequestId, 3);
+  assert.equal(context.pendingNavigationRequestId, 3);
+  assert.deepEqual(calls, [
+    ['active', heading, group],
+    ['scroll', heading],
+    ['settle', group, { index: 0, tagName: 'H2', text: 'Target heading' }, 3]
+  ]);
+});
+
 test('cached prompt header starts recovery without a native ChatGPT TOC button', () => {
   const header = {};
   const group = { header, nativeButton: null };
@@ -590,29 +724,47 @@ test('cached prompt header starts recovery without a native ChatGPT TOC button',
   assert.equal(typeof recoveryCalls[0][2], 'function');
 });
 
-test('group navigation only uses a connected destination with the same prompt index', () => {
+test('group navigation trusts stable group ownership over sparse branched turn numbers', () => {
   const prompt = { isConnected: true };
   const assistant = { isConnected: true };
   const group = { nativeIndex: 5, prompt, assistant };
-  const promptIndexes = new Map([[prompt, 5], [assistant, 2]]);
   const context = {
     thread: { contains: () => true },
-    getPromptIndexFromElement: (element) => promptIndexes.get(element),
     rememberGroupDestination() {}
   };
 
   assert.equal(ChatGPTTOC.prototype.getConnectedGroupDestination.call(context, group), prompt);
-  promptIndexes.set(prompt, 3);
-  promptIndexes.set(assistant, 5);
+  prompt.isConnected = false;
   assert.equal(ChatGPTTOC.prototype.getConnectedGroupDestination.call(context, group), assistant);
-  promptIndexes.set(assistant, 4);
+  assistant.isConnected = false;
   assert.equal(ChatGPTTOC.prototype.getConnectedGroupDestination.call(context, group), null);
 });
 
+test('reverse-scroll recovery remembers an upper destination as a negative position', () => {
+  const previousGetComputedStyle = globalThis.getComputedStyle;
+  globalThis.getComputedStyle = () => ({ flexDirection: 'column-reverse' });
+  const target = { isConnected: true, getBoundingClientRect: () => ({ top: -1500 }) };
+  const group = { prompt: target };
+  const scroller = {
+    scrollTop: -200, scrollHeight: 4000, clientHeight: 800, clientTop: 0,
+    getBoundingClientRect: () => ({ top: 100 })
+  };
+  const context = { thread: { contains: (node) => node === target }, getConversationScrollContainer: () => scroller };
+  try {
+    assert.equal(ChatGPTTOC.prototype.rememberGroupDestination.call(context, group), true);
+    assert.equal(group.lastKnownScrollTop, -1800);
+  } finally {
+    if (previousGetComputedStyle === undefined) delete globalThis.getComputedStyle;
+    else globalThis.getComputedStyle = previousGetComputedStyle;
+  }
+});
+
 test('virtualized prompt recovery prefers its remembered position over page start', () => {
+  const previousGetComputedStyle = globalThis.getComputedStyle;
+  globalThis.getComputedStyle = () => ({ flexDirection: 'column' });
   const group = { lastKnownScrollTop: 1234 };
   const calls = [];
-  const scroller = { scrollTo: (options) => calls.push(options) };
+  const scroller = { scrollTop: 0, scrollHeight: 3000, clientHeight: 800, scrollTo: (options) => calls.push(options) };
   const context = {
     getConnectedNativeButton: () => null,
     scrollToRememberedGroupDestination:
@@ -621,21 +773,32 @@ test('virtualized prompt recovery prefers its remembered position over page star
     loadEarlierConversationTurns() { throw new Error('must not jump to the oldest turn'); }
   };
 
-  assert.equal(ChatGPTTOC.prototype.retryGroupRecovery.call(context, group), true);
-  assert.deepEqual(calls, [{ top: 1234, behavior: 'auto' }]);
+  try {
+    assert.equal(ChatGPTTOC.prototype.retryGroupRecovery.call(context, group), true);
+    assert.deepEqual(calls, [{ top: 1234, behavior: 'auto' }]);
+  } finally {
+    if (previousGetComputedStyle === undefined) delete globalThis.getComputedStyle;
+    else globalThis.getComputedStyle = previousGetComputedStyle;
+  }
 });
 
-test('navigation settling corrects a native TOC scroll that lands on the wrong response', () => {
+test('navigation settling corrects a destination after the initial scroll', () => {
   const previousWindow = globalThis.window;
   const previousAnimationFrame = globalThis.requestAnimationFrame;
+  const previousGetComputedStyle = globalThis.getComputedStyle;
   const scrollCalls = [];
   const continuationCalls = [];
   globalThis.window = { innerHeight: 1200 };
   globalThis.requestAnimationFrame = (callback) => callback();
   const scroller = {
     scrollTop: 100,
+    scrollHeight: 3000,
+    clientHeight: 800,
+    clientTop: 0,
+    getBoundingClientRect: () => ({ top: 0 }),
     scrollTo: (options) => scrollCalls.push(options)
   };
+  globalThis.getComputedStyle = () => ({ flexDirection: 'column' });
   const context = {
     navigationRequestId: 3,
     pendingNavigationRequestId: 3,
@@ -661,6 +824,8 @@ test('navigation settling corrects a native TOC scroll that lands on the wrong r
     else globalThis.window = previousWindow;
     if (previousAnimationFrame === undefined) delete globalThis.requestAnimationFrame;
     else globalThis.requestAnimationFrame = previousAnimationFrame;
+    if (previousGetComputedStyle === undefined) delete globalThis.getComputedStyle;
+    else globalThis.getComputedStyle = previousGetComputedStyle;
   }
 
   assert.deepEqual(scrollCalls, [{ top: 880, behavior: 'auto' }]);
@@ -668,8 +833,133 @@ test('navigation settling corrects a native TOC scroll that lands on the wrong r
   assert.equal(context.pendingNavigationRequestId, 3);
 });
 
+test('an upper TOC heading click stays at a negative reverse-scroll position through settling', () => {
+  const previousWindow = globalThis.window;
+  const previousAnimationFrame = globalThis.requestAnimationFrame;
+  const previousCancelAnimationFrame = globalThis.cancelAnimationFrame;
+  const previousGetComputedStyle = globalThis.getComputedStyle;
+  const previousSetTimeout = globalThis.setTimeout;
+  const previousClearTimeout = globalThis.clearTimeout;
+  const queuedFrames = [];
+  const scrollCalls = [];
+  let timerId = 0;
+  const scroller = {
+    scrollTop: -100,
+    scrollHeight: 3000,
+    clientHeight: 2000,
+    clientTop: 0,
+    getBoundingClientRect: () => ({ top: 100 }),
+    scrollTo({ top }) {
+      scrollCalls.push(top);
+      this.scrollTop = top;
+    }
+  };
+  const heading = {
+    isConnected: true,
+    tagName: 'H2',
+    textContent: 'Earlier response',
+    offsetWidth: 0,
+    classList: { add() {}, remove() {} },
+    getBoundingClientRect: () => ({ top: 50 - scroller.scrollTop })
+  };
+  const group = { headings: [heading] };
+  const item = {};
+  const context = Object.assign(Object.create(ChatGPTTOC.prototype), {
+    navigationRequestId: 5,
+    pendingNavigationRequestId: 5,
+    earlierPromptLoadRequestId: 0,
+    earlierPromptLoader: null,
+    destinationHighlightTimers: new WeakMap(),
+    tocItemToHeading: new Map([[item, heading]]),
+    headingToGroup: new Map([[heading, group]]),
+    getConversationScrollContainer: () => scroller,
+    setActive() {},
+    scheduleActiveUpdate() {}
+  });
+  const event = { target: { closest: (selector) => selector === '.toc-item' ? item : null } };
+  globalThis.window = { innerHeight: 900 };
+  globalThis.getComputedStyle = () => ({ flexDirection: 'column-reverse' });
+  globalThis.requestAnimationFrame = (callback) => { queuedFrames.push(callback); return queuedFrames.length; };
+  globalThis.cancelAnimationFrame = () => {};
+  globalThis.setTimeout = () => ++timerId;
+  globalThis.clearTimeout = () => {};
+
+  try {
+    ChatGPTTOC.prototype.handleTocClick.call(context, event);
+    for (let frame = 0; queuedFrames.length && frame < 24; frame++) queuedFrames.shift()(frame * 20);
+    assert.equal(context.navigationRequestId, 7);
+    assert.ok(scrollCalls.length > 0);
+    assert.ok(scrollCalls.every((top) => top < 0), `scroll calls should stay above the reverse-scroll bottom: ${scrollCalls}`);
+    assert.equal(scroller.scrollTop, -140);
+    assert.equal(context.pendingNavigationRequestId, null);
+  } finally {
+    if (previousWindow === undefined) delete globalThis.window;
+    else globalThis.window = previousWindow;
+    if (previousAnimationFrame === undefined) delete globalThis.requestAnimationFrame;
+    else globalThis.requestAnimationFrame = previousAnimationFrame;
+    if (previousGetComputedStyle === undefined) delete globalThis.getComputedStyle;
+    else globalThis.getComputedStyle = previousGetComputedStyle;
+    if (previousCancelAnimationFrame === undefined) delete globalThis.cancelAnimationFrame;
+    else globalThis.cancelAnimationFrame = previousCancelAnimationFrame;
+    if (previousSetTimeout === undefined) delete globalThis.setTimeout;
+    else globalThis.setTimeout = previousSetTimeout;
+    if (previousClearTimeout === undefined) delete globalThis.clearTimeout;
+    else globalThis.clearTimeout = previousClearTimeout;
+  }
+});
+
+test('user scroll events cancel delayed destination retries', () => {
+  const previousWindow = globalThis.window;
+  const listeners = new Map();
+  globalThis.window = { addEventListener: (type, listener) => listeners.set(type, listener) };
+  const context = Object.assign(Object.create(ChatGPTTOC.prototype), {
+    navigationRequestId: 9,
+    pendingNavigationRequestId: 9,
+    boundScheduleActiveUpdate() {}
+  });
+  try {
+    ChatGPTTOC.prototype.observePositionChanges.call(context);
+    for (const type of ['wheel', 'touchstart', 'pointerdown', 'keydown']) {
+      assert.equal(typeof listeners.get(type), 'function');
+    }
+    listeners.get('wheel')({ type: 'wheel' });
+    assert.equal(context.navigationRequestId, 10);
+    assert.equal(context.pendingNavigationRequestId, null);
+  } finally {
+    if (previousWindow === undefined) delete globalThis.window;
+    else globalThis.window = previousWindow;
+  }
+  assert.doesNotThrow(() => ChatGPTTOC.prototype.settleDestination.call(
+    context, { isConnected: true }, 9, 0, 0, () => { throw new Error('stale retry ran'); }, () => {}
+  ));
+});
+
+test('conversation reset invalidates pending virtualized navigation retries', () => {
+  const context = Object.assign(Object.create(ChatGPTTOC.prototype), {
+    navigationRequestId: 12,
+    pendingNavigationRequestId: 12,
+    earlierPromptLoadRequestId: 3,
+    earlierPromptLoader: null,
+    headingObserver: { disconnect() {} },
+    promptObserver: { disconnect() {} },
+    groups: [],
+    turnToGroup: new WeakMap(),
+    turnKeyToGroup: new Map(),
+    promptToGroups: new WeakMap(),
+    headingToGroup: new WeakMap(),
+    headingToTocItem: new WeakMap(),
+    tocItemToHeading: new WeakMap(),
+    activeHeading: {},
+    activeGroup: {}
+  });
+  ChatGPTTOC.prototype.clearConversation.call(context);
+  assert.equal(context.navigationRequestId, 13);
+  assert.equal(context.pendingNavigationRequestId, null);
+  assert.equal(context.activeGroup, null);
+});
+
 test('only a user followed by its first assistant creates a response pair', () => {
-  const message = (role, id) => ({ id, matches: (selector) => selector === `[data-message-author-role="${role}"]` });
+  const message = (role, id) => ({ id, matches: (selector) => selector.split(',').includes(`[data-message-author-role="${role}"]`) });
   const orphan = message('assistant', 'orphan');
   const firstPrompt = message('user', 'user-1');
   const firstAssistant = message('assistant', 'assistant-1');
@@ -690,26 +980,23 @@ test('only a user followed by its first assistant creates a response pair', () =
   ]);
 });
 
-test('virtualized messages with different prompt indices are not paired', () => {
+test('virtualized messages pair by DOM order without synthetic prompt indices', () => {
   const createMessage = (role, id) => ({
     id,
-    matches: (selector) => selector === `[data-message-author-role="${role}"]`
+    matches: (selector) => selector.split(',').includes(`[data-message-author-role="${role}"]`)
   });
   const prompt = createMessage('user', 'prompt');
   const assistant = createMessage('assistant', 'assistant');
   const indexes = new Map([[prompt, 1], [assistant, 4]]);
 
-  assert.deepEqual(
-    pairConversationMessages([prompt, assistant], () => null, (item) => indexes.get(item) ?? null),
-    []
-  );
+  assert.deepEqual(pairConversationMessages([prompt, assistant]), [{ prompt, assistant }]);
 });
 
 test('remounted assistants with the same stable turn key are deduplicated', () => {
   const message = (role, id, turnKey) => ({
     id,
     turnKey,
-    matches: (selector) => selector === `[data-message-author-role="${role}"]`
+    matches: (selector) => selector.split(',').includes(`[data-message-author-role="${role}"]`)
   });
   const oldPrompt = message('user', 'old-user');
   const oldAssistant = message('assistant', 'old-assistant', 'turn-2');
@@ -749,7 +1036,7 @@ test('active tracking chooses a containing response range and rejects distant st
   assert.equal(findActiveGroupRange([{ id: 'far', top: 0, bottom: 40 }], 100, 40), null);
 });
 
-test('group tracking uses assistant coverage and ignores a far offscreen prompt fragment', () => {
+test('group tracking uses stable ownership for active positioning', () => {
   const group = { prompt: null, assistant: null };
   const promptOnlyGroup = { prompt: null, assistant: null };
   const staleMappedGroup = { prompt: null, assistant: null };
@@ -775,18 +1062,31 @@ test('group tracking uses assistant coverage and ignores a far offscreen prompt 
   const context = {
     groups: [promptOnlyGroup, group, staleMappedGroup],
     thread: {
+      isConnected: true,
       contains: (element) => live.has(element),
       querySelectorAll: () => [assistant]
     },
-    nativeIndexToGroup: new Map([[1, group]]),
-    turnToGroup: new Map([[assistant, staleMappedGroup]]),
-    getPromptIndexFromElement: (element) => element === assistant || element === prompt ? 1 : 0,
+    turnToGroup: new Map([[assistant, group]]),
     isLiveConversationElement: ChatGPTTOC.prototype.isLiveConversationElement
   };
 
   assert.deepEqual(ChatGPTTOC.prototype.getLiveGroupRanges.call(context, 900), [
     { group, assistant, top: -450, bottom: 700 }
   ]);
+});
+
+test('active tracking skips safely while no conversation root is bound', () => {
+  const updates = [];
+  const context = {
+    thread: null,
+    activeGroup: { id: 'stale-group' },
+    activeHeading: { id: 'stale-heading' },
+    updateEarlierPromptLoader() {},
+    setActive: (heading, group) => updates.push([heading, group])
+  };
+  assert.doesNotThrow(() => ChatGPTTOC.prototype.updateActiveFromScrollPosition.call(context));
+  assert.deepEqual(updates, [[null, null]]);
+  assert.deepEqual(ChatGPTTOC.prototype.getLiveGroupRanges.call({ thread: null }, 800), []);
 });
 
 test('active tracking keeps the current hierarchy selection during a transient remount gap', () => {
@@ -797,6 +1097,7 @@ test('active tracking keeps the current hierarchy selection during a transient r
   try {
     globalThis.window = { innerHeight: 900 };
     ChatGPTTOC.prototype.updateActiveFromScrollPosition.call({
+      thread: { isConnected: true, querySelectorAll: () => [] },
       activeGroup: group,
       activeHeading: heading,
       getLiveGroupRanges: () => [],
@@ -815,6 +1116,7 @@ test('active tracking keeps the requested prompt selected while navigation is se
   const heading = { id: 'requested-heading' };
   const updates = [];
   ChatGPTTOC.prototype.updateActiveFromScrollPosition.call({
+    thread: { isConnected: true, querySelectorAll: () => [] },
     pendingNavigationRequestId: 12,
     activeGroup: group,
     activeHeading: heading,
@@ -841,14 +1143,15 @@ test('dynamic content never uses innerHTML and polling is absent', () => {
   assert.match(source, /findActiveTrackingTarget/);
   assert.match(source, /findActiveGroupRange/);
   assert.match(source, /addEventListener\('scroll'/);
+  assert.match(source, /addEventListener\('wheel'/);
+  assert.match(source, /addEventListener\('touchstart'/);
+  assert.match(source, /addEventListener\('pointerdown'/);
   assert.match(source, /STRUCTURE_SETTLE_DELAY/);
   assert.match(source, /turnKeyToGroup/);
   assert.match(source, /getStableTurnKey/);
   assert.match(source, /scrollToDestination/);
   assert.match(source, /flashDestination/);
-  assert.match(source, /syncNativeToc/);
-  assert.match(source, /syncNativeTurns/);
-  assert.match(source, /nativeButton\.click\(\)/);
+  assert.doesNotMatch(source, /data-toc-item-index|nativeIndex|nativeToc|nativeButton/);
   assert.match(source, /getConnectedGroupDestination/);
   assert.match(source, /waitForGroupDestination/);
   assert.match(source, /navigateToHeading/);
@@ -860,11 +1163,7 @@ test('dynamic content never uses innerHTML and polling is absent', () => {
   assert.match(source, /scrollConversationToStart/);
   assert.match(source, /loadEarlierConversationTurns/);
   assert.match(source, /pendingNavigationRequestId/);
-  assert.match(source, /removeNonNativeGroups/);
-  assert.match(source, /reconcileNativeTocItems/);
-  assert.match(source, /syncConversationStructure\(\{ nativeTocReady: true \}\)/);
-  assert.doesNotMatch(source, /nativeTocItems\.clear\(\)/);
-  assert.match(source, /closest\?\.\(SELECTORS\.conversationTurn\)/);
+  assert.doesNotMatch(source, /getPromptIndexFromTestId|conversation-turn-\d/);
   assert.match(source, /dataset\.tocVersion/);
   assert.match(source, /classList\.remove\('toc-h1', 'toc-h2', 'toc-h3', 'toc-h4', 'toc-h5', 'toc-h6'\)/);
   assert.doesNotMatch(source, /item\.className\s*=\s*`toc-item toc-h/);

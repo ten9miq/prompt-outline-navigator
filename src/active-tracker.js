@@ -10,8 +10,7 @@
     ACTIVE_ROOT_MARGIN,
     getNavigationOffset,
     findActiveTrackingTarget,
-    findActiveGroupRange,
-    getNativeTocIndex
+    findActiveGroupRange
   } = shared;
 
   class ActiveTrackerMethods {
@@ -27,6 +26,11 @@
     observePositionChanges() {
       window.addEventListener('scroll', this.boundScheduleActiveUpdate, { capture: true, passive: true });
       window.addEventListener('resize', this.boundScheduleActiveUpdate, { passive: true });
+      this.boundCancelNavigation ||= (event) => this.cancelNavigationOnUserInput(event);
+      window.addEventListener('wheel', this.boundCancelNavigation, { capture: true, passive: true });
+      window.addEventListener('touchstart', this.boundCancelNavigation, { capture: true, passive: true });
+      window.addEventListener('pointerdown', this.boundCancelNavigation, { capture: true, passive: true });
+      window.addEventListener('keydown', this.boundCancelNavigation, true);
     }
 
     scheduleActiveUpdate() {
@@ -48,20 +52,19 @@
     getLiveGroupRanges(viewportHeight) {
       const ranges = [];
       const groupsWithAssistant = new Set();
-      this.thread.querySelectorAll(SELECTORS.assistantMessage).forEach((assistant) => {
-        const promptIndex = this.getPromptIndexFromElement(assistant);
-        const indexedGroup = promptIndex === null ? null : this.nativeIndexToGroup.get(promptIndex);
-        const group = indexedGroup || this.turnToGroup.get(assistant);
+      if (!this.thread?.isConnected) return ranges;
+      const assistants = this.source && this.source.kind !== 'conversation'
+        ? this.groups.map((group) => group.assistant).filter((element) => element?.isConnected)
+        : this.thread.querySelectorAll(SELECTORS.assistantMessage);
+      assistants.forEach((assistant) => {
+        const group = this.turnToGroup.get(assistant);
         if (!group || groupsWithAssistant.has(group)) return;
 
-        const turn = assistant.closest(SELECTORS.conversationTurn);
+        const turn = this.source && this.source.kind !== 'conversation' ? null : assistant.closest(SELECTORS.conversationTurn);
         const assistantRect = (turn || assistant).getBoundingClientRect();
         if (assistantRect.bottom <= assistantRect.top) return;
 
-        const prompt = this.isLiveConversationElement(group.prompt) &&
-          (promptIndex === null || this.getPromptIndexFromElement(group.prompt) === promptIndex)
-          ? group.prompt
-          : null;
+        const prompt = this.isLiveConversationElement(group.prompt) ? group.prompt : null;
         const promptTurn = prompt?.closest(SELECTORS.conversationTurn);
         const promptRect = (promptTurn || prompt)?.getBoundingClientRect();
         ranges.push({
@@ -94,6 +97,11 @@
     }
 
     updateActiveFromScrollPosition() {
+      this.updateEarlierPromptLoader?.();
+      if (!this.thread?.isConnected) {
+        this.setActive(null, null);
+        return;
+      }
       if (this.pendingNavigationRequestId !== null && this.activeGroup) {
         this.setActive(this.activeHeading, this.activeGroup);
         return;
@@ -116,9 +124,7 @@
         return;
       }
 
-      const nativeActive = document.querySelector(SELECTORS.nativeTocActive);
-      const nativeGroup = this.nativeIndexToGroup.get(getNativeTocIndex(nativeActive));
-      this.setActive(null, nativeGroup || this.groups[0] || null);
+      this.setActive(null, this.groups[0] || null);
     }
 
     setActive(heading, group) {

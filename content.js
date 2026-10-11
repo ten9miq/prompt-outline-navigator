@@ -4,6 +4,7 @@
 
   const isCommonJS = typeof module !== 'undefined' && module.exports;
   const shared = isCommonJS ? require('./src/shared.js') : globalThis.TOCNavigator;
+  if (isCommonJS) require('./src/source-adapters.js');
   const sidebarMethods = isCommonJS ? require('./src/sidebar.js') : globalThis.TOCNavigator.sidebarMethods;
   const conversationMethods = isCommonJS ? require('./src/conversation.js') : globalThis.TOCNavigator.conversationMethods;
   const navigationMethods = isCommonJS ? require('./src/navigation.js') : globalThis.TOCNavigator.navigationMethods;
@@ -15,14 +16,18 @@
       this.tocContent = null;
       this.toggleButton = null;
       this.thread = null;
+      this.source = null;
+      this.sourcePath = null;
+      this.conversationIdentity = null;
       this.appRoot = null;
       this.isVisible = true;
+      this.sidebarPreferenceVisible = true;
+      this.sidebarConversationPath = null;
+      this.sidebarAvailabilityState = null;
 
       this.groups = [];
       this.turnToGroup = new WeakMap();
       this.turnKeyToGroup = new Map();
-      this.nativeIndexToGroup = new Map();
-      this.nativeTocItems = new Map();
       this.earlierPromptLoader = null;
       this.earlierPromptLoadRequestId = 0;
       this.promptToGroups = new WeakMap();
@@ -38,7 +43,6 @@
       this.activeUpdateFrame = null;
       this.structureSyncTimer = null;
       this.threadBindFrame = null;
-      this.nativeSyncFrame = null;
       this.navigationRequestId = 0;
       this.pendingNavigationRequestId = null;
       this.preserveTocScrollOnActiveUpdate = false;
@@ -46,7 +50,6 @@
 
       this.conversationObserver = null;
       this.pageObserver = null;
-      this.nativeTocObserver = null;
       this.themeObserver = null;
       this.headingObserver = this.createPositionObserver();
       this.promptObserver = this.createPositionObserver();
@@ -62,7 +65,6 @@
       this.observePage();
       this.observeTheme();
       this.observePositionChanges();
-      this.observeNativeToc();
       this.bindCurrentThread();
     }
   }

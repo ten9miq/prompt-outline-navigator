@@ -21,19 +21,58 @@
       <h1>Browser integration fixture</h1>
       <pre id="results">RUNNING</pre>
       <div id="thread">
-        <article data-testid="conversation-turn-1">
+        <article data-testid="conversation-turn-1" data-turn-key="fixture-user-turn">
           <div data-message-author-role="user">Prompt &lt;script&gt; literal 🚀</div>
         </article>
-        <article data-testid="conversation-turn-2">
+        <article data-testid="conversation-turn-2" data-turn-key="fixture-assistant-turn">
           <div data-message-author-role="assistant">
             <h2 id="mutable-heading">&lt;script&gt;alert(1)&lt;/script&gt;</h2>
             <p>ordinary answer tokens</p>
           </div>
         </article>
       </div>
+      <!-- Anonymized user-side DOM shape observed in the current ChatGPT UI. -->
+      <div hidden data-chatgpt-conversation-selection-target="true" data-thread-find-target="conversation">
+        <div class="thread-scroll-container" data-app-action-timeline-scroll>
+          <div data-thread-user-message-navigation-content="true">
+            <div data-turn-key="fixture-turn-key">
+              <div data-content-search-turn-key="fixture-content-turn-key">
+                <div class="flex flex-col gap-1.5">
+                  <div class="group/user-message flex flex-col items-end gap-2"
+                    data-chatgpt-search-unit-key="fixture-user-unit"
+                    data-chatgpt-search-message-ids="fixture-message-ids">
+                    <div class="w-full" data-content-search-unit-key="fixture-user-content">
+                      <div class="group/user-message flex w-full flex-col gap-1 items-end">
+                        <div class="bg-user-message text-user-message min-w-0 max-w-(--user-chat-width) overflow-hidden break-words"
+                          data-user-message-bubble="true">
+                          <span>Anonymous fixture prompt</span>
+                        </div>
+                        <div class="turn-action-controls"></div>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="assistant-message" data-chatgpt-search-unit-key="fixture-assistant-unit">
+                    <h4 class="sr-only" data-conversation-role="assistant">Assistant</h4>
+                    <div data-chatgpt-selection-message-id="fixture-assistant-message"
+                      data-chatgpt-selection-conversation-id="fixture-conversation">
+                      <div data-markdown-text-style="assistant-message"><h2>Anonymous fixture heading</h2></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div data-thread-scroll-footer="true">
+            <form data-chatgpt-composer data-composer-placement="thread">
+              <div contenteditable="true" data-composer-markdown class="ProseMirror"></div>
+            </form>
+          </div>
+        </div>
+      </div>
     </main>
   </div>
   <script src="../src/shared.js"></script>
+  <script src="../src/source-adapters.js"></script>
   <script src="../src/sidebar.js"></script>
   <script src="../src/conversation.js"></script>
   <script src="../src/navigation.js"></script>
@@ -53,10 +92,19 @@
       try {
         await waitFrame();
         const sidebar = document.getElementById('chatgpt-toc-sidebar');
+        const observedPrompt = document.querySelector('[data-chatgpt-search-unit-key][data-chatgpt-search-message-ids]:has([data-user-message-bubble="true"])');
+        check(Boolean(observedPrompt), 'observed user wrapper exists in the anonymized modern DOM fixture');
+        check(observedPrompt.matches(TOCNavigator.SELECTORS.userMessage), 'modern user wrapper matches the shared prompt selector');
+        check(document.querySelector('[data-chatgpt-search-unit-key]:has([data-conversation-role="assistant"])')?.querySelector('h2')?.textContent === 'Anonymous fixture heading',
+          'observed assistant wrapper exposes headings without including its role label');
+        check(Boolean(document.querySelector(TOCNavigator.SELECTORS.thread)), 'observed conversation root selector matches the anonymized fixture');
+        check(document.querySelector(TOCNavigator.SELECTORS.conversationScroll)?.classList.contains('thread-scroll-container'),
+          'reverse scrolling root selector matches the anonymized fixture');
+        check(Boolean(document.querySelector(TOCNavigator.SELECTORS.threadComposer)), 'thread composer selector avoids the home composer');
         check(sidebar.classList.contains('is-open'), 'sidebar opens by default');
         check(document.body.classList.contains('chatgpt-toc-open'), 'body reserves sidecar space');
         check(document.getElementById('app').classList.contains('chatgpt-toc-app-root'), 'app root is marked without reparenting');
-        check(sidebar.querySelector('.toc-text').textContent === '<script>alert(1)</script>', 'HTML-like heading stays literal');
+        check(sidebar.querySelector('.toc-text').textContent === '<script>alert(1)<\/script>', 'HTML-like heading stays literal');
         check(!sidebar.querySelector('script'), 'untrusted text does not create elements');
 
         document.getElementById('mutable-heading').textContent = '<div>updated & safe</div>';
@@ -80,7 +128,7 @@
         const assistantTurn = document.createElement('article');
         assistantTurn.innerHTML = '<div data-message-author-role="assistant"><h1>A &amp; B</h1></div>';
         thread.append(userTurn, assistantTurn);
-        await waitFrame();
+        await waitForStructureSync();
         check(sidebar.querySelectorAll('.toc-group').length === 2, 'new assistant turn adds one group');
         check(sidebar.querySelectorAll('.toc-group-title')[1].textContent === 'Prompt 2', 'groups stay in DOM order');
 

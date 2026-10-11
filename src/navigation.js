@@ -5,16 +5,18 @@
   const shared = typeof module !== 'undefined' && module.exports
     ? require('./shared.js')
     : globalThis.TOCNavigator;
-  const { SELECTORS, findRemountedHeading, getNativeTocIndex, NAVIGATION_RECOVERY_FRAMES } = shared;
+  const { SELECTORS, findConversationRoot, findRemountedHeading, getNavigationOffset, NAVIGATION_RECOVERY_FRAMES } = shared;
 
   class NavigationMethods {
     handleTocClick(event) {
       const earlierPromptLoader = event.target.closest('.toc-load-earlier');
       if (earlierPromptLoader) {
+        this.cancelPendingNavigation?.();
         this.startEarlierPromptLoading();
         return;
       }
 
+      this.cancelPendingNavigation?.();
       this.cancelEarlierPromptLoading();
 
       const groupCollapse = event.target.closest('.toc-group-collapse-icon');
@@ -44,30 +46,31 @@
       if (!group) return;
       const destination = this.getConnectedGroupDestination(group);
       if (destination) {
-        this.navigationRequestId += 1;
-        this.pendingNavigationRequestId = null;
+        const requestId = ++this.navigationRequestId;
+        this.pendingNavigationRequestId = requestId;
         this.setActive(null, group);
         this.scrollToDestination(destination);
+        this.waitForSmoothScrollEnd(requestId, () => this.settleGroupDestination(group, requestId));
         return;
       }
       const requestId = ++this.navigationRequestId;
       this.pendingNavigationRequestId = requestId;
       this.setActive(null, group);
-      const nativeButton = this.getConnectedNativeButton(group);
-      if (nativeButton) {
-        nativeButton.click();
-        this.waitForGroupDestination(group, requestId);
-        return;
-      }
       this.recoverVirtualizedDestination(group, requestId, () => this.waitForGroupDestination(group, requestId));
     }
 
     navigateToHeading(heading, group) {
       const requestId = ++this.navigationRequestId;
-      this.pendingNavigationRequestId = null;
+      this.pendingNavigationRequestId = requestId;
       this.setActive(heading, group);
       if (heading.isConnected) {
         this.scrollToDestination(heading);
+        const descriptor = {
+          index: group?.headings.indexOf(heading) ?? -1,
+          tagName: heading.tagName,
+          text: heading.textContent.trim()
+        };
+        this.waitForSmoothScrollEnd(requestId, () => this.settleHeadingDestination(group, descriptor, requestId));
         return;
       }
 
@@ -76,18 +79,9 @@
         tagName: heading.tagName,
         text: heading.textContent.trim()
       };
-      const nativeButton = this.getConnectedNativeButton(group);
-      if (nativeButton) {
-        this.pendingNavigationRequestId = requestId;
-        nativeButton.click();
-        this.waitForHeadingDestination(group, descriptor, requestId);
-        return;
-      }
-
       const prompt = this.getConnectedGroupDestination(group);
       if (prompt) {
-        this.pendingNavigationRequestId = requestId;
-        this.scrollToDestination(prompt);
+        this.scrollToDestination(prompt, 'auto');
         this.waitForHeadingDestination(group, descriptor, requestId);
         return;
       }
@@ -112,7 +106,7 @@
       const heading = this.findConnectedHeading(group, descriptor);
       if (heading) {
         this.setActive(heading, group);
-        this.scrollToDestination(heading);
+        this.scrollToDestination(heading, 'auto');
         this.settleHeadingDestination(group, descriptor, requestId);
         return;
       }
@@ -145,8 +139,7 @@
     getConnectedGroupDestination(group) {
       const belongsToGroup = (element) => {
         if (!element?.isConnected || !this.thread?.contains(element)) return false;
-        if (!Number.isInteger(group?.nativeIndex)) return true;
-        return this.getPromptIndexFromElement(element) === group.nativeIndex;
+        return element === group?.prompt || element === group?.assistant;
       };
       const destination = belongsToGroup(group?.prompt)
         ? group.prompt
@@ -155,31 +148,20 @@
       return destination;
     }
 
-    getConnectedNativeButton(group) {
-      if (!Number.isInteger(group?.nativeIndex)) return null;
-      if (group.nativeButton?.isConnected && getNativeTocIndex(group.nativeButton) === group.nativeIndex) {
-        return group.nativeButton;
-      }
-      const button = Array.from(document.querySelectorAll(SELECTORS.nativeTocItem))
-        .find((candidate) => getNativeTocIndex(candidate) === group.nativeIndex) || null;
-      if (button) {
-        group.nativeButton = button;
-        this.nativeTocItems.set(group.nativeIndex, button);
-      }
-      return button;
-    }
-
     rememberGroupDestination(group, destination = null) {
       if (!group) return false;
       const target = destination || (group.prompt?.isConnected ? group.prompt : group.assistant);
       if (!target?.isConnected || !this.thread?.contains(target)) return false;
       const scroller = this.getConversationScrollContainer();
       if (!scroller) return false;
-      const scrollerTop = scroller.getBoundingClientRect?.().top || 0;
-      group.lastKnownScrollTop = Math.max(
-        0,
-        scroller.scrollTop + target.getBoundingClientRect().top - scrollerTop
-      );
+      const scrollerTop = (scroller.getBoundingClientRect?.().top || 0) + (scroller.clientTop || 0);
+      const reverse = getComputedStyle(scroller).flexDirection === 'column-reverse';
+      const delta = target.getBoundingClientRect().top - scrollerTop;
+      const range = Math.max(0, scroller.scrollHeight - scroller.clientHeight);
+      const desired = scroller.scrollTop + delta;
+      group.lastKnownScrollTop = reverse
+        ? Math.max(-range, Math.min(0, desired))
+        : Math.max(0, Math.min(range, desired));
       return true;
     }
 
@@ -187,35 +169,44 @@
       if (!Number.isFinite(group?.lastKnownScrollTop)) return false;
       const scroller = this.getConversationScrollContainer();
       if (!scroller) return false;
-      scroller.scrollTo({ top: group.lastKnownScrollTop, behavior: 'auto' });
+      const reverse = getComputedStyle(scroller).flexDirection === 'column-reverse';
+      const range = Math.max(0, scroller.scrollHeight - scroller.clientHeight);
+      const top = reverse
+        ? Math.max(-range, Math.min(0, group.lastKnownScrollTop))
+        : Math.max(0, Math.min(range, group.lastKnownScrollTop));
+      scroller.scrollTo({ top, behavior: 'auto' });
       return true;
     }
 
     retryGroupRecovery(group) {
-      const nativeButton = this.getConnectedNativeButton(group);
-      if (nativeButton) {
-        nativeButton.click();
-        return true;
-      }
       if (this.scrollToRememberedGroupDestination(group)) return true;
       return this.loadEarlierConversationTurns();
     }
 
     getConversationScrollContainer() {
-      const roots = [
-        document.querySelector(SELECTORS.thread),
-        this.thread,
-        document.querySelector(SELECTORS.main)
-      ];
+      if (this.source && this.source.kind !== 'conversation') {
+        let element = this.source.root;
+        while (element) {
+          if (/^(auto|scroll)$/.test(getComputedStyle(element).overflowY) && element.scrollHeight > element.clientHeight) return element;
+          element = element.parentElement;
+        }
+        return null;
+      }
+      const thread = findConversationRoot(document);
+      const explicitScroller = thread?.closest?.(SELECTORS.conversationScroll) ||
+        thread?.querySelector?.(SELECTORS.conversationScroll) ||
+        document.querySelector(SELECTORS.conversationScroll);
+      const roots = [explicitScroller, thread, this.thread, document.querySelector(SELECTORS.main)];
       const visited = new Set();
       for (const root of roots) {
         let element = root;
-        while (element?.parentElement) {
+        while (element) {
+          if (!visited.has(element)) {
+            visited.add(element);
+            const overflowY = getComputedStyle(element).overflowY;
+            if (/^(auto|scroll)$/.test(overflowY) && element.scrollHeight > element.clientHeight) return element;
+          }
           element = element.parentElement;
-          if (visited.has(element)) continue;
-          visited.add(element);
-          const overflowY = getComputedStyle(element).overflowY;
-          if (/^(auto|scroll)$/.test(overflowY) && element.scrollHeight > element.clientHeight) return element;
         }
       }
       const documentScroller = document.scrollingElement;
@@ -225,22 +216,42 @@
     scrollConversationToStart() {
       const scroller = this.getConversationScrollContainer();
       if (!scroller) return false;
-      scroller.scrollTo({ top: 0, behavior: 'auto' });
+      const reverse = getComputedStyle(scroller).flexDirection === 'column-reverse';
+      const range = Math.max(0, scroller.scrollHeight - scroller.clientHeight);
+      scroller.scrollTo({ top: reverse ? -range : 0, behavior: 'auto' });
+      return true;
+    }
+
+    scrollConversationToElement(element, behavior = 'smooth') {
+      const scroller = this.getConversationScrollContainer();
+      if (!scroller) {
+        element.scrollIntoView({ behavior, block: 'start' });
+        return false;
+      }
+      const reverse = getComputedStyle(scroller).flexDirection === 'column-reverse';
+      const range = Math.max(0, scroller.scrollHeight - scroller.clientHeight);
+      const offset = getNavigationOffset(window.innerHeight);
+      const viewportTop = scroller.getBoundingClientRect().top + scroller.clientTop + offset;
+      const desiredTop = scroller.scrollTop + element.getBoundingClientRect().top - viewportTop;
+      const top = reverse
+        ? Math.max(-range, Math.min(0, desiredTop))
+        : Math.max(0, Math.min(range, desiredTop));
+      scroller.scrollTo({ top, behavior });
       return true;
     }
 
     loadEarlierConversationTurns() {
-      const currentThread = document.querySelector(SELECTORS.thread);
+      const currentThread = findConversationRoot(document);
       const oldestRenderedTurn = currentThread?.querySelector(SELECTORS.conversationTurn);
       if (oldestRenderedTurn?.isConnected) {
-        oldestRenderedTurn.scrollIntoView({ block: 'start', behavior: 'auto' });
+        this.scrollConversationToElement(oldestRenderedTurn, 'auto');
         return true;
       }
       return this.scrollConversationToStart();
     }
 
     startEarlierPromptLoading() {
-      if (!this.hasUnloadedEarlierPrompts()) {
+      if (!this.isConversationScrolledFromStart()) {
         this.updateEarlierPromptLoader();
         return;
       }
@@ -251,10 +262,11 @@
         this.earlierPromptLoader.setAttribute('aria-busy', 'true');
       }
 
-      const firstNativeButton = this.nativeTocItems.get(0);
-      if (firstNativeButton?.isConnected) firstNativeButton.click();
-      else this.loadEarlierConversationTurns();
-      this.waitForEarlierPrompts(requestId);
+      this.scrollConversationToStart();
+      requestAnimationFrame(() => {
+        if (requestId !== this.earlierPromptLoadRequestId) return;
+        this.finishEarlierPromptLoading();
+      });
     }
 
     cancelEarlierPromptLoading() {
@@ -263,31 +275,6 @@
         this.earlierPromptLoader.disabled = false;
         this.earlierPromptLoader.removeAttribute('aria-busy');
       }
-    }
-
-    waitForEarlierPrompts(requestId, attempts = 0) {
-      if (requestId !== this.earlierPromptLoadRequestId) return;
-
-      if (!this.hasUnloadedEarlierPrompts()) {
-        const firstGroup = this.nativeIndexToGroup.get(0) ||
-          this.groups.find((group) => group.promptIndex === 0);
-        const destination = this.getConnectedGroupDestination(firstGroup);
-        this.finishEarlierPromptLoading();
-        if (destination) this.scrollToDestination(destination);
-        return;
-      }
-
-      if (attempts >= NAVIGATION_RECOVERY_FRAMES) {
-        this.finishEarlierPromptLoading();
-        this.updateEarlierPromptLoader();
-        return;
-      }
-
-      if (attempts > 0 && attempts % 30 === 0) {
-        this.loadEarlierConversationTurns();
-        this.syncConversationStructure();
-      }
-      requestAnimationFrame(() => this.waitForEarlierPrompts(requestId, attempts + 1));
     }
 
     finishEarlierPromptLoading() {
@@ -312,7 +299,7 @@
       }
       const destination = this.getConnectedGroupDestination(group);
       if (destination) {
-        this.scrollToDestination(destination);
+        this.scrollToDestination(destination, 'auto');
         this.settleGroupDestination(group, requestId);
         return;
       }
@@ -353,11 +340,31 @@
         return;
       }
 
-      const offset = shared.getNavigationOffset(window.innerHeight);
-      const delta = element.getBoundingClientRect().top - offset;
-      if (Math.abs(delta) > 2) {
-        scroller.scrollTo({ top: Math.max(0, scroller.scrollTop + delta), behavior: 'auto' });
+      const reverse = getComputedStyle(scroller).flexDirection === 'column-reverse';
+      const range = Math.max(0, scroller.scrollHeight - scroller.clientHeight);
+      const scrollerTop = scroller.getBoundingClientRect().top + (scroller.clientTop || 0);
+      const viewportTop = scrollerTop + shared.getNavigationOffset(window.innerHeight);
+      const targetTop = element.getBoundingClientRect().top;
+      const desiredTop = scroller.scrollTop + targetTop - viewportTop;
+      const top = reverse
+        ? Math.max(-range, Math.min(0, desiredTop))
+        : Math.max(0, Math.min(range, desiredTop));
+      const scrollDelta = top - scroller.scrollTop;
+      const alignmentDelta = targetTop - viewportTop;
+      if (Math.abs(scrollDelta) > 2) {
+        scroller.scrollTo({ top, behavior: 'auto' });
         requestAnimationFrame(() => continueSettling(0));
+        return;
+      }
+
+      if (Math.abs(alignmentDelta) > 2) {
+        if (stableFrames < 2) {
+          requestAnimationFrame(() => continueSettling(stableFrames + 1));
+          return;
+        }
+        if (this.pendingNavigationRequestId === requestId) this.pendingNavigationRequestId = null;
+        onSettled();
+        this.scheduleActiveUpdate();
         return;
       }
 
@@ -370,11 +377,74 @@
       this.scheduleActiveUpdate();
     }
 
-    scrollToDestination(element) {
+    waitForSmoothScrollEnd(requestId, onComplete) {
+      this.smoothScrollCleanup?.();
+      const scroller = this.getConversationScrollContainer() || document.scrollingElement;
+      if (!scroller) { onComplete(); return; }
+      const eventTarget = scroller === globalThis.document?.scrollingElement ? document : scroller;
+      let frame = null, startedAt = null, stableFrames = 0, moved = false, ended = false, cancelled = false;
+      let lastTop = scroller.scrollTop, lastLeft = scroller.scrollLeft;
+      const supportsScrollEnd = 'onscrollend' in eventTarget;
+      let endTop = lastTop, endLeft = lastLeft;
+      const onEnd = (event) => {
+        if (event.target === eventTarget) { ended = true; endTop = scroller.scrollTop; endLeft = scroller.scrollLeft; }
+      };
+      const cleanup = () => {
+        cancelled = true;
+        if (frame !== null) cancelAnimationFrame(frame);
+        eventTarget.removeEventListener?.('scrollend', onEnd);
+        if (this.smoothScrollCleanup === cleanup) this.smoothScrollCleanup = null;
+      };
+      this.smoothScrollCleanup = cleanup;
+      eventTarget.addEventListener?.('scrollend', onEnd);
+      const finish = () => {
+        cleanup();
+        if (requestId === this.navigationRequestId) onComplete();
+      };
+      const sample = (now) => {
+        if (cancelled) return;
+        if (requestId !== this.navigationRequestId) { cleanup(); return; }
+        if (scroller.isConnected === false) { finish(); return; }
+        startedAt ??= now;
+        const changed = Math.abs(scroller.scrollTop - lastTop) > 0.5 || Math.abs(scroller.scrollLeft - lastLeft) > 0.5;
+        if (changed) {
+          moved = true; stableFrames = 0;
+          if (scroller.scrollTop !== endTop || scroller.scrollLeft !== endLeft) ended = false;
+        }
+        else stableFrames++;
+        lastTop = scroller.scrollTop; lastLeft = scroller.scrollLeft;
+        // Do not issue a corrective scroll while the native animation is moving.
+        if ((moved || now - startedAt >= 150) &&
+            (ended && stableFrames >= 2 || (!supportsScrollEnd || !moved) && stableFrames >= 6)) { finish(); return; }
+        if (now - startedAt >= 4000) {
+          cleanup();
+          if (this.pendingNavigationRequestId === requestId) this.pendingNavigationRequestId = null;
+          this.scheduleActiveUpdate();
+          return;
+        }
+        frame = requestAnimationFrame(sample);
+      };
+      frame = requestAnimationFrame(sample);
+    }
+
+    scrollToDestination(element, behavior = 'smooth') {
       element.classList.add('chatgpt-toc-scroll-target');
-      element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      this.scrollConversationToElement(element, behavior);
       this.flashDestination(element);
       setTimeout(() => element.classList.remove('chatgpt-toc-scroll-target'), 1000);
+    }
+
+    cancelPendingNavigation() {
+      this.smoothScrollCleanup?.();
+      if (this.pendingNavigationRequestId === null) return;
+      this.navigationRequestId += 1;
+      this.pendingNavigationRequestId = null;
+    }
+
+    cancelNavigationOnUserInput(event) {
+      if (event.type === 'keydown' &&
+          !['ArrowUp', 'ArrowDown', 'PageUp', 'PageDown', 'Home', 'End', ' ', 'Spacebar'].includes(event.key)) return;
+      this.cancelPendingNavigation();
     }
 
     flashDestination(element) {

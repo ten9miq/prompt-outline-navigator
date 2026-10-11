@@ -1,6 +1,7 @@
 [CmdletBinding()]
 param(
-    [switch]$SkipTests
+    [switch]$SkipTests,
+    [switch]$Review
 )
 
 $ErrorActionPreference = 'Stop'
@@ -38,16 +39,10 @@ foreach ($relativePath in $runtimeFiles) {
 }
 
 if (-not $SkipTests) {
-    $nodeCommand = Get-Command node -ErrorAction Stop
-    foreach ($relativePath in $runtimeFiles | Where-Object { $_ -like '*.js' }) {
-        & $nodeCommand.Source --check (Join-Path $projectRoot $relativePath)
-        if ($LASTEXITCODE -ne 0) {
-            throw "JavaScript syntax check failed: $relativePath"
-        }
-    }
+    $npmCommand = Get-Command npm.cmd -ErrorAction Stop
     Push-Location $projectRoot
     try {
-        & $nodeCommand.Source --test
+        & $npmCommand.Source run build
         if ($LASTEXITCODE -ne 0) {
             throw 'Automated tests failed.'
         }
@@ -58,7 +53,8 @@ if (-not $SkipTests) {
 
 $distDirectory = Join-Path $projectRoot 'dist'
 New-Item -ItemType Directory -Path $distDirectory -Force | Out-Null
-$outputName = "$($package.name)-$($manifest.version)-chrome-web-store.zip"
+$suffix = if ($Review) { '-review' } else { '' }
+$outputName = "$($package.name)-$($manifest.version)-chrome-web-store$suffix.zip"
 $outputPath = Join-Path $distDirectory $outputName
 $stagingRoot = Join-Path ([IO.Path]::GetTempPath()) ("prompt-outline-store-" + [guid]::NewGuid().ToString('N'))
 
@@ -88,6 +84,26 @@ try {
         if ($unexpected.Count) {
             throw "Unexpected development files in store package: $($unexpected -join ', ')"
         }
+        $fileEntries = @($archive.Entries | Where-Object { -not $_.FullName.EndsWith('/') })
+        $actualPaths = @($fileEntries | ForEach-Object { $_.FullName.Replace('\', '/') } | Sort-Object)
+        $difference = @(Compare-Object -ReferenceObject $runtimeFiles -DifferenceObject $actualPaths)
+        if ($difference.Count -or $fileEntries.Count -ne $runtimeFiles.Count) {
+            throw 'ZIP files do not exactly match the manifest-derived file list.'
+        }
+        foreach ($entry in $fileEntries) {
+            $stream = $entry.Open()
+            $sha = [Security.Cryptography.SHA256]::Create()
+            try {
+                $entryHash = [BitConverter]::ToString($sha.ComputeHash($stream)).Replace('-', '')
+                $sourceHash = (Get-FileHash -Algorithm SHA256 -LiteralPath (Join-Path $projectRoot $entry.FullName)).Hash
+                if ($entryHash -ne $sourceHash) {
+                    throw "ZIP content differs from source: $($entry.FullName)"
+                }
+            } finally {
+                $stream.Dispose()
+                $sha.Dispose()
+            }
+        }
     } finally {
         $archive.Dispose()
     }
@@ -104,6 +120,7 @@ $hash = Get-FileHash -Algorithm SHA256 -LiteralPath $outputPath
 [PSCustomObject]@{
     Package = $outputPath
     Version = $manifest.version
+    ReviewOnly = [bool]$Review
     Files = $runtimeFiles.Count
     Bytes = (Get-Item -LiteralPath $outputPath).Length
     SHA256 = $hash.Hash
