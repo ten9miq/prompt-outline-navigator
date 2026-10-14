@@ -251,7 +251,7 @@
     }
 
     startEarlierPromptLoading() {
-      if (!this.isConversationScrolledFromStart()) {
+      if (!this.hasEarlierConversationTurns()) {
         this.updateEarlierPromptLoader();
         return;
       }

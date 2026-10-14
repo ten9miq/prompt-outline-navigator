@@ -22,7 +22,6 @@
       this.appRoot = null;
       this.isVisible = true;
       this.sidebarPreferenceVisible = true;
-      this.sidebarConversationPath = null;
       this.sidebarAvailabilityState = null;
 
       this.groups = [];
@@ -60,7 +59,8 @@
     async init() {
       this.createSidebar();
       this.addToggleButton();
-      const visible = await this.loadSidebarVisibility();
+      const [visible, width] = await Promise.all([this.loadSidebarVisibility(), this.loadSidebarWidth()]);
+      this.setSidebarWidth(width);
       this.setSidebarVisible(visible, { focus: false, persist: false });
       this.observePage();
       this.observeTheme();

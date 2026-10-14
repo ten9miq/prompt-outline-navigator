@@ -71,9 +71,9 @@ test('sidecar reserves width without padding or reparenting styles', () => {
   assert.doesNotMatch(styles, /padding-right/);
 });
 
-test('full-height TOC keeps its closed toggle below ChatGPT top navigation', () => {
+test('TOC starts at the top and its closed toggle leaves navigation clearance', () => {
   assert.match(styles, /--chatgpt-toc-top-offset:\s*0px/);
-  assert.match(styles, /--chatgpt-toc-toggle-top-offset:\s*72px/);
+  assert.match(styles, /--chatgpt-toc-toggle-top-offset:\s*48px/);
   assert.match(styles, /#chatgpt-toc-sidebar\s*\{[\s\S]*?inset:\s*var\(--chatgpt-toc-top-offset\) 0 0 auto;[\s\S]*?height:\s*calc\(100dvh - var\(--chatgpt-toc-top-offset\)\)/);
   assert.match(styles, /#chatgpt-toc-toggle\s*\{[\s\S]*?top:\s*var\(--chatgpt-toc-toggle-top-offset\)/);
 });

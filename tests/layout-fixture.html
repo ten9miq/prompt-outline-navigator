@@ -61,7 +61,7 @@
         open.composerWidth === expectedWideWidth && closed.composerWidth === expectedWideWidth &&
         open.appWidth === Math.round(innerWidth - 200) &&
         open.sidebarTop === 0 && open.sidebarHeight === innerHeight &&
-        open.toggleTop === 72 && closed.toggleTop === 72 &&
+        open.toggleTop === 48 && closed.toggleTop === 48 &&
         unavailable.appWidth === innerWidth && unavailable.contentWidth === Math.min(800, innerWidth) &&
         unavailable.composerWidth === Math.min(800, innerWidth);
       output.textContent = JSON.stringify({ passed, viewport: { width: innerWidth, height: innerHeight }, off, open, closed, unavailable }, null, 2);

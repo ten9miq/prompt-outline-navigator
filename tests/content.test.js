@@ -256,6 +256,21 @@ test('sidebar visibility storage reads closed state and writes later changes', a
   }
 });
 
+test('sidebar width storage tolerates missing, invalid, and out-of-range values', async () => {
+  const previousChrome = globalThis.chrome;
+  try {
+    for (const [stored, expected] of [[undefined, 200], ['320', 200], [NaN, 200], [Infinity, 200], [320, 320], [0, 160], [900, 600]]) {
+      globalThis.chrome = { storage: { local: { get: async () => ({ sidebarWidth: stored }) } } };
+      assert.equal(await ChatGPTTOC.prototype.loadSidebarWidth(), expected);
+    }
+    globalThis.chrome = { storage: { local: { get: async () => { throw new Error('unavailable'); } } } };
+    assert.equal(await ChatGPTTOC.prototype.loadSidebarWidth(), 200);
+  } finally {
+    if (previousChrome === undefined) delete globalThis.chrome;
+    else globalThis.chrome = previousChrome;
+  }
+});
+
 test('a disconnected heading is replaced by its remounted counterpart', () => {
   const heading = (text, tagName, isConnected) => ({ textContent: text, tagName, isConnected });
   const stale = heading('Details', 'H2', false);
@@ -532,7 +547,7 @@ test('earlier content navigation scrolls the conversation to its beginning', () 
   const context = {
     earlierPromptLoadRequestId: 2,
     earlierPromptLoader: loader,
-    isConversationScrolledFromStart: () => true,
+    hasEarlierConversationTurns: () => true,
     scrollConversationToStart() { scrollsToStart += 1; },
     finishEarlierPromptLoading() { finishes += 1; }
   };
@@ -551,27 +566,29 @@ test('earlier content navigation scrolls the conversation to its beginning', () 
   }
 });
 
-test('conversation-start control follows normal and reverse scroll boundaries', () => {
-  const scroller = { scrollHeight: 1200, clientHeight: 600, scrollTop: 30 };
-  const context = { groups: [{}], getConversationScrollContainer: () => scroller };
-  const previousGetComputedStyle = globalThis.getComputedStyle;
-  globalThis.getComputedStyle = () => ({ flexDirection: 'column' });
-  try {
-    assert.equal(ChatGPTTOC.prototype.isConversationScrolledFromStart.call(context), true);
-    scroller.scrollTop = 0;
-    assert.equal(ChatGPTTOC.prototype.isConversationScrolledFromStart.call(context), false);
-    globalThis.getComputedStyle = () => ({ flexDirection: 'column-reverse' });
-    scroller.scrollTop = -597;
-    assert.equal(ChatGPTTOC.prototype.isConversationScrolledFromStart.call(context), true);
-    scroller.scrollTop = -600;
-    assert.equal(ChatGPTTOC.prototype.isConversationScrolledFromStart.call(context), false);
-  } finally {
-    if (previousGetComputedStyle === undefined) delete globalThis.getComputedStyle;
-    else globalThis.getComputedStyle = previousGetComputedStyle;
-  }
+test('conversation-start control detects omitted earlier turns instead of scroll position', () => {
+  const list = { style: { height: '2000px' }, classList: { contains: () => true } };
+  const turn = { style: { marginTop: '' } };
+  const offset = { style: { marginTop: '0px' }, parentElement: list };
+  const thread = { isConnected: true, querySelector: () => turn };
+  turn.parentElement = offset;
+  list.parentElement = thread;
+  const context = { source: { kind: 'conversation' }, thread, groups: [{ assistant: { isConnected: true } }] };
+  const hasEarlier = () => ChatGPTTOC.prototype.hasEarlierConversationTurns.call(context);
+  assert.equal(hasEarlier(), false);
+  offset.style.marginTop = '1200px';
+  assert.equal(hasEarlier(), true);
+  context.source.kind = 'document';
+  assert.equal(hasEarlier(), false);
+  context.source.kind = 'conversation';
+  offset.style.marginTop = '0px';
+  context.groups.unshift({ assistant: null, prompt: null });
+  assert.equal(hasEarlier(), true);
+  context.groups[0].prompt = { isConnected: true };
+  assert.equal(hasEarlier(), false);
 });
 
-test('conversation-start control is removed when the scroll boundary reaches the beginning', () => {
+test('conversation-start control is removed when no earlier turns are omitted', () => {
   let removed = 0;
   const scroller = { scrollHeight: 1200, clientHeight: 600, scrollTop: 0 };
   const context = Object.assign(Object.create(ChatGPTTOC.prototype), {

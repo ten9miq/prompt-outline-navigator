@@ -19,7 +19,7 @@ This content is processed locally in the browser only. It is not collected by th
 
 ## Data stored
 
-The extension stores only a boolean preference indicating whether its sidebar is open or closed. This preference is stored locally using `chrome.storage.local`.
+The extension stores only the sidebar's open/closed preference and its width in pixels. These preferences are stored locally using `chrome.storage.local`. Temporary hover visibility and vertical position are not stored.
 
 Conversation, document, and message-feed content is not written to extension storage. It remains in page memory only while the supported ChatGPT page is open and is discarded when the page is closed or reloaded.
 
@@ -29,7 +29,7 @@ The sidebar preference remains until the user removes the extension, clears the 
 
 The extension uses:
 
-- `storage`: to remember the sidebar's open or closed state.
+- `storage`: to remember the sidebar's open or closed state and width.
 - Access to `https://chatgpt.com/*` and `https://chat.openai.com/*`: to detect supported conversation, document, and message-feed content and display its outline and navigation.
 
 ## Remote code and external services

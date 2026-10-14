@@ -38,6 +38,147 @@ test('browser fixture completes its anonymized conversation checks', async ({ pa
   expect(consoleErrors).toEqual([]);
 });
 
+test('resizing saves width and hover previews allow navigation without resizing the page', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.addInitScript(() => {
+    globalThis.__tocWrites = [];
+    globalThis.chrome = { storage: { local: {
+      get: async () => ({ sidebarVisible: true, ...JSON.parse(sessionStorage.getItem('toc-prefs') || '{}') }),
+      set: async (value) => {
+        globalThis.__tocWrites.push(value);
+        sessionStorage.setItem('toc-prefs', JSON.stringify({ ...JSON.parse(sessionStorage.getItem('toc-prefs') || '{}'), ...value }));
+      }
+    } } };
+  });
+  await openConversationFixture(page);
+  await expect(page.locator('#results')).toHaveClass(/\bpass\b/);
+  await page.evaluate(() => { globalThis.__tocWrites = []; });
+  const sidebar = page.locator('#chatgpt-toc-sidebar');
+  const handle = page.locator('.toc-resize-handle');
+  const width = () => sidebar.evaluate((e) => e.getBoundingClientRect().width);
+  const appWidth = () => page.locator('#app').evaluate((e) => e.getBoundingClientRect().width);
+  const box = await handle.boundingBox();
+  await page.mouse.move(box.x + 3, box.y + 200);
+  await page.mouse.down();
+  await page.mouse.move(box.x - 117, box.y + 200, { steps: 8 });
+  await page.mouse.up();
+  expect(await width()).toBe(320);
+  await expect.poll(appWidth).toBe(960);
+  expect(await page.evaluate(() => globalThis.__tocWrites)).toEqual([{ sidebarWidth: 320 }]);
+  // A canceled drag must restore the saved width without writing it again.
+  const resized = await handle.boundingBox();
+  await page.mouse.move(resized.x + 3, resized.y + 200);
+  await page.mouse.down();
+  await page.mouse.move(resized.x - 47, resized.y + 200, { steps: 4 });
+  await handle.press('Escape');
+  await page.mouse.up();
+  expect(await width()).toBe(320);
+  expect(await page.evaluate(() => globalThis.__tocWrites)).toEqual([{ sidebarWidth: 320 }]);
+  await page.reload();
+  await expect(page.locator('#results')).toHaveClass(/\bpass\b/);
+  expect(await width()).toBe(320);
+  await page.evaluate(() => { globalThis.__tocWrites = []; });
+  await handle.dblclick({ position: { x: 3, y: 200 } });
+  await page.mouse.move(100, 400);
+  await expect(sidebar).toHaveAttribute('aria-hidden', 'true');
+  await expect.poll(appWidth).toBe(1280);
+  const writes = await page.evaluate(() => globalThis.__tocWrites);
+  expect(writes).toEqual([{ sidebarVisible: false }]);
+  await page.mouse.move(1279, 400);
+  await expect(sidebar).toHaveAttribute('aria-hidden', 'false');
+  await expect.poll(() => sidebar.evaluate((e) => Math.round(e.getBoundingClientRect().left))).toBe(960);
+  expect(await appWidth()).toBe(1280);
+  await page.locator('.toc-item').first().click();
+  await expect(page.locator('.toc-item').first()).toHaveClass(/active/);
+  await page.mouse.move(100, 400);
+  await expect(sidebar).toHaveAttribute('aria-hidden', 'true');
+  expect(await appWidth()).toBe(1280);
+  expect(await page.evaluate(() => globalThis.__tocWrites)).toEqual(writes);
+  // Explicit reopening reserves the saved width again.
+  await page.locator('#chatgpt-toc-toggle').click();
+  await expect.poll(appWidth).toBe(960);
+  await page.setViewportSize({ width: 300, height: 900 });
+  await expect.poll(width).toBe(220);
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await expect.poll(width).toBe(320);
+  const title = page.locator('#chatgpt-toc-title');
+  // Home retains native upward navigation on the boundary and never changes width.
+  const homeHandled = await handle.evaluate((e) => {
+    const event = new KeyboardEvent('keydown', { key: 'Home', bubbles: true, cancelable: true });
+    e.dispatchEvent(event);
+    return event.defaultPrevented;
+  });
+  expect(homeHandled).toBe(false);
+  await handle.press('Home');
+  expect(await width()).toBe(320);
+  await title.press('ArrowDown');
+  await title.press('Home');
+  expect(await sidebar.evaluate((e) => e.getBoundingClientRect().top)).toBe(0);
+  expect(await width()).toBe(320);
+  await title.press('ArrowDown');
+  expect(await sidebar.evaluate((e) => e.getBoundingClientRect().top)).toBe(10);
+  await title.dblclick();
+  expect(await width()).toBe(200);
+  expect(await sidebar.evaluate((e) => e.getBoundingClientRect().top)).toBe(0);
+  expect(await page.evaluate(() => JSON.parse(sessionStorage.getItem('toc-prefs')).sidebarWidth)).toBe(200);
+  await page.reload();
+  await expect(page.locator('#results')).toHaveClass(/\bpass\b/);
+  expect(await width()).toBe(200);
+});
+
+test('title dragging temporarily moves the sidebar without changing its reserved width', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await openConversationFixture(page);
+  await expect(page.locator('#results')).toHaveClass(/\bpass\b/);
+  const sidebar = page.locator('#chatgpt-toc-sidebar');
+  const title = page.locator('#chatgpt-toc-title');
+  const top = () => sidebar.evaluate((e) => e.getBoundingClientRect().top);
+  const appWidth = await page.locator('#app').evaluate((e) => e.getBoundingClientRect().width);
+  const dragTitle = async (delta) => {
+    const box = await title.boundingBox();
+    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2 + delta, { steps: 8 });
+    await page.mouse.up();
+  };
+  expect(await top()).toBe(0);
+  await dragTitle(140);
+  expect(await top()).toBe(140);
+  expect(await sidebar.evaluate((e) => e.getBoundingClientRect().bottom)).toBe(900);
+  expect(await page.locator('#app').evaluate((e) => e.getBoundingClientRect().width)).toBe(appWidth);
+  await dragTitle(-200);
+  expect(await top()).toBe(0);
+  await dragTitle(1500);
+  expect(await top()).toBe(780);
+  await title.dblclick();
+  expect(await top()).toBe(0);
+  await title.press('ArrowDown');
+  expect(await top()).toBe(10);
+  await title.press('Home');
+  expect(await top()).toBe(0);
+  const box = await title.boundingBox();
+  await page.mouse.move(box.x + 20, box.y + 10);
+  await page.mouse.down();
+  await page.mouse.move(box.x + 20, box.y + 110, { steps: 5 });
+  await title.press('Escape');
+  await page.mouse.up();
+  expect(await top()).toBe(0);
+  await dragTitle(100);
+  await page.setViewportSize({ width: 1280, height: 180 });
+  await expect.poll(top).toBe(60);
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.evaluate(() => { history.pushState({}, '', '/different-page'); window.dispatchEvent(new PopStateEvent('popstate')); });
+  await expect.poll(top).toBe(0);
+  await page.locator('.toc-close').click();
+  await expect(page.locator('#chatgpt-toc-toggle')).toBeVisible();
+  await page.locator('#chatgpt-toc-toggle').click();
+  expect(await top()).toBe(0);
+  await dragTitle(100);
+  await page.goto('https://chatgpt.com/c/fixture');
+  await expect(page.locator('#results')).toHaveClass(/\bpass\b/);
+  expect(await top()).toBe(0);
+});
+
 test('reverse-scroll TOC navigation stays at the selected heading and survives an absent thread', async ({ page }) => {
   const pageErrors = [];
   page.on('pageerror', (error) => pageErrors.push(error.message));
@@ -136,7 +277,7 @@ test('reverse-scroll TOC navigation stays at the selected heading and survives a
 });
 
 for (const preference of [true, false]) {
-  test(`temporary page and dialog suspension preserves the ${preference ? 'open' : 'closed'} preference`, async ({ page }) => {
+  test(`page transitions and overlays preserve the manual ${preference ? 'open' : 'closed'} state`, async ({ page }) => {
     await page.addInitScript(() => {
       globalThis.__tocWrites = [];
       globalThis.chrome = { storage: { local: {
@@ -148,15 +289,15 @@ for (const preference of [true, false]) {
     await expect(page.locator('#results')).toHaveClass(/\bpass\b/);
     if (!preference) await page.locator('.toc-close').click();
     await page.evaluate(() => { globalThis.__tocWrites = []; });
-    const assertState = async (available) => {
+    const assertState = async () => {
       await expect.poll(() => page.evaluate(() => ({
         sidebarHidden: document.querySelector('#chatgpt-toc-sidebar').hidden,
         toggleHidden: document.querySelector('#chatgpt-toc-toggle').hidden,
         reserve: document.body.classList.contains('chatgpt-toc-open'),
-        wide: document.body.classList.contains('chatgpt-toc-conversation')
-      }))).toEqual({ sidebarHidden: !available, toggleHidden: !available || preference, reserve: available && preference, wide: available });
+        appWidth: document.querySelector('.chatgpt-toc-app-root').getBoundingClientRect().width
+      }))).toEqual({ sidebarHidden: false, toggleHidden: preference, reserve: preference, appWidth: await page.evaluate((open) => innerWidth - (open ? 200 : 0), preference) });
     };
-    await assertState(true);
+    await assertState();
     const rootMarkerWrites = await page.evaluate(async () => {
       let writes = 0;
       const observer = new MutationObserver((records) => { writes += records.length; });
@@ -168,29 +309,117 @@ for (const preference of [true, false]) {
     expect(rootMarkerWrites).toBe(0);
     for (const pathname of ['/settings/general-settings', '/g/g-p-project/project', '/workspace/agents/task', '/']) {
       await page.evaluate((url) => { document.getElementById('thread').hidden = url !== '/settings/general-settings'; history.pushState({}, '', url); window.dispatchEvent(new PopStateEvent('popstate')); }, pathname);
-      await assertState(false);
+      await assertState();
+      if (pathname !== '/settings/general-settings') {
+        await expect(page.locator('#chatgpt-toc-sidebar .toc-status')).toHaveText('No table of contents items');
+        await expect(page.locator('.toc-group')).toHaveCount(0);
+      }
       await page.evaluate(() => { document.getElementById('thread').hidden = false; history.pushState({}, '', '/g/g-p-project/c/fixture'); window.dispatchEvent(new PopStateEvent('popstate')); });
-      await assertState(true);
+      await assertState();
     }
     await page.evaluate(() => { history.pushState({}, '', '/new/unknown/conversation-route'); window.dispatchEvent(new PopStateEvent('popstate')); });
-    await assertState(true);
+    await assertState();
+    const overlayWidth = await page.locator('.chatgpt-toc-app-root').evaluate((e) => e.getBoundingClientRect().width);
     await page.evaluate(() => {
       const dialog = document.createElement('div');
       dialog.id = 'modal-probe'; dialog.setAttribute('role', 'dialog');
       dialog.style.cssText = 'position:fixed;inset:0;background:white';
       document.body.append(dialog);
     });
-    await assertState(false);
+    await assertState();
+    expect(await page.locator('.chatgpt-toc-app-root').evaluate((e) => e.getBoundingClientRect().width)).toBe(overlayWidth);
+    // Hover controls may repeatedly reveal a non-modal quick-chat panel.
+    await page.evaluate(async () => {
+      const dialog = document.getElementById('modal-probe');
+      dialog.setAttribute('aria-modal', 'false');
+      globalThis.__overlayStates = [];
+      for (let frame = 0; frame < 12; frame++) {
+        dialog.hidden = frame % 2 === 0;
+        await new Promise(requestAnimationFrame);
+        globalThis.__overlayStates.push(document.body.className);
+      }
+    });
+    expect(await page.evaluate(() => new Set(globalThis.__overlayStates).size)).toBe(1);
     await page.evaluate(() => { document.getElementById('modal-probe').hidden = true; });
-    await assertState(true);
+    await assertState();
     // Zero prompts and a temporary root replacement are still a supported conversation.
     await page.evaluate(() => { document.getElementById('thread').replaceChildren(); });
-    await assertState(true);
+    await assertState();
     await page.evaluate(() => { document.getElementById('thread').remove(); });
-    await assertState(true);
+    await assertState();
     expect(await page.evaluate(() => globalThis.__tocWrites)).toEqual([]);
+    // Manual close/open remains available even after navigating to a page with no source.
+    await page.evaluate(() => { history.pushState({}, '', '/unsupported'); window.dispatchEvent(new PopStateEvent('popstate')); });
+    await assertState();
+    await page.locator(preference ? '.toc-close' : '#chatgpt-toc-toggle').click();
+    await expect.poll(() => page.evaluate(() => document.body.classList.contains('chatgpt-toc-open'))).toBe(!preference);
+    expect(await page.evaluate(() => globalThis.__tocWrites)).toEqual([{ sidebarVisible: !preference }]);
   });
 }
+
+test('attachment-only prompts pair with long responses and retain their headings', async ({ page }) => {
+  await openConversationFixture(page);
+  await expect(page.locator('#results')).toHaveClass(/\bpass\b/);
+  await page.evaluate(() => {
+    const thread = document.getElementById('thread');
+    thread.setAttribute('data-app-action-timeline-scroll', '');
+    thread.style.cssText = 'height:500px;overflow-y:auto';
+    thread.innerHTML = '<div data-turn-key="attachment-turn"><div class="group/user-message" data-chatgpt-search-unit-key="attachment:user" data-chatgpt-search-message-ids="attachment"><button aria-label="anonymous.txt">anonymous.txt</button></div><div data-chatgpt-search-unit-key="attachment:assistant"><h4 data-conversation-role="assistant">Assistant</h4><div data-markdown-text-style="assistant-message"><h1>Meeting notes</h1><p>' + 'Long response. '.repeat(1500) + '</p><h2>Decisions</h2><p style="height:1000px">End</p></div></div></div>';
+    history.pushState({}, '', '/g/project/c/attachment-only');
+    window.dispatchEvent(new PopStateEvent('popstate'));
+  });
+  await expect(page.locator('.toc-group')).toHaveCount(1);
+  await expect(page.locator('.toc-item')).toHaveCount(2);
+  await expect(page.locator('.toc-item').first()).toContainText('Meeting notes');
+  await page.locator('.toc-item').filter({ hasText: 'Decisions' }).click();
+  await expect.poll(() => page.locator('#thread h2').evaluate((e) => Math.abs(e.getBoundingClientRect().top - document.getElementById('thread').getBoundingClientRect().top - TOCNavigator.getNavigationOffset(innerHeight)))).toBeLessThanOrEqual(2);
+});
+
+test('conversation-start button appears only while earlier turns are virtualized', async ({ page }) => {
+  await openConversationFixture(page);
+  await expect(page.locator('#results')).toHaveClass(/\bpass\b/);
+  await page.evaluate(() => {
+    document.getElementById('thread').hidden = true;
+    const thread = document.querySelector('[data-chatgpt-conversation-selection-target]');
+    thread.hidden = false;
+    const scroller = thread.querySelector('[data-app-action-timeline-scroll]');
+    scroller.style.cssText = 'height:500px;overflow-y:auto';
+    const content = thread.querySelector('[data-thread-user-message-navigation-content]');
+    const turn = content.querySelector('[data-turn-key]');
+    const list = document.createElement('div');
+    list.className = 'relative shrink-0';
+    list.style.height = '3000px';
+    const offset = document.createElement('div');
+    offset.id = 'virtual-turn-offset';
+    offset.style.marginTop = '0px';
+    offset.append(turn);
+    list.append(offset);
+    content.append(list);
+    scroller.scrollTop = 500;
+  });
+  await expect(page.locator('.toc-item')).toHaveCount(1);
+  await expect(page.locator('.toc-load-earlier')).toHaveCount(0);
+  await page.evaluate(() => { document.getElementById('virtual-turn-offset').style.marginTop = '1000px'; });
+  await expect(page.locator('.toc-load-earlier')).toHaveCount(1);
+  await page.locator('.toc-load-earlier').click();
+  await expect.poll(() => page.locator('[data-app-action-timeline-scroll]').evaluate((e) => e.scrollTop)).toBe(0);
+  // The button remains while the leading turns have not actually reappeared.
+  await expect(page.locator('.toc-load-earlier')).toHaveCount(1);
+  await page.evaluate(() => { document.getElementById('virtual-turn-offset').style.marginTop = '0px'; });
+  await expect(page.locator('.toc-load-earlier')).toHaveCount(0);
+  // Fully rendered documents and feeds never need this conversation control.
+  await page.evaluate(() => {
+    document.querySelector('[data-chatgpt-conversation-selection-target]').hidden = true;
+    const root = document.createElement('div');
+    root.setAttribute('data-markdown-copy-content', '');
+    root.innerHTML = '<div class="ProseMirror"><h1>Document</h1><p style="height:2000px">Body</p></div>';
+    document.querySelector('main').append(root);
+    history.pushState({}, '', '/document-probe');
+    window.dispatchEvent(new PopStateEvent('popstate'));
+  });
+  await expect(page.locator('.toc-item')).toHaveCount(1);
+  await expect(page.locator('.toc-load-earlier')).toHaveCount(0);
+});
 
 test('initial composer widens independently of TOC and survives first-message rendering', async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 900 });
@@ -208,16 +437,16 @@ test('initial composer widens independently of TOC and survives first-message re
   });
   const width = () => page.locator('#initial-composer-probe form').evaluate((e) => e.getBoundingClientRect().width);
   await expect.poll(width).toBe(960);
-  await expect(page.locator('#chatgpt-toc-sidebar')).toHaveAttribute('hidden');
+  await expect(page.locator('#chatgpt-toc-sidebar')).not.toHaveAttribute('hidden');
   await expect(page.locator('#chatgpt-toc-toggle')).toHaveAttribute('hidden');
-  expect(await page.evaluate(() => document.body.classList.contains('chatgpt-toc-open'))).toBe(false);
+  expect(await page.evaluate(() => document.body.classList.contains('chatgpt-toc-open'))).toBe(true);
   await page.evaluate(() => { document.getElementById('native-composer-cap').className = ''; });
   await expect.poll(width).toBe(960);
   await page.evaluate(() => {
     const dialog = document.createElement('div'); dialog.id = 'initial-modal';
     dialog.setAttribute('role', 'dialog'); dialog.style.cssText = 'position:fixed;inset:0'; document.body.append(dialog);
   });
-  await expect.poll(width).toBe(632);
+  await expect.poll(width).toBe(960);
   await page.evaluate(() => { document.getElementById('initial-modal').remove(); });
   await expect.poll(width).toBe(960);
   // Simulate the DOM transition after the first message without posting anything.

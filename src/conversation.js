@@ -25,6 +25,7 @@
           this.refreshAppRoot();
           this.bindCurrentThread();
           this.updateSidebarAvailability();
+          this.updateEarlierPromptLoader();
         });
       };
       this.pageObserver = new MutationObserver(schedulePageSync);
@@ -60,7 +61,7 @@
       this.conversationIdentity = nextIdentity;
 
       if (!this.thread) {
-        this.showStatus('Waiting for a conversation…', 'toc-loading');
+        this.showStatus('No table of contents items', 'toc-empty');
         return;
       }
 
@@ -406,7 +407,7 @@
     }
 
     updateEarlierPromptLoader() {
-      const shouldShow = this.isConversationScrolledFromStart();
+      const shouldShow = this.hasEarlierConversationTurns();
       if (!shouldShow) {
         this.earlierPromptLoader?.remove();
         return;
@@ -423,13 +424,24 @@
       if (!this.earlierPromptLoader.isConnected) this.tocContent.prepend(this.earlierPromptLoader);
     }
 
-    isConversationScrolledFromStart() {
-      const scroller = this.getConversationScrollContainer?.();
-      if (!scroller || !this.groups.length) return false;
-      const range = Math.max(0, scroller.scrollHeight - scroller.clientHeight);
-      if (range <= 2) return false;
-      const reverse = getComputedStyle(scroller).flexDirection === 'column-reverse';
-      return reverse ? scroller.scrollTop > -range + 2 : scroller.scrollTop > 2;
+    hasEarlierConversationTurns() {
+      if (this.source?.kind !== 'conversation' || !this.thread?.isConnected) return false;
+      // Cached earlier groups can outlive the DOM nodes that ChatGPT virtualizes.
+      const firstLiveGroup = this.groups.findIndex((group) =>
+        group.prompt?.isConnected || group.assistant?.isConnected);
+      if (firstLiveGroup > 0) return true;
+
+      const firstTurn = this.thread.querySelector(SELECTORS.conversationTurn);
+      if (!firstTurn) return false;
+      // The current virtualizer reserves omitted turns with a leading inline
+      // margin inside its relative, fixed-height list. This offset is independent
+      // of scrollTop, so scrolling within a fully rendered response is ignored.
+      for (let element = firstTurn; element && element !== this.thread; element = element.parentElement) {
+        const parent = element.parentElement;
+        if (parseFloat(element.style.marginTop) > 2 && parent?.style.height &&
+            parent.classList.contains('relative') && parent.classList.contains('shrink-0')) return true;
+      }
+      return false;
     }
 
     reconcileAssistantTurn(assistant) {

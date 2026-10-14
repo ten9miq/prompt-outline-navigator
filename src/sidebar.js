@@ -8,8 +8,8 @@
   const {
     SELECTORS,
     SIDEBAR_VISIBILITY_KEY,
+    SIDEBAR_WIDTH_KEY,
     findConversationRoot,
-    hasVisibleDialog,
     resolveDarkTheme,
     isTocScrolledToEnd,
     createCloseIcon
@@ -54,7 +54,78 @@
       header.append(title, closeButton);
       this.sidebar.append(header, this.tocContent);
       document.body.append(this.sidebar);
-      this.showStatus('Waiting for a conversation…', 'toc-loading');
+      this.sidebarTop = 0;
+      this.sidebarPositionPath = globalThis.location?.pathname || '';
+      this.setupSidebarDragging(header, title);
+      this.setupSidebarResizing();
+      this.setupSidebarHover();
+      this.showStatus('No table of contents items', 'toc-empty');
+    },
+
+    setSidebarTop(top) {
+      const maximum = Math.max(0, window.innerHeight - 120);
+      this.sidebarTop = Math.max(0, Math.min(maximum, top));
+      const value = `${this.sidebarTop}px`;
+      if (this.sidebar.style.getPropertyValue('--chatgpt-toc-top-offset') !== value) {
+        this.sidebar.style.setProperty('--chatgpt-toc-top-offset', value);
+      }
+    },
+
+    resetSidebarPosition() {
+      this.cancelSidebarDrag?.();
+      this.setSidebarTop(0);
+    },
+
+    setupSidebarDragging(header, title) {
+      let drag = null;
+      header.title = 'Drag to move temporarily. Double-click to reset width and vertical position.';
+      title.tabIndex = 0;
+      title.setAttribute('aria-description', 'Drag or use Up and Down to move. Home returns to the top.');
+      const finish = (cancel = false) => {
+        if (!drag) return;
+        const previous = drag;
+        drag = null;
+        header.classList.remove('is-dragging');
+        if (cancel) this.setSidebarTop(previous.top);
+        if (header.hasPointerCapture(previous.id)) header.releasePointerCapture(previous.id);
+      };
+      this.cancelSidebarDrag = () => finish(true);
+      header.addEventListener('pointerdown', (event) => {
+        if (event.button !== 0 || !event.isPrimary || event.target.closest('button')) return;
+        event.preventDefault();
+        title.focus({ preventScroll: true });
+        drag = { id: event.pointerId, y: event.clientY, top: this.sidebarTop };
+        header.setPointerCapture(event.pointerId);
+        header.classList.add('is-dragging');
+      });
+      header.addEventListener('pointermove', (event) => {
+        if (drag?.id !== event.pointerId) return;
+        this.setSidebarTop(drag.top + event.clientY - drag.y);
+      });
+      header.addEventListener('pointerup', (event) => {
+        if (drag?.id === event.pointerId) finish();
+      });
+      header.addEventListener('pointercancel', (event) => {
+        if (drag?.id === event.pointerId) finish(true);
+      });
+      header.addEventListener('lostpointercapture', () => finish());
+      window.addEventListener('blur', this.cancelSidebarDrag);
+      window.addEventListener('resize', () => {
+        finish();
+        this.setSidebarTop(this.sidebarTop);
+      }, { passive: true });
+      header.addEventListener('dblclick', (event) => {
+        if (event.target.closest('button')) return;
+        this.resetSidebarPosition();
+        this.setSidebarWidth(200, true);
+      });
+      title.addEventListener('keydown', (event) => {
+        if (!['ArrowUp', 'ArrowDown', 'Home', 'Escape'].includes(event.key)) return;
+        event.preventDefault();
+        if (event.key === 'Escape') finish(true);
+        else if (event.key === 'Home') this.resetSidebarPosition();
+        else this.setSidebarTop(this.sidebarTop + (event.key === 'ArrowDown' ? 10 : -10));
+      });
     },
 
     addToggleButton() {
@@ -68,6 +139,113 @@
       this.toggleButton.hidden = true;
       this.toggleButton.addEventListener('click', () => this.setSidebarVisible(true));
       document.body.append(this.toggleButton);
+    },
+
+    async loadSidebarWidth() {
+      try {
+        const saved = await globalThis.chrome?.storage?.local?.get(SIDEBAR_WIDTH_KEY);
+        const width = saved?.[SIDEBAR_WIDTH_KEY];
+        return typeof width === 'number' && Number.isFinite(width) ? Math.max(160, Math.min(600, width)) : 200;
+      } catch {
+        return 200;
+      }
+    },
+
+    setSidebarWidth(width, persist = false) {
+      this.sidebarWidth = Math.max(160, Math.min(600, width));
+      const applied = Math.min(this.sidebarWidth, Math.max(80, window.innerWidth - 80));
+      const value = `${applied}px`;
+      if (document.documentElement.style.getPropertyValue('--chatgpt-toc-width') !== value) {
+        document.documentElement.style.setProperty('--chatgpt-toc-width', value);
+      }
+      this.resizeHandle.setAttribute('aria-valuenow', String(applied));
+      this.resizeHandle.setAttribute('aria-valuemin', String(Math.min(160, applied)));
+      this.resizeHandle.setAttribute('aria-valuemax', String(Math.min(600, Math.max(80, window.innerWidth - 80))));
+      if (persist) {
+        try {
+          Promise.resolve(globalThis.chrome?.storage?.local?.set({ [SIDEBAR_WIDTH_KEY]: this.sidebarWidth })).catch(() => {});
+        } catch { /* Storage may be unavailable after an extension reload. */ }
+      }
+    },
+
+    setupSidebarResizing() {
+      const handle = document.createElement('div');
+      handle.className = 'toc-resize-handle';
+      handle.tabIndex = 0;
+      handle.setAttribute('role', 'separator');
+      handle.setAttribute('aria-orientation', 'vertical');
+      handle.setAttribute('aria-label', 'Resize table of contents');
+      handle.setAttribute('aria-valuemin', '160');
+      handle.setAttribute('aria-valuemax', '600');
+      handle.title = 'Drag to resize. Double-click to hide.';
+      this.resizeHandle = handle;
+      this.sidebar.append(handle);
+      this.sidebarWidth = 200;
+      let drag = null;
+      const finish = (cancel = false) => {
+        if (!drag) return;
+        const previous = drag;
+        drag = null;
+        document.body.classList.remove('chatgpt-toc-resizing');
+        this.setSidebarWidth(cancel ? previous.width : this.sidebarWidth, !cancel && this.sidebarWidth !== previous.width);
+        if (handle.hasPointerCapture(previous.id)) handle.releasePointerCapture(previous.id);
+        if (this.sidebarHoverVisible && !this.sidebar.matches(':hover')) this.setSidebarHoverVisible(false);
+      };
+      handle.addEventListener('pointerdown', (event) => {
+        if (event.button !== 0 || !event.isPrimary) return;
+        event.preventDefault();
+        drag = { id: event.pointerId, x: event.clientX, width: this.sidebarWidth };
+        handle.setPointerCapture(event.pointerId);
+        document.body.classList.add('chatgpt-toc-resizing');
+      });
+      handle.addEventListener('pointermove', (event) => {
+        if (drag?.id === event.pointerId) this.setSidebarWidth(drag.width + drag.x - event.clientX);
+      });
+      handle.addEventListener('pointerup', (event) => { if (drag?.id === event.pointerId) finish(); });
+      handle.addEventListener('pointercancel', (event) => { if (drag?.id === event.pointerId) finish(true); });
+      handle.addEventListener('lostpointercapture', () => finish());
+      window.addEventListener('blur', () => finish(true));
+      window.addEventListener('resize', () => { finish(); this.setSidebarWidth(this.sidebarWidth); }, { passive: true });
+      handle.addEventListener('dblclick', () => this.setSidebarVisible(false));
+      handle.addEventListener('keydown', (event) => {
+        if (!['ArrowLeft', 'ArrowRight', 'Enter', 'Escape'].includes(event.key)) return;
+        event.preventDefault();
+        if (event.key === 'Escape') finish(true);
+        else if (event.key === 'Enter') this.setSidebarVisible(false);
+        else this.setSidebarWidth(this.sidebarWidth + (event.key === 'ArrowLeft' ? 10 : -10), true);
+      });
+    },
+
+    setSidebarHoverVisible(visible) {
+      clearTimeout(this.sidebarHoverTimer);
+      this.sidebarHoverVisible = Boolean(visible) && !this.sidebarPreferenceVisible;
+      this.updateSidebarAvailability();
+    },
+
+    setupSidebarHover() {
+      const edge = document.createElement('div');
+      edge.id = 'chatgpt-toc-hover-edge';
+      edge.hidden = true;
+      edge.setAttribute('aria-hidden', 'true');
+      document.body.append(edge);
+      this.hoverEdge = edge;
+      edge.addEventListener('pointerenter', (event) => {
+        if (event.pointerType !== 'touch') this.setSidebarHoverVisible(true);
+      });
+      const leave = (event) => {
+        if (this.sidebar.contains(event.relatedTarget) || edge.contains(event.relatedTarget)) return;
+        clearTimeout(this.sidebarHoverTimer);
+        this.sidebarHoverTimer = setTimeout(() => {
+          if (!document.body.classList.contains('chatgpt-toc-resizing')) this.setSidebarHoverVisible(false);
+        }, 180);
+      };
+      edge.addEventListener('pointerleave', leave);
+      this.sidebar.addEventListener('pointerenter', () => clearTimeout(this.sidebarHoverTimer));
+      this.sidebar.addEventListener('pointerleave', leave);
+      this.sidebar.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape' && this.sidebarHoverVisible) this.setSidebarHoverVisible(false);
+      });
+      window.addEventListener('blur', () => this.setSidebarHoverVisible(false));
     },
 
     async loadSidebarVisibility() {
@@ -92,6 +270,8 @@
     },
 
     setSidebarVisible(visible, options = {}) {
+      clearTimeout(this.sidebarHoverTimer);
+      this.sidebarHoverVisible = false;
       this.sidebarPreferenceVisible = Boolean(visible);
       this.updateSidebarAvailability();
       if (options.persist !== false) this.saveSidebarVisibility(visible);
@@ -100,29 +280,34 @@
 
     updateSidebarAvailability() {
       const pathname = globalThis.location?.pathname || '';
+      if (this.sidebarPositionPath !== pathname) {
+        this.sidebarPositionPath = pathname;
+        this.resetSidebarPosition();
+        this.sidebarHoverVisible = false;
+      }
       const source = shared.findTocSource(document);
-      if (source) this.sidebarConversationPath = pathname;
-      const suppressed = /^\/settings(?:\/|$)/.test(pathname) ||
-        /^#(?:settings|\/settings)(?:\b|\/)/.test(globalThis.location?.hash || '') ||
-        hasVisibleDialog(document, source?.kind === 'document' ? source.root : null);
-      const available = this.sidebarConversationPath === pathname && !suppressed;
       const kind = source?.kind || (this.sourcePath === pathname ? this.source?.kind : null);
       const homeComposer = Array.from(document.querySelectorAll('[data-chatgpt-composer][data-composer-placement="home"]'))
         .find((element) => element.getBoundingClientRect().width > 0 && !element.closest('[hidden],[aria-hidden="true"],[inert]'));
-      const wide = !suppressed && (available && kind === 'conversation' || !kind && Boolean(homeComposer));
+      const wide = kind === 'conversation' || !kind && Boolean(homeComposer);
       this.refreshHomeComposerRoot(wide ? homeComposer : null);
-      const visible = available && this.sidebarPreferenceVisible;
-      const state = `${available}:${visible}:${kind || 'none'}:${wide}`;
+      // Hover previews overlay the page; only the saved open state reserves width.
+      const pinned = this.sidebarPreferenceVisible;
+      const visible = pinned || Boolean(this.sidebarHoverVisible);
+      const state = `${pinned}:${visible}:${kind || 'none'}:${wide}`;
       if (this.sidebarAvailabilityState === state) return;
       this.sidebarAvailabilityState = state;
       this.isVisible = visible;
-      this.sidebar.hidden = !available;
+      this.sidebar.hidden = false;
       this.sidebar.classList.toggle('is-open', visible);
       this.sidebar.setAttribute('aria-hidden', String(!visible));
-      this.toggleButton.hidden = !available || this.sidebarPreferenceVisible;
+      this.sidebar.inert = !visible;
+      if (!visible && this.sidebar.contains(document.activeElement)) document.activeElement.blur();
+      this.toggleButton.hidden = visible;
       this.toggleButton.setAttribute('aria-expanded', String(visible));
-      document.body.classList.toggle('chatgpt-toc-open', visible);
-      document.body.classList.toggle('chatgpt-toc-conversation', available && (source?.kind || this.source?.kind) === 'conversation');
+      this.hoverEdge.hidden = pinned;
+      document.body.classList.toggle('chatgpt-toc-open', pinned);
+      document.body.classList.toggle('chatgpt-toc-conversation', kind === 'conversation');
       document.body.classList.toggle('chatgpt-toc-wide', wide);
       this.refreshAppRoot();
     },

@@ -6,7 +6,7 @@
     SELECTORS: Object.freeze({
       thread: '[data-chatgpt-conversation-selection-target="true"][data-thread-find-target="conversation"],#thread',
       main: 'main',
-      userMessage: '[data-message-author-role="user"],[data-chatgpt-search-unit-key][data-chatgpt-search-message-ids]:has([data-user-message-bubble="true"])',
+      userMessage: '[data-message-author-role="user"],[data-chatgpt-search-unit-key][data-chatgpt-search-message-ids]:is(:has([data-user-message-bubble="true"]),[class~="group/user-message"])',
       promptText: '.whitespace-pre-wrap',
       assistantMessage: '[data-message-author-role="assistant"],[data-chatgpt-search-unit-key]:has([data-conversation-role="assistant"])',
       headings: 'h1,h2,h3,h4,h5,h6',
@@ -23,7 +23,8 @@
     STRUCTURE_SETTLE_DELAY: 120,
     NAVIGATION_RECOVERY_FRAMES: 300,
     TOC_TAIL_THRESHOLD: 8,
-    SIDEBAR_VISIBILITY_KEY: 'sidebarVisible'
+    SIDEBAR_VISIBILITY_KEY: 'sidebarVisible',
+    SIDEBAR_WIDTH_KEY: 'sidebarWidth'
   };
 
   api.truncateText = (value, limit = api.PROMPT_LIMIT) => {
