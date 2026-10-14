@@ -5,12 +5,13 @@ Features:
 • Navigate active Space documents and dot message feeds when their supported content structure is present.
 • Track your current prompt and heading, and collapse prompt groups and heading levels.
 • Scroll smoothly to rendered destinations; restore older virtualized conversation destinations when possible.
-• Remember whether the sidebar is open or closed. Hide it temporarily for settings and operation dialogs, then restore your preference.
-• Use a full-height sidebar with light and dark themes.
+• Keep the sidebar and its reserved space stable across page transitions and dialogs; support attachment-only prompts.
+• Drag the left boundary to resize the sidebar and save the width. Double-click the boundary to hide it, then hover at the right edge to preview and select outline entries without resizing the page.
+• Drag the title bar to move the sidebar down temporarily. Double-click the title to reset width and vertical position. Support light and dark themes.
 • Widen conversation responses and composers, including initial messages on new-chat and project home screens.
 
 The outline is built from content rendered in the page. Long conversations may load older messages as you navigate; the extension retains entries it has already discovered. ChatGPT features and page structures may vary by account and change over time. Not every page produces an outline.
 
-Conversation, document, and message-feed content is processed locally in your browser. It is not sent to the developer or any external server. Only the sidebar's open/closed preference is saved in local extension storage.
+Conversation, document, and message-feed content is processed locally in your browser. It is not sent to the developer or any external server. Only the sidebar's open/closed preference and width are saved in local extension storage.
 
 Prompt Outline Navigator is an independent project and is not affiliated with or endorsed by OpenAI. ChatGPT access and features are provided by OpenAI; this extension does not supply an account or subscription.

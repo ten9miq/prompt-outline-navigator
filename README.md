@@ -55,7 +55,7 @@ The script runs `npm run build` (JavaScript syntax checks, unit and browser test
 
 See [release preparation](docs/RELEASE.md) for listing drafts, privacy declarations, safe sample screenshots and final submission steps. Regenerate the sample screenshots with `node scripts/capture-store-screenshots.js`.
 
-Version `1.4.0` has been prepared at the owner's request as the next store update. Its ZIP is `dist/prompt-outline-navigator-1.4.0-chrome-web-store.zip`; preparation does not submit or publish it.
+Version `1.5.0` has been prepared at the owner's request as the next store update. Its ZIP is `dist/prompt-outline-navigator-1.5.0-chrome-web-store.zip`; preparation does not submit or publish it.
 
 ## Origin
 
