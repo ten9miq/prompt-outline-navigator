@@ -55,7 +55,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File scripts/build-store-package.
 
 掲載原稿、プライバシー申告、個人情報を含まないサンプル画像と公開前の手順は[公開準備](docs/RELEASE.md)を参照してください。サンプル画像は`node scripts/capture-store-screenshots.js`で再生成できます。
 
-所有者の依頼により、次のストア更新向けに版数`1.4.0`を準備しました。ZIPは`dist/prompt-outline-navigator-1.4.0-chrome-web-store.zip`です。この準備だけでは提出や公開は行いません。
+所有者の依頼により、次のストア更新向けに版数`1.5.0`を準備しました。ZIPは`dist/prompt-outline-navigator-1.5.0-chrome-web-store.zip`です。この準備だけでは提出や公開は行いません。
 
 ## 由来
 

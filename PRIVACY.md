@@ -2,7 +2,7 @@
 
 [English](PRIVACY.md) | [日本語](PRIVACY.ja.md)
 
-Effective date: October 11, 2026.
+Effective date: October 15, 2026.
 
 Prompt Outline Navigator is a browser extension that creates a table of contents for supported conversations, active Space documents, and dot message feeds displayed on ChatGPT. This policy explains how the extension handles data.
 
