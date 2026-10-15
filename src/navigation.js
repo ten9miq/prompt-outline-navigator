@@ -68,7 +68,7 @@
         const descriptor = {
           index: group?.headings.indexOf(heading) ?? -1,
           tagName: heading.tagName,
-          text: heading.textContent.trim()
+          text: shared.getOutlineText(heading)
         };
         this.waitForSmoothScrollEnd(requestId, () => this.settleHeadingDestination(group, descriptor, requestId));
         return;
@@ -77,7 +77,7 @@
       const descriptor = {
         index: group?.headings.indexOf(heading) ?? -1,
         tagName: heading.tagName,
-        text: heading.textContent.trim()
+        text: shared.getOutlineText(heading)
       };
       const prompt = this.getConnectedGroupDestination(group);
       if (prompt) {

@@ -90,7 +90,7 @@
     }
 
     getActiveHeadingInRange(range, activationY) {
-      const targets = Array.from(range.assistant?.querySelectorAll(SELECTORS.headings) || [])
+      const targets = Array.from(range.group?.headings || range.assistant?.querySelectorAll(SELECTORS.headings) || [])
         .filter((heading) => this.headingToTocItem.has(heading))
         .map((heading) => ({ element: heading, heading, group: range.group }));
       return findActiveTrackingTarget(targets, activationY)?.heading || null;
@@ -106,7 +106,9 @@
         this.setActive(this.activeHeading, this.activeGroup);
         return;
       }
-      const activationY = getNavigationOffset(window.innerHeight);
+      const scroller = this.getConversationScrollContainer?.();
+      const activationY = (scroller ? scroller.getBoundingClientRect().top + (scroller.clientTop || 0) : 0) +
+        getNavigationOffset(window.innerHeight);
       const ranges = this.getLiveGroupRanges(window.innerHeight);
       const activeRange = findActiveGroupRange(
         ranges,

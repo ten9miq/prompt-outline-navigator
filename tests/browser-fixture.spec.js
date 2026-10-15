@@ -501,8 +501,8 @@ test('writing editors and missing TOC sources keep conversation width adjustment
     editor.innerHTML = '<div data-markdown-copy-content><div class="ProseMirror" contenteditable="true"><h1>Writing editor</h1></div></div>';
     document.getElementById('thread').append(editor);
   });
-  // Document detection must not disable conversation width adjustments.
-  await expect(page.locator('.toc-group-title')).toHaveText('Document');
+  // An embedded editor must not replace the conversation as the TOC source.
+  await expect(page.locator('.toc-group-title').first()).toHaveText('Prompt 1');
   await expect.poll(widths).toEqual([1000, 1000]);
   expect(await page.locator('#writing-editor-probe').evaluate((e) => e.getBoundingClientRect().width)).toBe(320);
   await page.locator('.toc-pin').click();
@@ -561,6 +561,98 @@ test('initial composer widens independently of TOC and survives first-message re
   await expect(page.locator('#chatgpt-toc-sidebar')).not.toHaveAttribute('hidden');
   expect(await page.evaluate(() => document.body.classList.contains('chatgpt-toc-wide'))).toBe(true);
   expect(await page.locator('#first-message-composer').evaluate((e) => getComputedStyle(e).getPropertyValue('--thread-content-max-width'))).toContain('min(80vw');
+});
+
+test('embedded editors retain prompts, expose titles and sections, and track edits and remounts', async ({ page }) => {
+  const errors = [];
+  page.on('pageerror', (error) => errors.push(error.message));
+  await openConversationFixture(page);
+  await expect(page.locator('#results')).toHaveClass(/\bpass\b/);
+  await page.evaluate(() => {
+    document.getElementById('thread').setAttribute('data-app-action-timeline-scroll', '');
+    document.getElementById('thread').style.cssText = 'position:fixed;top:40px;left:0;width:800px;height:500px;overflow-y:auto';
+    document.getElementById('thread').innerHTML = `
+      <article data-turn-key="editor-user-1"><div data-message-author-role="user"><div class="whitespace-pre-wrap">Write two drafts</div></div></article>
+      <article data-turn-key="editor-answer-1"><div data-message-author-role="assistant">
+        <h2>Ordinary heading</h2><p><strong>Ordinary emphasis</strong></p>
+        <section id="draft-card" class="group/writing-block-surface"><textarea aria-label="Subject">Draft subject</textarea>
+          <div data-markdown-copy-content><div id="draft-editor" class="ProseMirror" contenteditable="true">
+            <p>Opening paragraph</p><p id="section-one"><strong>1. First section</strong></p>
+            <p style="height:1400px">Body</p><p id="section-two"><strong>2. Second section</strong></p>
+            <p style="height:1400px">End</p><p><strong>Unnumbered emphasis</strong></p>
+            <p><strong>3. Partial</strong> paragraph</p><blockquote><p><strong>4. Quoted section</strong></p></blockquote>
+          </div></div></section>
+        <div data-markdown-copy-content><div class="ProseMirror"><h1>Actual document title</h1><h2>Real section</h2><p><strong>1. Do not infer</strong></p></div></div>
+      </div></article>
+      <article data-turn-key="editor-user-2"><div data-message-author-role="user"><div class="whitespace-pre-wrap">One more draft</div></div></article>
+      <article data-turn-key="editor-answer-2"><div data-message-author-role="assistant">
+        <div data-markdown-copy-content><div class="ProseMirror"><p>Opening label</p><p>Plain body</p></div></div>
+        <button><div data-markdown-copy-content><div class="ProseMirror"><h1>Preview heading</h1></div></div></button>
+        <div data-composer-markdown class="ProseMirror"><h2>Composer heading</h2></div>
+      </div></article>`;
+    history.pushState({}, '', '/c/editor-fixture');
+    window.dispatchEvent(new PopStateEvent('popstate'));
+  });
+  await expect(page.locator('.toc-group')).toHaveCount(2);
+  await expect(page.locator('.toc-group-prompt')).toHaveText(['Write two drafts', 'One more draft']);
+  await expect(page.locator('.toc-item .toc-text')).toHaveText([
+    'Ordinary heading', 'Draft subject', '1. First section', '2. Second section',
+    'Actual document title', 'Real section', 'Opening label'
+  ]);
+  const titleItem = page.locator('.toc-item').filter({ has: page.locator('.toc-text', { hasText: /^Draft subject$/ }) });
+  await titleItem.locator('.toc-collapse-icon').click();
+  await expect(page.locator('.toc-item').filter({ hasText: '1. First section' })).toBeHidden();
+  await expect(page.locator('.toc-item').filter({ hasText: 'Actual document title' })).toBeVisible();
+  await titleItem.locator('.toc-collapse-icon').click();
+  for (const id of ['section-two', 'section-one']) {
+    const label = await page.locator(`#${id}`).innerText();
+    await page.locator('.toc-item').filter({ hasText: label }).click();
+    await expect.poll(() => page.locator(`#${id}`).evaluate((e) => Math.abs(e.getBoundingClientRect().top - document.getElementById('thread').getBoundingClientRect().top - TOCNavigator.getNavigationOffset(innerHeight)))).toBeLessThanOrEqual(2);
+    await expect(page.locator('.toc-item').filter({ hasText: label })).toHaveClass(/active/);
+  }
+  await page.evaluate(() => {
+    const subject = document.querySelector('#draft-card textarea');
+    subject.value = 'Updated subject';
+    subject.dispatchEvent(new Event('input', { bubbles: true }));
+    document.querySelector('#section-one strong').textContent = '1. Edited section';
+    document.getElementById('section-two').textContent = 'No longer a section';
+  });
+  await expect(page.locator('.toc-item .toc-text')).toHaveText([
+    'Ordinary heading', 'Updated subject', '1. Edited section',
+    'Actual document title', 'Real section', 'Opening label'
+  ]);
+  await page.evaluate(() => {
+    const card = document.getElementById('draft-card');
+    const replacement = card.cloneNode(true);
+    replacement.querySelector('textarea').value = 'Remounted subject';
+    replacement.querySelector('#draft-editor').insertAdjacentHTML('beforeend', '<div role="heading" aria-level="2">Semantic heading</div>');
+    card.replaceWith(replacement);
+  });
+  await expect(page.locator('.toc-item .toc-text')).toHaveText([
+    'Ordinary heading', 'Remounted subject', 'Semantic heading',
+    'Actual document title', 'Real section', 'Opening label'
+  ]);
+  expect(errors).toEqual([]);
+});
+
+test('standalone documents without h1 use their opening and numbered bold sections', async ({ page }) => {
+  await openConversationFixture(page);
+  await expect(page.locator('#results')).toHaveClass(/\bpass\b/);
+  await page.evaluate(() => {
+    const section = document.createElement('section');
+    section.id = 'standalone-document';
+    section.innerHTML = '<div data-markdown-copy-content><div class="ProseMirror"><p>Standalone opening</p><p><strong>1. Section</strong></p><p>Body</p></div></div>';
+    document.getElementById('app').append(section);
+  });
+  await expect(page.locator('.toc-group')).toHaveCount(1);
+  await expect(page.locator('.toc-group-title')).toHaveText('Document');
+  await expect(page.locator('.toc-group-prompt')).toHaveText('Standalone opening');
+  await expect(page.locator('.toc-item .toc-text')).toHaveText(['Standalone opening', '1. Section']);
+  await page.evaluate(() => { document.querySelector('#standalone-document p').textContent = 'Updated opening'; });
+  await expect(page.locator('.toc-group-prompt')).toHaveText('Updated opening');
+  await expect(page.locator('.toc-item .toc-text').first()).toHaveText('Updated opening');
+  await page.evaluate(() => document.getElementById('standalone-document').remove());
+  await expect(page.locator('.toc-group-title').first()).toHaveText('Prompt 1');
 });
 
 for (const kind of ['document', 'feed']) {

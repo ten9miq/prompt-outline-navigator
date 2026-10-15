@@ -9,7 +9,7 @@
       userMessage: '[data-message-author-role="user"],[data-chatgpt-search-unit-key][data-chatgpt-search-message-ids]:is(:has([data-user-message-bubble="true"]),[class~="group/user-message"])',
       promptText: '.whitespace-pre-wrap',
       assistantMessage: '[data-message-author-role="assistant"],[data-chatgpt-search-unit-key]:has([data-conversation-role="assistant"])',
-      headings: 'h1,h2,h3,h4,h5,h6',
+      headings: 'h1,h2,h3,h4,h5,h6,[role="heading"][aria-level]',
       stableTurn: '[data-message-id],[data-turn-id],[data-turn-key]',
       conversationTurn: '[data-testid^="conversation-turn-"],[data-turn-key]',
       conversationScroll: '[data-app-action-timeline-scroll]',
@@ -38,6 +38,57 @@
     const body = observedBody || prompt.querySelector?.(api.SELECTORS.promptText);
     if (body) return api.truncateText(body.textContent);
     return typeof prompt.querySelector === 'function' ? '' : api.truncateText(prompt.textContent);
+  };
+
+  api.EDITOR_SELECTOR = '[data-markdown-copy-content] .ProseMirror:not([data-composer-markdown])';
+  const outlineMetadata = new WeakMap();
+  const isOutlineContent = (element) => !element.hasAttribute('data-conversation-role') &&
+    !element.closest?.('[hidden],[aria-hidden="true"],[inert],nav,button,[data-composer-markdown],[class*="PagePreview-"],[class*="PageThumbnail-"]');
+  api.getOutlineText = (element) => outlineMetadata.get(element)?.text ?? element.textContent.trim();
+  api.getOutlineLevel = (element) => outlineMetadata.get(element)?.level ??
+    Math.max(1, Math.min(6, Number(element.getAttribute?.('aria-level') || element.tagName.slice(1)) || 1));
+  api.getEditorTitle = (editor) => {
+    const card = editor.closest?.('[class~="group/writing-block-surface"]');
+    const subject = card?.querySelector('textarea')?.value?.trim();
+    const heading = Array.from(editor.querySelectorAll('h1,[role="heading"][aria-level="1"]'))
+      .find(isOutlineContent)?.textContent.trim();
+    const opening = Array.from(editor.querySelectorAll('p'))
+      .find((p) => isOutlineContent(p) && p.textContent.trim())?.textContent.trim();
+    return api.truncateText(subject || heading || opening || editor.textContent?.trim() || 'Untitled document');
+  };
+  api.collectOutlineTargets = (root) => {
+    const targets = Array.from(root.querySelectorAll(api.SELECTORS.headings)).filter(isOutlineContent);
+    targets.forEach((element) => outlineMetadata.delete(element));
+    const editors = [root, ...root.querySelectorAll(api.EDITOR_SELECTOR)]
+      .filter((element) => element.matches?.(api.EDITOR_SELECTOR) && isOutlineContent(element));
+    for (const editor of editors) {
+      const headings = targets.filter((element) => editor.contains(element));
+      const title = api.getEditorTitle(editor);
+      const firstHeading = headings[0];
+      // A real level-one heading already serves as the document entry.
+      const hasTitleHeading = firstHeading && api.getOutlineLevel(firstHeading) === 1 &&
+        api.getOutlineText(firstHeading) === title;
+      if (!hasTitleHeading) {
+        outlineMetadata.set(editor, { text: title, level: 1 });
+        targets.push(editor);
+        headings.forEach((element) => outlineMetadata.set(element, {
+          text: element.textContent.trim(), level: Math.min(6, api.getOutlineLevel(element) + 1)
+        }));
+      }
+      if (!headings.length) {
+        for (const paragraph of editor.querySelectorAll('p')) {
+          const text = paragraph.textContent.trim();
+          const bold = paragraph.querySelector('strong,b');
+          if (!isOutlineContent(paragraph) || paragraph.closest('blockquote,pre,table,li') ||
+              !bold || bold.textContent.trim() !== text || text.length > 100 ||
+              !/^(?:\d+[.．、)）:：]|[（(]\d+[)）])\s*\S/.test(text)) continue;
+          outlineMetadata.set(paragraph, { text, level: 2 });
+          targets.push(paragraph);
+        }
+      }
+    }
+    return [...new Set(targets)].sort((left, right) => left === right ? 0 :
+      left.compareDocumentPosition?.(right) & 2 ? 1 : -1);
   };
 
   api.elementMatchesOrContains = (node, selector) =>
@@ -133,7 +184,7 @@
     const indexed = headings?.[descriptor.index];
     if (indexed?.isConnected && indexed.tagName === descriptor.tagName) return indexed;
     return headings?.find((candidate) => candidate.isConnected &&
-      candidate.tagName === descriptor.tagName && candidate.textContent.trim() === descriptor.text) || null;
+      candidate.tagName === descriptor.tagName && api.getOutlineText(candidate) === descriptor.text) || null;
   };
 
   api.shouldPreserveDisconnectedGroup = (group) => Boolean(group?.key);

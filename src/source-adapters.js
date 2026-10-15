@@ -2,7 +2,7 @@
 (() => {
   'use strict';
   const shared = typeof module !== 'undefined' && module.exports ? require('./shared.js') : globalThis.TOCNavigator;
-  const DOCUMENT_SELECTOR = '[data-markdown-copy-content] .ProseMirror:not([data-composer-markdown])';
+  const DOCUMENT_SELECTOR = shared.EDITOR_SELECTOR;
   const FEED_SELECTOR = 'article[data-message-id]:has([data-message-id])';
   const isContentVisible = (element, doc) => {
     if (element.closest?.('[hidden],[aria-hidden="true"],[inert],nav,#chatgpt-toc-sidebar')) return false;
@@ -14,15 +14,18 @@
     const documents = Array.from(doc.querySelectorAll(DOCUMENT_SELECTOR)).filter((element) =>
       isContentVisible(element, doc) && !element.closest('button,[data-composer-markdown],[class*="PagePreview-"],[class*="PageThumbnail-"]')
     );
-    if (documents.length) return { kind: 'document', root: documents.at(-1) };
-
     const conversation = shared.findConversationRoot(doc);
+    // Embedded writing blocks belong to their conversation. A separate document
+    // (for example, a Space editor beside a chat) can still be the active source.
+    const standaloneDocuments = documents.filter((element) => !conversation?.contains(element));
+    if (standaloneDocuments.length) return { kind: 'document', root: standaloneDocuments.at(-1) };
     if (conversation && isContentVisible(conversation, doc) &&
         (conversation.querySelector(shared.SELECTORS.conversationIdentity) ||
          conversation.querySelector(shared.SELECTORS.conversationTurn) ||
          conversation.querySelector(shared.SELECTORS.userMessage))) {
       return { kind: 'conversation', root: conversation };
     }
+    if (documents.length) return { kind: 'document', root: documents.at(-1) };
 
     const messages = Array.from(doc.querySelectorAll(FEED_SELECTOR)).filter((element) =>
       isContentVisible(element, doc) && !element.closest('button,[role="dialog"],[role="alertdialog"],[data-composer-markdown]')

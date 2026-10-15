@@ -32,6 +32,15 @@
       window.addEventListener('popstate', schedulePageSync);
       window.addEventListener('hashchange', schedulePageSync);
       window.addEventListener('resize', schedulePageSync, { passive: true });
+      const syncEditedContent = (event) => {
+        const editor = event.target.closest?.(shared.EDITOR_SELECTOR);
+        const card = event.target.closest?.('[class~="group/writing-block-surface"]');
+        if (this.thread && ((this.thread.contains(event.target) && (editor || card)) || card?.contains(this.thread))) {
+          this.scheduleStructureSync();
+        }
+      };
+      document.addEventListener('input', syncEditedContent, true);
+      document.addEventListener('change', syncEditedContent, true);
       this.pageObserver.observe(document.body, {
         childList: true,
         subtree: true,
@@ -70,6 +79,8 @@
       this.conversationObserver.observe(this.thread, {
         childList: true,
         characterData: true,
+        attributes: true,
+        attributeFilter: ['role', 'aria-level', 'hidden', 'aria-hidden'],
         subtree: true
       });
     }
@@ -125,6 +136,12 @@
       let structureChanged = false;
 
       for (const record of records) {
+        const editedElement = record.target instanceof Element ? record.target : record.target.parentElement;
+        if (editedElement?.closest(shared.EDITOR_SELECTOR) ||
+            [...(record.addedNodes || []), ...(record.removedNodes || [])].some((node) =>
+              elementMatchesOrContains(node, shared.EDITOR_SELECTOR)) || record.type === 'attributes') {
+          structureChanged = true;
+        }
         if (record.type === 'characterData') {
           const parent = record.target.parentElement;
           const heading = parent?.closest(SELECTORS.headings);
@@ -304,8 +321,9 @@
       if (assistant) this.turnToGroup.set(assistant, group);
       if (key) this.turnKeyToGroup.set(key, group);
       this.setGroupPrompt(group, prompt);
-      if (assistant && this.source && this.source.kind !== 'conversation' && !group.promptTextCaptured) {
-        const label = this.source.kind === 'document' ? assistant.querySelector('h1')?.textContent : assistant.textContent;
+      if (assistant && this.source && this.source.kind !== 'conversation' &&
+          (this.source.kind === 'document' || !group.promptTextCaptured)) {
+        const label = this.source.kind === 'document' ? shared.getEditorTitle(assistant) : assistant.textContent;
         group.promptText.textContent = shared.truncateText(label);
         group.promptText.hidden = !group.promptText.textContent;
         group.promptTextCaptured = Boolean(group.promptText.textContent);
@@ -450,8 +468,7 @@
         const group = this.turnToGroup.get(assistant);
         if (!group || !assistant.isConnected) return;
 
-        const current = Array.from(assistant.querySelectorAll(SELECTORS.headings))
-        .filter((heading) => !heading.hasAttribute('data-conversation-role'));
+        const current = shared.collectOutlineTargets(assistant);
         const currentSet = new Set(current);
         group.headings.filter((heading) => !currentSet.has(heading)).forEach((heading) => this.removeHeading(group, heading));
 
@@ -476,7 +493,7 @@
       item.setAttribute('role', 'button');
       const text = document.createElement('span');
       text.className = 'toc-text';
-      text.textContent = heading.textContent.trim();
+      text.textContent = shared.getOutlineText(heading);
       item.append(text);
 
       const nextHeading = group.headings[index];
@@ -510,7 +527,7 @@
           if (assistant) this.reconcileAssistantTurn(assistant);
           return;
         }
-        item.querySelector('.toc-text').textContent = heading.textContent.trim();
+        item.querySelector('.toc-text').textContent = shared.getOutlineText(heading);
       } finally {
         this.restoreTocScrollState(tocScrollState);
       }
@@ -519,13 +536,13 @@
     refreshHeadingHierarchy(group) {
       group.headings.forEach((heading, index) => {
         const item = this.headingToTocItem.get(heading);
-        const level = Number(heading.tagName.slice(1));
+        const level = shared.getOutlineLevel(heading);
         const next = group.headings[index + 1];
-        const hasChildren = Boolean(next && Number(next.tagName.slice(1)) > level);
+        const hasChildren = Boolean(next && shared.getOutlineLevel(next) > level);
         item.classList.remove('toc-h1', 'toc-h2', 'toc-h3', 'toc-h4', 'toc-h5', 'toc-h6');
         item.classList.add('toc-item', `toc-h${level}`);
         item.style.setProperty('--toc-level', String(level));
-        item.setAttribute('aria-label', `Go to ${heading.textContent.trim() || heading.tagName}`);
+        item.setAttribute('aria-label', `Go to ${shared.getOutlineText(heading) || heading.tagName}`);
         if (hasChildren) item.setAttribute('aria-expanded', String(!this.collapsedHeadings.has(heading)));
         else item.removeAttribute('aria-expanded');
 
@@ -555,7 +572,7 @@
     updateHeadingVisibility(group) {
       const collapsedLevels = [];
       group.headings.forEach((heading) => {
-        const level = Number(heading.tagName.slice(1));
+        const level = shared.getOutlineLevel(heading);
         while (collapsedLevels.length && collapsedLevels.at(-1) >= level) collapsedLevels.pop();
         this.headingToTocItem.get(heading).hidden = collapsedLevels.length > 0;
         if (this.collapsedHeadings.has(heading)) collapsedLevels.push(level);
