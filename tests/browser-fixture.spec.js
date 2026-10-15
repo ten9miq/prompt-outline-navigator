@@ -421,6 +421,50 @@ test('conversation-start button appears only while earlier turns are virtualized
   await expect(page.locator('.toc-load-earlier')).toHaveCount(0);
 });
 
+test('writing editors and missing TOC sources keep conversation width adjustments active', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await openConversationFixture(page);
+  await expect(page.locator('#results')).toHaveClass(/\bpass\b/);
+  await page.evaluate(() => {
+    document.querySelector('main').style.cssText = 'max-width:none;padding:0';
+    const wrapper = document.createElement('div');
+    wrapper.id = 'wide-response-probe';
+    wrapper.className = 'max-w-app-content';
+    wrapper.setAttribute('data-thread-user-message-navigation-content', 'true');
+    wrapper.style.cssText = 'width:100%;max-width:672px;margin:auto';
+    wrapper.innerHTML = '<div data-markdown-text-style="assistant-message">Response</div><form data-chatgpt-composer data-composer-placement="thread"></form>';
+    document.getElementById('thread').append(wrapper);
+  });
+  const widths = () => page.evaluate(() => ['#wide-response-probe', '#wide-response-probe form']
+    .map((selector) => Math.round(document.querySelector(selector).getBoundingClientRect().width)));
+  await expect.poll(widths).toEqual([1000, 1000]);
+  await page.evaluate(() => {
+    const editor = document.createElement('section');
+    editor.id = 'writing-editor-probe';
+    editor.style.cssText = 'width:320px;max-width:320px';
+    editor.innerHTML = '<div data-markdown-copy-content><div class="ProseMirror" contenteditable="true"><h1>Writing editor</h1></div></div>';
+    document.getElementById('thread').append(editor);
+  });
+  // Document detection must not disable conversation width adjustments.
+  await expect(page.locator('.toc-group-title')).toHaveText('Document');
+  await expect.poll(widths).toEqual([1000, 1000]);
+  expect(await page.locator('#writing-editor-probe').evaluate((e) => e.getBoundingClientRect().width)).toBe(320);
+  await page.locator('.toc-close').click();
+  await expect.poll(widths).toEqual([1000, 1000]);
+  await page.evaluate(() => {
+    document.getElementById('thread').hidden = true;
+    history.pushState({}, '', '/empty');
+    window.dispatchEvent(new PopStateEvent('popstate'));
+  });
+  await expect(page.locator('.toc-group')).toHaveCount(0);
+  await expect(page.locator('body')).toHaveClass(/\bchatgpt-toc-wide\b/);
+  await page.evaluate(() => {
+    document.getElementById('writing-editor-probe').remove();
+    document.getElementById('thread').hidden = false;
+  });
+  await expect.poll(widths).toEqual([1000, 1000]);
+});
+
 test('initial composer widens independently of TOC and survives first-message rendering', async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 900 });
   await openConversationFixture(page);

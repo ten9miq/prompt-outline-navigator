@@ -289,12 +289,14 @@
       const kind = source?.kind || (this.sourcePath === pathname ? this.source?.kind : null);
       const homeComposer = Array.from(document.querySelectorAll('[data-chatgpt-composer][data-composer-placement="home"]'))
         .find((element) => element.getBoundingClientRect().width > 0 && !element.closest('[hidden],[aria-hidden="true"],[inert]'));
-      const wide = kind === 'conversation' || !kind && Boolean(homeComposer);
-      this.refreshHomeComposerRoot(wide ? homeComposer : null);
+      this.refreshHomeComposerRoot(homeComposer);
+      // Keep scoped conversation/composer styles active even when an editor
+      // becomes the TOC source or the conversation DOM is temporarily absent.
+      document.body.classList.add('chatgpt-toc-wide');
       // Hover previews overlay the page; only the saved open state reserves width.
       const pinned = this.sidebarPreferenceVisible;
       const visible = pinned || Boolean(this.sidebarHoverVisible);
-      const state = `${pinned}:${visible}:${kind || 'none'}:${wide}`;
+      const state = `${pinned}:${visible}:${kind || 'none'}`;
       if (this.sidebarAvailabilityState === state) return;
       this.sidebarAvailabilityState = state;
       this.isVisible = visible;
@@ -308,7 +310,6 @@
       this.hoverEdge.hidden = pinned;
       document.body.classList.toggle('chatgpt-toc-open', pinned);
       document.body.classList.toggle('chatgpt-toc-conversation', kind === 'conversation');
-      document.body.classList.toggle('chatgpt-toc-wide', wide);
       this.refreshAppRoot();
     },
 
