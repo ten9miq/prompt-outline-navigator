@@ -24,7 +24,6 @@
     </main>
   </div>
   <aside id="chatgpt-toc-sidebar" class="is-open"></aside>
-  <button id="chatgpt-toc-toggle"></button>
   <pre id="results">RUNNING</pre>
   <script>
     const styles = document.getElementById('extension-styles');
@@ -33,7 +32,6 @@
     const variable = document.getElementById('variable-probe');
     const composer = document.querySelector('[data-chatgpt-composer]');
     const sidebar = document.getElementById('chatgpt-toc-sidebar');
-    const toggle = document.getElementById('chatgpt-toc-toggle');
     const measure = () => ({
       appWidth: Math.round(app.getBoundingClientRect().width),
       contentWidth: Math.round(content.getBoundingClientRect().width),
@@ -41,8 +39,7 @@
       composerWidth: Math.round(composer.getBoundingClientRect().width),
       variable: getComputedStyle(document.getElementById('thread')).getPropertyValue('--thread-content-width').trim(),
       sidebarTop: Math.round(sidebar.getBoundingClientRect().top),
-      sidebarHeight: Math.round(sidebar.getBoundingClientRect().height),
-      toggleTop: Math.round(toggle.getBoundingClientRect().top)
+      sidebarHeight: Math.round(sidebar.getBoundingClientRect().height)
     });
     const output = document.getElementById('results');
     try {
@@ -61,7 +58,6 @@
         open.composerWidth === expectedWideWidth && closed.composerWidth === expectedWideWidth &&
         open.appWidth === Math.round(innerWidth - 200) &&
         open.sidebarTop === 0 && open.sidebarHeight === innerHeight &&
-        open.toggleTop === 48 && closed.toggleTop === 48 &&
         unavailable.appWidth === innerWidth && unavailable.contentWidth === Math.min(800, innerWidth) &&
         unavailable.composerWidth === Math.min(800, innerWidth);
       output.textContent = JSON.stringify({ passed, viewport: { width: innerWidth, height: innerHeight }, off, open, closed, unavailable }, null, 2);

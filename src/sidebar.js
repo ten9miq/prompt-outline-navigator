@@ -12,7 +12,7 @@
     findConversationRoot,
     resolveDarkTheme,
     isTocScrolledToEnd,
-    createCloseIcon
+    createPinIcon
   } = shared;
 
   const sidebarMethods = {
@@ -31,12 +31,11 @@
       title.className = 'toc-title';
       title.textContent = 'Prompt Outline Navigator';
       title.title = title.textContent;
-      const closeButton = document.createElement('button');
-      closeButton.type = 'button';
-      closeButton.className = 'toc-close';
-      closeButton.setAttribute('aria-label', 'Close table of contents');
-      closeButton.append(createCloseIcon());
-      closeButton.addEventListener('click', () => this.setSidebarVisible(false));
+      this.pinButton = document.createElement('button');
+      this.pinButton.type = 'button';
+      this.pinButton.className = 'toc-pin';
+      this.pinButton.setAttribute('aria-controls', this.sidebar.id);
+      this.pinButton.addEventListener('click', () => this.setSidebarVisible(!this.sidebarPreferenceVisible));
 
       this.tocContent = document.createElement('nav');
       this.tocContent.id = 'chatgpt-toc-content';
@@ -51,7 +50,7 @@
         }
       });
 
-      header.append(title, closeButton);
+      header.append(title, this.pinButton);
       this.sidebar.append(header, this.tocContent);
       document.body.append(this.sidebar);
       this.sidebarTop = 0;
@@ -78,7 +77,7 @@
 
     setupSidebarDragging(header, title) {
       let drag = null;
-      header.title = 'Drag to move temporarily. Double-click to reset width and vertical position.';
+      header.title = 'Drag to move temporarily. Double-click to reset vertical position.';
       title.tabIndex = 0;
       title.setAttribute('aria-description', 'Drag or use Up and Down to move. Home returns to the top.');
       const finish = (cancel = false) => {
@@ -117,7 +116,6 @@
       header.addEventListener('dblclick', (event) => {
         if (event.target.closest('button')) return;
         this.resetSidebarPosition();
-        this.setSidebarWidth(200, true);
       });
       title.addEventListener('keydown', (event) => {
         if (!['ArrowUp', 'ArrowDown', 'Home', 'Escape'].includes(event.key)) return;
@@ -126,19 +124,6 @@
         else if (event.key === 'Home') this.resetSidebarPosition();
         else this.setSidebarTop(this.sidebarTop + (event.key === 'ArrowDown' ? 10 : -10));
       });
-    },
-
-    addToggleButton() {
-      this.toggleButton = document.createElement('button');
-      this.toggleButton.type = 'button';
-      this.toggleButton.id = 'chatgpt-toc-toggle';
-      this.toggleButton.title = 'Open Table of Contents';
-      this.toggleButton.setAttribute('aria-label', 'Open table of contents');
-      this.toggleButton.setAttribute('aria-controls', this.sidebar.id);
-      this.toggleButton.textContent = '📋 TOC';
-      this.toggleButton.hidden = true;
-      this.toggleButton.addEventListener('click', () => this.setSidebarVisible(true));
-      document.body.append(this.toggleButton);
     },
 
     async loadSidebarWidth() {
@@ -177,7 +162,7 @@
       handle.setAttribute('aria-label', 'Resize table of contents');
       handle.setAttribute('aria-valuemin', '160');
       handle.setAttribute('aria-valuemax', '600');
-      handle.title = 'Drag to resize. Double-click to hide.';
+      handle.title = 'Drag to resize. Double-click to reset width.';
       this.resizeHandle = handle;
       this.sidebar.append(handle);
       this.sidebarWidth = 200;
@@ -206,7 +191,7 @@
       handle.addEventListener('lostpointercapture', () => finish());
       window.addEventListener('blur', () => finish(true));
       window.addEventListener('resize', () => { finish(); this.setSidebarWidth(this.sidebarWidth); }, { passive: true });
-      handle.addEventListener('dblclick', () => this.setSidebarVisible(false));
+      handle.addEventListener('dblclick', () => this.setSidebarWidth(200, true));
       handle.addEventListener('keydown', (event) => {
         if (!['ArrowLeft', 'ArrowRight', 'Enter', 'Escape'].includes(event.key)) return;
         event.preventDefault();
@@ -271,11 +256,11 @@
 
     setSidebarVisible(visible, options = {}) {
       clearTimeout(this.sidebarHoverTimer);
-      this.sidebarHoverVisible = false;
+      this.sidebarHoverVisible = !visible && this.sidebar.matches(':hover');
       this.sidebarPreferenceVisible = Boolean(visible);
       this.updateSidebarAvailability();
       if (options.persist !== false) this.saveSidebarVisibility(visible);
-      if (this.isVisible && options.focus !== false) this.sidebar.querySelector('.toc-close')?.focus();
+      if (this.isVisible && options.focus !== false) this.pinButton.focus();
     },
 
     updateSidebarAvailability() {
@@ -305,8 +290,11 @@
       this.sidebar.setAttribute('aria-hidden', String(!visible));
       this.sidebar.inert = !visible;
       if (!visible && this.sidebar.contains(document.activeElement)) document.activeElement.blur();
-      this.toggleButton.hidden = visible;
-      this.toggleButton.setAttribute('aria-expanded', String(visible));
+      const pinLabel = pinned ? 'Unpin table of contents' : 'Pin table of contents';
+      this.pinButton.setAttribute('aria-label', pinLabel);
+      this.pinButton.setAttribute('aria-pressed', String(pinned));
+      this.pinButton.title = pinLabel;
+      this.pinButton.replaceChildren(createPinIcon(pinned));
       this.hoverEdge.hidden = pinned;
       document.body.classList.toggle('chatgpt-toc-open', pinned);
       document.body.classList.toggle('chatgpt-toc-conversation', kind === 'conversation');
@@ -358,7 +346,7 @@
       if (!main) return;
       let candidate = main;
       while (candidate.parentElement && candidate.parentElement !== document.body) candidate = candidate.parentElement;
-      if (candidate === this.sidebar || candidate === this.toggleButton) return;
+      if (candidate === this.sidebar) return;
       if (this.appRoot && this.appRoot !== candidate) this.appRoot.classList.remove('chatgpt-toc-app-root');
       this.appRoot = candidate;
       if (!this.appRoot.classList.contains('chatgpt-toc-app-root')) this.appRoot.classList.add('chatgpt-toc-app-root');

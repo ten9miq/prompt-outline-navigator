@@ -142,10 +142,10 @@
         await waitForStructureSync();
         check(sidebar.querySelectorAll('.toc-group').length === 2, 'remounted stable turn reconnects without duplication');
 
-        sidebar.querySelector('.toc-close').click();
+        sidebar.querySelector('.toc-pin').click();
         check(!sidebar.classList.contains('is-open') && !document.body.classList.contains('chatgpt-toc-open'), 'close releases sidecar space');
-        document.getElementById('chatgpt-toc-toggle').click();
-        check(sidebar.classList.contains('is-open') && document.body.classList.contains('chatgpt-toc-open'), 'toggle reopens sidebar');
+        sidebar.querySelector('.toc-pin').click();
+        check(sidebar.classList.contains('is-open') && document.body.classList.contains('chatgpt-toc-open'), 'pin reopens sidebar');
 
         output.className = 'pass';
         output.textContent = `ALL ${results.length} BROWSER TESTS PASSED\n${results.join('\n')}`;

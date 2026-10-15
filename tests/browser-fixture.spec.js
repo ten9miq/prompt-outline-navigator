@@ -79,6 +79,12 @@ test('resizing saves width and hover previews allow navigation without resizing 
   expect(await width()).toBe(320);
   await page.evaluate(() => { globalThis.__tocWrites = []; });
   await handle.dblclick({ position: { x: 3, y: 200 } });
+  await expect.poll(width).toBe(200);
+  await expect(page.locator('.toc-pin')).toHaveAttribute('aria-pressed', 'true');
+  expect(await page.evaluate(() => globalThis.__tocWrites)).toEqual([{ sidebarWidth: 200 }]);
+  for (let i = 0; i < 12; i++) await handle.press('ArrowLeft');
+  await page.evaluate(() => { globalThis.__tocWrites = []; });
+  await page.locator('.toc-pin').click();
   await page.mouse.move(100, 400);
   await expect(sidebar).toHaveAttribute('aria-hidden', 'true');
   await expect.poll(appWidth).toBe(1280);
@@ -95,7 +101,8 @@ test('resizing saves width and hover previews allow navigation without resizing 
   expect(await appWidth()).toBe(1280);
   expect(await page.evaluate(() => globalThis.__tocWrites)).toEqual(writes);
   // Explicit reopening reserves the saved width again.
-  await page.locator('#chatgpt-toc-toggle').click();
+  await page.mouse.move(1279, 400);
+  await page.locator('.toc-pin').click();
   await expect.poll(appWidth).toBe(960);
   await page.setViewportSize({ width: 300, height: 900 });
   await expect.poll(width).toBe(220);
@@ -118,12 +125,54 @@ test('resizing saves width and hover previews allow navigation without resizing 
   await title.press('ArrowDown');
   expect(await sidebar.evaluate((e) => e.getBoundingClientRect().top)).toBe(10);
   await title.dblclick();
-  expect(await width()).toBe(200);
+  expect(await width()).toBe(320);
   expect(await sidebar.evaluate((e) => e.getBoundingClientRect().top)).toBe(0);
-  expect(await page.evaluate(() => JSON.parse(sessionStorage.getItem('toc-prefs')).sidebarWidth)).toBe(200);
+  expect(await page.evaluate(() => JSON.parse(sessionStorage.getItem('toc-prefs')).sidebarWidth)).toBe(320);
   await page.reload();
   await expect(page.locator('#results')).toHaveClass(/\bpass\b/);
-  expect(await width()).toBe(200);
+  expect(await width()).toBe(320);
+});
+
+test('hover mode survives boundary and title resets and can be pinned without a floating button', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await openConversationFixture(page);
+  await expect(page.locator('#results')).toHaveClass(/\bpass\b/);
+  const pin = page.locator('.toc-pin');
+  const sidebar = page.locator('#chatgpt-toc-sidebar');
+  const handle = page.locator('.toc-resize-handle');
+  const title = page.locator('#chatgpt-toc-title');
+  const pinnedPath = await pin.locator('path').getAttribute('d');
+  await expect(pin).toHaveAttribute('aria-pressed', 'true');
+  await pin.click();
+  await page.mouse.move(100, 400);
+  await expect(sidebar).toHaveAttribute('aria-hidden', 'true');
+  await expect(page.locator('#chatgpt-toc-toggle')).toHaveCount(0);
+  await page.mouse.move(1279, 400);
+  await expect(sidebar).toHaveAttribute('aria-hidden', 'false');
+  await expect(pin).toHaveAttribute('aria-label', 'Pin table of contents');
+  await expect(pin).toHaveAttribute('aria-pressed', 'false');
+  expect(await pin.locator('path').getAttribute('d')).not.toBe(pinnedPath);
+  await handle.press('ArrowLeft');
+  await expect(handle).toHaveAttribute('aria-valuenow', '210');
+  await handle.dblclick({ position: { x: 3, y: 200 } });
+  await expect(handle).toHaveAttribute('aria-valuenow', '200');
+  await expect(pin).toHaveAttribute('aria-pressed', 'false');
+  await expect(page.locator('body')).not.toHaveClass(/\bchatgpt-toc-open\b/);
+  await handle.press('ArrowLeft');
+  await title.press('ArrowDown');
+  await title.dblclick();
+  await expect(handle).toHaveAttribute('aria-valuenow', '210');
+  await expect.poll(() => sidebar.evaluate((e) => e.getBoundingClientRect().top)).toBe(0);
+  await expect(pin).toHaveAttribute('aria-pressed', 'false');
+  await page.mouse.move(100, 400);
+  await expect(sidebar).toHaveAttribute('aria-hidden', 'true');
+  await expect(pin).toHaveAttribute('aria-pressed', 'false');
+  await page.mouse.move(1279, 400);
+  await pin.click();
+  await expect(pin).toHaveAttribute('aria-pressed', 'true');
+  expect(await pin.locator('path').getAttribute('d')).toBe(pinnedPath);
+  await page.mouse.move(100, 400);
+  await expect(sidebar).toHaveAttribute('aria-hidden', 'false');
 });
 
 test('title dragging temporarily moves the sidebar without changing its reserved width', async ({ page }) => {
@@ -169,9 +218,11 @@ test('title dragging temporarily moves the sidebar without changing its reserved
   await page.setViewportSize({ width: 1280, height: 900 });
   await page.evaluate(() => { history.pushState({}, '', '/different-page'); window.dispatchEvent(new PopStateEvent('popstate')); });
   await expect.poll(top).toBe(0);
-  await page.locator('.toc-close').click();
-  await expect(page.locator('#chatgpt-toc-toggle')).toBeVisible();
-  await page.locator('#chatgpt-toc-toggle').click();
+  await page.locator('.toc-pin').click();
+  await page.mouse.move(100, 400);
+  await expect(page.locator('#chatgpt-toc-sidebar')).toHaveAttribute('aria-hidden', 'true');
+  await page.mouse.move(1279, 400);
+  await page.locator('.toc-pin').click();
   expect(await top()).toBe(0);
   await dragTitle(100);
   await page.goto('https://chatgpt.com/c/fixture');
@@ -287,15 +338,15 @@ for (const preference of [true, false]) {
     });
     await openConversationFixture(page);
     await expect(page.locator('#results')).toHaveClass(/\bpass\b/);
-    if (!preference) await page.locator('.toc-close').click();
+    if (!preference) await page.locator('.toc-pin').click();
     await page.evaluate(() => { globalThis.__tocWrites = []; });
     const assertState = async () => {
       await expect.poll(() => page.evaluate(() => ({
         sidebarHidden: document.querySelector('#chatgpt-toc-sidebar').hidden,
-        toggleHidden: document.querySelector('#chatgpt-toc-toggle').hidden,
+        pinned: document.querySelector('.toc-pin').getAttribute('aria-pressed') === 'true',
         reserve: document.body.classList.contains('chatgpt-toc-open'),
         appWidth: document.querySelector('.chatgpt-toc-app-root').getBoundingClientRect().width
-      }))).toEqual({ sidebarHidden: false, toggleHidden: preference, reserve: preference, appWidth: await page.evaluate((open) => innerWidth - (open ? 200 : 0), preference) });
+      }))).toEqual({ sidebarHidden: false, pinned: preference, reserve: preference, appWidth: await page.evaluate((open) => innerWidth - (open ? 200 : 0), preference) });
     };
     await assertState();
     const rootMarkerWrites = await page.evaluate(async () => {
@@ -351,7 +402,12 @@ for (const preference of [true, false]) {
     // Manual close/open remains available even after navigating to a page with no source.
     await page.evaluate(() => { history.pushState({}, '', '/unsupported'); window.dispatchEvent(new PopStateEvent('popstate')); });
     await assertState();
-    await page.locator(preference ? '.toc-close' : '#chatgpt-toc-toggle').click();
+    if (!preference) {
+      await page.mouse.move(100, 400);
+      await page.mouse.move(1279, 400);
+      await expect(page.locator('#chatgpt-toc-sidebar')).toHaveAttribute('aria-hidden', 'false');
+    }
+    await page.locator('.toc-pin').click();
     await expect.poll(() => page.evaluate(() => document.body.classList.contains('chatgpt-toc-open'))).toBe(!preference);
     expect(await page.evaluate(() => globalThis.__tocWrites)).toEqual([{ sidebarVisible: !preference }]);
   });
@@ -449,7 +505,7 @@ test('writing editors and missing TOC sources keep conversation width adjustment
   await expect(page.locator('.toc-group-title')).toHaveText('Document');
   await expect.poll(widths).toEqual([1000, 1000]);
   expect(await page.locator('#writing-editor-probe').evaluate((e) => e.getBoundingClientRect().width)).toBe(320);
-  await page.locator('.toc-close').click();
+  await page.locator('.toc-pin').click();
   await expect.poll(widths).toEqual([1000, 1000]);
   await page.evaluate(() => {
     document.getElementById('thread').hidden = true;
@@ -482,7 +538,7 @@ test('initial composer widens independently of TOC and survives first-message re
   const width = () => page.locator('#initial-composer-probe form').evaluate((e) => e.getBoundingClientRect().width);
   await expect.poll(width).toBe(960);
   await expect(page.locator('#chatgpt-toc-sidebar')).not.toHaveAttribute('hidden');
-  await expect(page.locator('#chatgpt-toc-toggle')).toHaveAttribute('hidden');
+  await expect(page.locator('#chatgpt-toc-toggle')).toHaveCount(0);
   expect(await page.evaluate(() => document.body.classList.contains('chatgpt-toc-open'))).toBe(true);
   await page.evaluate(() => { document.getElementById('native-composer-cap').className = ''; });
   await expect.poll(width).toBe(960);

@@ -214,10 +214,9 @@ test('sidebar heading uses the extension branding', () => {
   assert.doesNotMatch(source, /title\.textContent = 'Table of Contents'/);
 });
 
-test('sidebar close control uses a centered SVG instead of a font glyph', () => {
-  assert.match(source, /(?:function createCloseIcon\(\)|api\.createCloseIcon =)/);
-  assert.match(source, /closeButton\.append\(createCloseIcon\(\)\)/);
-  assert.doesNotMatch(source, /closeButton\.textContent = '×'/);
+test('sidebar pin control uses state-dependent SVG icons', () => {
+  assert.match(source, /api\.createPinIcon = \(pinned\)/);
+  assert.match(source, /replaceChildren\(createPinIcon\(pinned\)\)/);
 });
 
 test('explicit ChatGPT theme overrides the operating-system preference', () => {
@@ -232,7 +231,7 @@ test('sidebar visibility is restored and persisted in extension storage', () => 
   assert.equal(SIDEBAR_VISIBILITY_KEY, 'sidebarVisible');
   assert.match(source, /await storage\.get\(SIDEBAR_VISIBILITY_KEY\)/);
   assert.match(source, /persist:\s*false/);
-  assert.match(source, /this\.toggleButton\.hidden = true/);
+  assert.doesNotMatch(source, /addToggleButton|chatgpt-toc-toggle/);
 });
 
 test('sidebar visibility storage reads closed state and writes later changes', async () => {

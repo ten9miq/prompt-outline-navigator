@@ -14,7 +14,7 @@
     constructor() {
       this.sidebar = null;
       this.tocContent = null;
-      this.toggleButton = null;
+      this.pinButton = null;
       this.thread = null;
       this.source = null;
       this.sourcePath = null;
@@ -58,7 +58,6 @@
 
     async init() {
       this.createSidebar();
-      this.addToggleButton();
       const [visible, width] = await Promise.all([this.loadSidebarVisibility(), this.loadSidebarWidth()]);
       this.setSidebarWidth(width);
       this.setSidebarVisible(visible, { focus: false, persist: false });

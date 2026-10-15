@@ -6,12 +6,12 @@ Release target: **1.5.0**, prepared on **2026-10-15** at the owner's request. Th
 
 - Keep the sidebar's saved manual open/closed state and reserved width across page transitions and dialogs.
 - Detect attachment-only prompts so their response headings appear in the outline.
-- Resize the left boundary and save the width locally (default 200px, range 160–600px). Double-click the boundary to hide; hover over the right edge to preview and select entries without resizing the page.
-- Drag the title bar to move down temporarily. Double-click the title to reset width and vertical position. Home never resets the width.
+- Resize the left boundary and save the width locally (default 200px, range 160–600px). Double-click the boundary to reset to 200px without changing the display mode; unpin using the header pin button, then hover over the right edge to preview and select entries without resizing the page.
+- Drag the title bar to move down temporarily. Double-click the title to reset vertical position while keeping its width and display mode. Home never resets the width.
 - Show “Go to conversation start” only when earlier conversation turns are omitted from the rendered DOM.
 - Retain DOM-based conversation/Space/dot support, safe local rendering and smooth navigation.
 
-目次の自動退避を廃止し、ページ遷移やダイアログでも手動開閉状態と予約幅を維持します。添付だけの入力に続く回答にも対応します。境界のドラッグによる幅変更・保存、境界ダブルクリックでの非表示、右端ホバーでの一時表示、タイトルのドラッグとダブルクリックによる位置・幅のリセットを追加しました。Homeは幅を変更しません。過去ターンが未描画の場合だけ先頭移動ボタンを表示します。
+目次の自動退避を廃止し、ページ遷移やダイアログでも手動開閉状態と予約幅を維持します。添付だけの入力に続く回答にも対応します。境界のドラッグによる幅変更・保存、境界ダブルクリックでの幅リセット、ピンボタンでの常時表示・ホバーモード切り替え、右端ホバーでの一時表示、タイトルのドラッグとダブルクリックによる上下位置のリセットを追加しました。Homeは幅を変更しません。過去ターンが未描画の場合だけ先頭移動ボタンを表示します。
 
 ## Validation and artifacts / 検証と成果物
 
@@ -73,8 +73,8 @@ Single purpose: provide a local outline and in-page navigation for supported Cha
 
 1. Install the update and reload a supported ChatGPT page. Use a non-sensitive conversation with headings; attachment-only input is also supported.
 2. Select upper/lower outline entries and check scrolling/highlighting. Active Space documents and dot feeds depend on account feature availability.
-3. Resize by dragging the left boundary; reload to confirm the saved width. Drag the title down and double-click it to reset width to 200px and vertical position to 0px.
-4. Double-click the left boundary to hide, hover at the rightmost 6px to select an entry in the temporary preview, and move out to hide it again. Hovering does not resize the page. The TOC button restores the pinned sidebar.
+3. Resize by dragging the left boundary; reload to confirm the saved width. Double-click the boundary to reset width to 200px. Drag the title down and double-click it to reset vertical position to 0px while preserving width.
+4. Unpin using the header pin button, hover at the rightmost 6px to select an entry in the temporary preview, and move out to hide it again. Hovering does not resize the page. The crossed-out pin button restores the pinned sidebar. Boundary/title double-click resets preserve hover mode; no floating TOC button is shown.
 5. Navigate to the start page or settings and open/dismiss a search dialog. The saved manual sidebar state and reservation remain stable. A page without supported content keeps the sidebar with an empty-state message.
 
 拡張固有のログイン・課金はありません。審査者自身のChatGPTアカウントと機密情報のない会話で確認できます。ログイン情報や私的な会話URLは審査資料へ記載しません。

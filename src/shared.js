@@ -167,14 +167,17 @@
     return svg;
   };
 
-  api.createCloseIcon = () => {
+  api.createPinIcon = (pinned) => {
     const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-    svg.setAttribute('width', '12');
-    svg.setAttribute('height', '12');
-    svg.setAttribute('viewBox', '0 0 12 12');
+    svg.setAttribute('width', '16');
+    svg.setAttribute('height', '16');
+    svg.setAttribute('viewBox', '0 0 24 24');
     svg.setAttribute('aria-hidden', 'true');
     const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-    for (const [name, value] of Object.entries({ d: 'M2.5 2.5l7 7m0-7-7 7', fill: 'none', stroke: 'currentColor', 'stroke-width': '1.75', 'stroke-linecap': 'round' })) path.setAttribute(name, value);
+    const d = pinned
+      ? 'M16 3H8l1 7-3 4v2h12v-2l-3-4 1-7M12 16v5'
+      : 'M16 3h-5m4 4 .4-2.8M9.5 9.5 9 10l-3 4v2h10M12 16v5M3 3l18 18';
+    for (const [name, value] of Object.entries({ d, fill: 'none', stroke: 'currentColor', 'stroke-width': '1.75', 'stroke-linecap': 'round', 'stroke-linejoin': 'round' })) path.setAttribute(name, value);
     svg.append(path);
     return svg;
   };
