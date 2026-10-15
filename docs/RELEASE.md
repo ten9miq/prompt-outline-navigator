@@ -1,8 +1,11 @@
 # Release preparation / リリース準備
 
-Release target: **1.5.0**, prepared on **2026-10-15** at the owner's request. This is a minor-version update from 1.4.0. The same version is used for the manifest, package metadata, submission ZIP, release merge and annotated tag `v1.5.0`.
+Release target: **1.6.0**, prepared on **2026-10-15** at the owner's request. This is a minor-version update from 1.5.0 for the new sidebar controls and editor outlines. The manifest and package metadata use 1.6.0; the submission ZIP, tag and GitHub release have not been created for this version.
 
 ## Release contents / 更新内容
+
+- Keep conversation width adjustments active even when a writing editor is present.
+- Keep embedded editor outlines under their original prompts, including subjects, real headings and conservative numbered-bold fallback sections. Follow edits and remounts, preserve standalone document outlines, and align active tracking with the scroll container.
 
 - Keep the sidebar's saved manual open/closed state and reserved width across page transitions and dialogs.
 - Detect attachment-only prompts so their response headings appear in the outline.
@@ -15,23 +18,20 @@ Release target: **1.5.0**, prepared on **2026-10-15** at the owner's request. Th
 
 ## Validation and artifacts / 検証と成果物
 
-The normal package builder ran `npm run build`: syntax checks, **84 unit tests** and **15 Playwright browser tests** passed for 1.5.0. The manifest-derived ZIP file list and every entry's SHA-256 were checked against its source.
+JavaScript syntax checks, **84 unit tests** and **19 Playwright browser tests** passed for the runtime changes. The specified live ChatGPT conversation was checked for editor entries, navigation, active selection and horizontal overflow. Version metadata is checked again before the version commit.
 
-| Artifact | Value |
+| Artifact | Status |
 | --- | --- |
-| Submission ZIP | `dist/prompt-outline-navigator-1.5.0-chrome-web-store.zip` |
-| Version | `1.5.0` |
-| Runtime files | `14` |
-| Size | `44,568 bytes` |
-| SHA-256 | `E06CCF55F9F3DC64C48A2A8F4A554590170910DF135FBB99D5C40E89C597E93E` |
-| Tag | `v1.5.0` on the release merge commit |
-| GitHub release location | `https://github.com/ten9miq/prompt-outline-navigator/releases/tag/v1.5.0` |
+| Source version | `1.6.0` |
+| Submission ZIP | Not built; expected path: `dist/prompt-outline-navigator-1.6.0-chrome-web-store.zip` |
+| ZIP size and SHA-256 | Pending package build and verification |
+| Tag / GitHub release | Not created |
 
-The ZIP contains only manifest-referenced runtime files, icons and `LICENSE`. Private content, logs, dependencies, tests and documentation are excluded. Its manifest is at the ZIP root. Do not submit an old 1.3.32 or 1.4.0 package for this update.
+The package builder includes only manifest-referenced runtime files, icons and `LICENSE`. Private content, logs, dependencies, tests and documentation are excluded. Verify the ZIP file list, source hashes and root manifest after building. Do not submit an older package for this update.
 
-ソースとZIPの完全なファイル一覧・内容ハッシュを照合しています。個人の会話、ログ、テスト、開発依存などはZIPに含めません。旧版ZIPを更新提出に使わないでください。
+この版のZIPは未生成です。生成時にファイル一覧・内容ハッシュ・ルートのmanifestを検証してください。過去版のZIPやSHA-256を1.6.0の成果物として扱わないでください。
 
-Rebuild only if packaged sources change:
+Build the 1.6.0 package when a submission artifact is requested:
 
 ```powershell
 $env:PLAYWRIGHT_BROWSERS_PATH = Join-Path $env:USERPROFILE 'AppData\Local\ms-playwright'
@@ -40,7 +40,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File scripts/build-store-package.
 
 Use `-Review` for a review-only package. `-SkipTests` is allowed only immediately after successful checks of unchanged runtime; it still verifies the exact ZIP contents and hashes.
 
-Both sample screenshots were regenerated from fictional repository-owned content with the current runtime using `node scripts/capture-store-screenshots.js`: light/dark themes, 1280x800, 2 prompt groups, 8 headings and no page/console errors. They are simulated samples, not private ChatGPT account captures. See [asset inventory](../store-assets/README.md).
+The existing sample screenshots were generated for 1.5.0 from fictional repository-owned content using `node scripts/capture-store-screenshots.js`: light/dark themes, 1280x800, 2 prompt groups, 8 headings and no page/console errors. They are simulated samples, not private ChatGPT account captures. Regenerate them for the 1.6.0 controls before use in an updated listing. See [asset inventory](../store-assets/README.md).
 
 Runtime behavior was also checked in dedicated Chrome before the version-only update: search/layout stability, attachment response headings, page transitions, resizing/persistence, vertical dragging, hover selection and title reset. Unrendered-turn detection is additionally covered by the anonymized browser fixture; it depends on ChatGPT's DOM and is not a history-API guarantee.
 
@@ -81,9 +81,9 @@ Single purpose: provide a local outline and in-page navigation for supported Cha
 
 ## Publication status and final steps / 公開範囲と最終工程
 
-The requested release workflow prepares the final version, merges to `main`, pushes the annotated tag and publishes the matching GitHub release with the ZIP. Chrome Web Store upload/submission is a separate operation; preparation or a GitHub release does not prove store submission, approval or availability.
+This request updates the source version and local commits only. Packaging, tagging, pushing, GitHub release publication and Chrome Web Store submission are separate operations and have not been performed for 1.6.0.
 
-1. Keep the final version `1.5.0` unchanged through merge, tag, package and release. Do not increment it again during this release.
+1. Keep the final version `1.6.0` unchanged through merge, tag, package and release. Do not increment it again during this release.
 2. Publish the updated listing/privacy documents with the release sources.
 3. For a store submission, check the currently uploaded dashboard version, existing listing, distribution/publication settings and privacy declarations, then upload this ZIP and submit only within the owner's requested scope.
 4. Record the store's actual submission/approval result separately. No store approval is asserted in this preparation record.
@@ -92,4 +92,4 @@ The requested release workflow prepares the final version, merges to `main`, pus
 
 ## Previous release / 前回版
 
-Version 1.4.0 was tagged on merge commit `84f15df` and has a GitHub release dated 2026-10-11. The owner previously reported submitting it for store review; approval has not been verified here. This 1.5.0 record replaces the old preparation instructions, not that historical outcome.
+Version 1.4.0 was tagged on merge commit `84f15df` and has a GitHub release dated 2026-10-11. The owner previously reported submitting it for store review; approval has not been verified here. The previous 1.5.0 package was `dist/prompt-outline-navigator-1.5.0-chrome-web-store.zip` (44,568 bytes; SHA-256 `E06CCF55F9F3DC64C48A2A8F4A554590170910DF135FBB99D5C40E89C597E93E`). These are historical artifact values, not 1.6.0 verification results.
