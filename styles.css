@@ -230,14 +230,25 @@ body.chatgpt-toc-open > .chatgpt-toc-app-root [data-app-shell-titlebar="true"] {
   inset: 0 auto 0 0;
   z-index: 1;
   width: 6px;
-  cursor: ew-resize;
+  cursor: col-resize;
   touch-action: none;
   user-select: none;
 }
-.toc-resize-handle:hover,
-.toc-resize-handle:focus-visible { background: rgb(96 165 250 / 45%); }
+.toc-resize-handle::before {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 1px;
+  background: var(--color-border-strong, rgb(0 0 0 / 15%));
+  opacity: 0;
+  pointer-events: none;
+}
+.toc-resize-handle:hover::before,
+.toc-resize-handle:focus-visible::before,
+body.chatgpt-toc-resizing .toc-resize-handle::before { opacity: 1; }
+.dark-mode .toc-resize-handle::before { background: var(--color-border-strong, rgb(255 255 255 / 20%)); }
 body.chatgpt-toc-resizing,
-body.chatgpt-toc-resizing * { cursor: ew-resize !important; user-select: none !important; }
+body.chatgpt-toc-resizing * { cursor: col-resize !important; user-select: none !important; }
 body.chatgpt-toc-resizing > .chatgpt-toc-app-root,
 body.chatgpt-toc-resizing > .chatgpt-toc-app-root > :first-child { transition: none !important; }
 
