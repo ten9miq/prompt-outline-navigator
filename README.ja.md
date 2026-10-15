@@ -56,7 +56,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File scripts/build-store-package.
 
 掲載原稿、プライバシー申告、個人情報を含まないサンプル画像と公開前の手順は[公開準備](docs/RELEASE.md)を参照してください。サンプル画像は`node scripts/capture-store-screenshots.js`で再生成できます。
 
-所有者の依頼により、ソースの版数を`1.6.0`に更新しました。この版のストア用ZIPはまだ再生成していません。パッケージ生成時の出力先は`dist/prompt-outline-navigator-1.6.0-chrome-web-store.zip`です。
+所有者の依頼により、版数`1.6.0`と検証済みのストア用ZIPを準備しました。ZIPは`dist/prompt-outline-navigator-1.6.0-chrome-web-store.zip`です。[GitHubリリース](https://github.com/ten9miq/prompt-outline-navigator/releases/tag/v1.6.0)からダウンロードできます。Chromeウェブストアへの提出は別途行います。
 
 ## 由来
 

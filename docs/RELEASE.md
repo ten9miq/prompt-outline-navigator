@@ -1,6 +1,6 @@
 # Release preparation / リリース準備
 
-Release target: **1.6.0**, prepared on **2026-10-15** at the owner's request. This is a minor-version update from 1.5.0 for the new sidebar controls and editor outlines. The manifest and package metadata use 1.6.0; the submission ZIP, tag and GitHub release have not been created for this version.
+Release target: **1.6.0**, prepared on **2026-10-15** at the owner's request. This is a minor-version update from 1.5.0 for the new sidebar controls and editor outlines. The manifest, package metadata, verified submission ZIP and release tag use 1.6.0. GitHub release: https://github.com/ten9miq/prompt-outline-navigator/releases/tag/v1.6.0.
 
 ## Release contents / 更新内容
 
@@ -18,18 +18,19 @@ Release target: **1.6.0**, prepared on **2026-10-15** at the owner's request. Th
 
 ## Validation and artifacts / 検証と成果物
 
-JavaScript syntax checks, **84 unit tests** and **19 Playwright browser tests** passed for the runtime changes. The specified live ChatGPT conversation was checked for editor entries, navigation, active selection and horizontal overflow. Version metadata is checked again before the version commit.
+The normal package builder ran `npm run build`: JavaScript syntax checks, **84 unit tests** and **19 Playwright browser tests** passed for 1.6.0. The 14-file ZIP and each entry were verified against the manifest-derived file list and source hashes. The specified live ChatGPT conversation was checked for editor entries, navigation, active selection and horizontal overflow. Manifest and package version metadata match.
 
 | Artifact | Status |
 | --- | --- |
 | Source version | `1.6.0` |
-| Submission ZIP | Not built; expected path: `dist/prompt-outline-navigator-1.6.0-chrome-web-store.zip` |
-| ZIP size and SHA-256 | Pending package build and verification |
-| Tag / GitHub release | Not created |
+| Submission ZIP | `dist/prompt-outline-navigator-1.6.0-chrome-web-store.zip` |
+| ZIP size | `45,920 bytes` |
+| SHA-256 | `FFF623509F07ACA7A9C4A2207B3BEDAEB008E255C5E996CFF86473122C02DBE9` |
+| Tag / GitHub release | `v1.6.0` / `https://github.com/ten9miq/prompt-outline-navigator/releases/tag/v1.6.0` |
 
 The package builder includes only manifest-referenced runtime files, icons and `LICENSE`. Private content, logs, dependencies, tests and documentation are excluded. Verify the ZIP file list, source hashes and root manifest after building. Do not submit an older package for this update.
 
-この版のZIPは未生成です。生成時にファイル一覧・内容ハッシュ・ルートのmanifestを検証してください。過去版のZIPやSHA-256を1.6.0の成果物として扱わないでください。
+この版のZIPは生成済みで、ファイル一覧・各ファイルの内容ハッシュ・ルートのmanifestを検証しました。過去版のZIPやSHA-256を1.6.0の成果物として扱わないでください。
 
 Build the 1.6.0 package when a submission artifact is requested:
 
@@ -81,7 +82,7 @@ Single purpose: provide a local outline and in-page navigation for supported Cha
 
 ## Publication status and final steps / 公開範囲と最終工程
 
-This request updates the source version and local commits only. Packaging, tagging, pushing, GitHub release publication and Chrome Web Store submission are separate operations and have not been performed for 1.6.0.
+The owner requested pushing the commits and publishing a GitHub release with the verified ZIP and SHA-256 checksum. Chrome Web Store upload and submission remain separate; no store submission or approval is asserted here.
 
 1. Keep the final version `1.6.0` unchanged through merge, tag, package and release. Do not increment it again during this release.
 2. Publish the updated listing/privacy documents with the release sources.

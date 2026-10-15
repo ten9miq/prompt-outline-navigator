@@ -56,7 +56,7 @@ The script runs `npm run build` (JavaScript syntax checks, unit and browser test
 
 See [release preparation](docs/RELEASE.md) for listing drafts, privacy declarations, safe sample screenshots and final submission steps. Regenerate the sample screenshots with `node scripts/capture-store-screenshots.js`.
 
-Source version `1.6.0` has been prepared at the owner's request. The store ZIP has not been rebuilt for this version; the package builder will output `dist/prompt-outline-navigator-1.6.0-chrome-web-store.zip`.
+Version `1.6.0` and its verified store package are prepared at the owner's request. The ZIP is `dist/prompt-outline-navigator-1.6.0-chrome-web-store.zip`. See the [GitHub release](https://github.com/ten9miq/prompt-outline-navigator/releases/tag/v1.6.0) for downloads; Chrome Web Store submission is separate.
 
 ## Origin
 
