@@ -58,7 +58,7 @@ The script runs `npm run build` (JavaScript syntax checks, unit and browser test
 
 See [release preparation](docs/RELEASE.md) for listing drafts, privacy declarations, safe sample screenshots and final submission steps. Regenerate the sample screenshots with `node scripts/capture-store-screenshots.js`.
 
-The current source version is `1.6.1`, with shorter document outline labels, shared composer width adjustments for Chat and Work, and a 20px hover activation area. A store package and GitHub release for this version have not been prepared.
+The current version is `1.6.1`, with shorter document outline labels, shared composer width adjustments for Chat and Work, and a 20px hover activation area. The verified store package is `dist/prompt-outline-navigator-1.6.1-chrome-web-store.zip`. Download the ZIP and SHA-256 checksum from the [GitHub release](https://github.com/ten9miq/prompt-outline-navigator/releases/tag/v1.6.1). Chrome Web Store submission is separate.
 
 The previous version `1.6.0` and its verified store package were prepared at the owner's request. The ZIP is `dist/prompt-outline-navigator-1.6.0-chrome-web-store.zip`. See the [GitHub release](https://github.com/ten9miq/prompt-outline-navigator/releases/tag/v1.6.0) for downloads; Chrome Web Store submission is separate.
 

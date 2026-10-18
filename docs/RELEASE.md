@@ -1,38 +1,37 @@
 # Release preparation / リリース準備
 
-Release target: **1.6.0**, prepared on **2026-10-15** at the owner's request. This is a minor-version update from 1.5.0 for the new sidebar controls and editor outlines. The manifest, package metadata, verified submission ZIP and release tag use 1.6.0. GitHub release: https://github.com/ten9miq/prompt-outline-navigator/releases/tag/v1.6.0.
+Release target: **1.6.1**, prepared on **2026-10-18**. This patch release includes document outline label, composer width and hover activation fixes. Source metadata, submission ZIP, tag and GitHub release use the same version. GitHub release: https://github.com/ten9miq/prompt-outline-navigator/releases/tag/v1.6.1.
 
 ## Release contents / 更新内容
 
-- Keep conversation width adjustments active even when a writing editor is present.
-- Keep embedded editor outlines under their original prompts, including subjects, real headings and conservative numbered-bold fallback sections. Follow edits and remounts, preserve standalone document outlines, and align active tracking with the scroll container.
+- For documents without a subject or level-one heading, use the first nonempty content line, preserving explicit line breaks and limiting the fallback label to 80 characters.
+- Display outline entries in at most two lines, with the label available on hover.
+- Detect Chat and Work composers through shared attributes, adjusting nested width caps within their pane independently of route or placement names. Follow attribute changes and multiple composers while preserving pane/dialog boundaries and unrelated fields.
+- Expand the hover activation area from 6px to 20px and keep it behind the open sidebar so it does not intercept the pin button.
+- Require dedicated Chrome for live-page investigation and verification.
 
-- Keep the sidebar's saved manual open/closed state and reserved width across page transitions and dialogs.
-- Detect attachment-only prompts so their response headings appear in the outline.
-- Resize the left boundary and save the width locally (default 200px, range 160–600px). Double-click the boundary to reset to 200px without changing the display mode; unpin using the header pin button, then hover over the right edge to preview and select entries without resizing the page.
-- Drag the title bar to move down temporarily. Double-click the title to reset vertical position while keeping its width and display mode. Home never resets the width.
-- Show “Go to conversation start” only when earlier conversation turns are omitted from the rendered DOM.
-- Retain DOM-based conversation/Space/dot support, safe local rendering and smooth navigation.
-
-目次の自動退避を廃止し、ページ遷移やダイアログでも手動開閉状態と予約幅を維持します。添付だけの入力に続く回答にも対応します。境界のドラッグによる幅変更・保存、境界ダブルクリックでの幅リセット、ピンボタンでの常時表示・ホバーモード切り替え、右端ホバーでの一時表示、タイトルのドラッグとダブルクリックによる上下位置のリセットを追加しました。Homeは幅を変更しません。過去ターンが未描画の場合だけ先頭移動ボタンを表示します。
+文書の冒頭ラベルを短縮し、目次項目を最大2行に制限しました。Workの初回入力欄にも幅補正を適用し、共通属性で入力欄と親要素の幅制限を補正します。ホバー反応範囲を右端20pxへ拡大し、表示後のピン操作を妨げない重なり順にしました。
 
 ## Validation and artifacts / 検証と成果物
 
-The normal package builder ran `npm run build`: JavaScript syntax checks, **84 unit tests** and **19 Playwright browser tests** passed for 1.6.0. The 14-file ZIP and each entry were verified against the manifest-derived file list and source hashes. The specified live ChatGPT conversation was checked for editor entries, navigation, active selection and horizontal overflow. Manifest and package version metadata match.
+`npm run build` passed for 1.6.1: JavaScript syntax checks, **84 unit tests** and **22 Playwright browser tests**. The unchanged runtime was packaged immediately afterward with `-SkipTests`; the package builder verified all 14 manifest-derived files against the source hashes. Manifest, package and lockfile versions match.
+
+Dedicated Chrome checks confirmed the specified document's label shortened from 201 to 32 characters and displayed in two lines, and that its TOC entry still navigates. Work's initial composer expanded from about 768px to 995px and stayed wide across Chat/Work switching without horizontal page overflow. Hover activation at 16px from the right edge, dismissal, navigation and pinning were verified with the browser fixture. Workspace Agent settings screens were unavailable and have not been verified; only composers exposing the same shared attributes are covered.
 
 | Artifact | Status |
 | --- | --- |
-| Source version | `1.6.0` |
-| Submission ZIP | `dist/prompt-outline-navigator-1.6.0-chrome-web-store.zip` |
-| ZIP size | `45,920 bytes` |
-| SHA-256 | `FFF623509F07ACA7A9C4A2207B3BEDAEB008E255C5E996CFF86473122C02DBE9` |
-| Tag / GitHub release | `v1.6.0` / `https://github.com/ten9miq/prompt-outline-navigator/releases/tag/v1.6.0` |
+| Source version | `1.6.1` |
+| Submission ZIP | `dist/prompt-outline-navigator-1.6.1-chrome-web-store.zip` |
+| ZIP size | `46,425 bytes` |
+| SHA-256 | `A4283B195C4367B07195E7F9AFCB2C1C34D7E3DDFD36DC774366C55C41898424` |
+| Checksum file | `dist/prompt-outline-navigator-1.6.1-chrome-web-store.zip.sha256` |
+| Tag / GitHub release | `v1.6.1` / `https://github.com/ten9miq/prompt-outline-navigator/releases/tag/v1.6.1` |
 
-The package builder includes only manifest-referenced runtime files, icons and `LICENSE`. Private content, logs, dependencies, tests and documentation are excluded. Verify the ZIP file list, source hashes and root manifest after building. Do not submit an older package for this update.
+The package includes only manifest-referenced runtime files, icons and `LICENSE`. Private content, logs, dependencies, tests and documentation are excluded. Do not submit an older package for this update.
 
-この版のZIPは生成済みで、ファイル一覧・各ファイルの内容ハッシュ・ルートのmanifestを検証しました。過去版のZIPやSHA-256を1.6.0の成果物として扱わないでください。
+この版のZIPのファイル一覧と内容ハッシュを検証しました。実画面の確認とfixtureテストを区別し、この環境にないWorkspace Agent設定画面は検証済みとしていません。
 
-Build the 1.6.0 package when a submission artifact is requested:
+Build the package when a new submission artifact is needed:
 
 ```powershell
 $env:PLAYWRIGHT_BROWSERS_PATH = Join-Path $env:USERPROFILE 'AppData\Local\ms-playwright'
@@ -41,9 +40,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File scripts/build-store-package.
 
 Use `-Review` for a review-only package. `-SkipTests` is allowed only immediately after successful checks of unchanged runtime; it still verifies the exact ZIP contents and hashes.
 
-The existing sample screenshots were generated for 1.5.0 from fictional repository-owned content using `node scripts/capture-store-screenshots.js`: light/dark themes, 1280x800, 2 prompt groups, 8 headings and no page/console errors. They are simulated samples, not private ChatGPT account captures. Regenerate them for the 1.6.0 controls before use in an updated listing. See [asset inventory](../store-assets/README.md).
-
-Runtime behavior was also checked in dedicated Chrome before the version-only update: search/layout stability, attachment response headings, page transitions, resizing/persistence, vertical dragging, hover selection and title reset. Unrendered-turn detection is additionally covered by the anonymized browser fixture; it depends on ChatGPT's DOM and is not a history-API guarantee.
+Existing sample screenshots were generated for 1.5.0 from fictional repository-owned content. Regenerate them with `node scripts/capture-store-screenshots.js` before using them in an updated listing. See [asset inventory](../store-assets/README.md).
 
 ## Store listing and privacy / 掲載原稿とプライバシー
 
@@ -75,7 +72,7 @@ Single purpose: provide a local outline and in-page navigation for supported Cha
 1. Install the update and reload a supported ChatGPT page. Use a non-sensitive conversation with headings; attachment-only input is also supported.
 2. Select upper/lower outline entries and check scrolling/highlighting. Active Space documents and dot feeds depend on account feature availability.
 3. Resize by dragging the left boundary; reload to confirm the saved width. Double-click the boundary to reset width to 200px. Drag the title down and double-click it to reset vertical position to 0px while preserving width.
-4. Unpin using the header pin button, hover at the rightmost 6px to select an entry in the temporary preview, and move out to hide it again. Hovering does not resize the page. The crossed-out pin button restores the pinned sidebar. Boundary/title double-click resets preserve hover mode; no floating TOC button is shown.
+4. Unpin using the header pin button, hover at the rightmost 20px to select an entry in the temporary preview, and move out to hide it again. Hovering does not resize the page. The crossed-out pin button restores the pinned sidebar. Boundary/title double-click resets preserve hover mode; no floating TOC button is shown.
 5. Navigate to the start page or settings and open/dismiss a search dialog. The saved manual sidebar state and reservation remain stable. A page without supported content keeps the sidebar with an empty-state message.
 
 拡張固有のログイン・課金はありません。審査者自身のChatGPTアカウントと機密情報のない会話で確認できます。ログイン情報や私的な会話URLは審査資料へ記載しません。
@@ -84,13 +81,15 @@ Single purpose: provide a local outline and in-page navigation for supported Cha
 
 The owner requested pushing the commits and publishing a GitHub release with the verified ZIP and SHA-256 checksum. Chrome Web Store upload and submission remain separate; no store submission or approval is asserted here.
 
-1. Keep the final version `1.6.0` unchanged through merge, tag, package and release. Do not increment it again during this release.
+1. Keep the final version `1.6.1` unchanged through merge, tag, package and release. Do not increment it again during this release.
 2. Publish the updated listing/privacy documents with the release sources.
 3. For a store submission, check the currently uploaded dashboard version, existing listing, distribution/publication settings and privacy declarations, then upload this ZIP and submit only within the owner's requested scope.
 4. Record the store's actual submission/approval result separately. No store approval is asserted in this preparation record.
 
 今回のZIP作成やGitHub側の公開だけでは、Chrome Web Storeへの審査提出・承認・ストア公開を意味しません。ストア側の操作と結果は別途確認します。
 
-## Previous release / 前回版
+## Previous releases / 過去版
 
-Version 1.4.0 was tagged on merge commit `84f15df` and has a GitHub release dated 2026-10-11. The owner previously reported submitting it for store review; approval has not been verified here. The previous 1.5.0 package was `dist/prompt-outline-navigator-1.5.0-chrome-web-store.zip` (44,568 bytes; SHA-256 `E06CCF55F9F3DC64C48A2A8F4A554590170910DF135FBB99D5C40E89C597E93E`). These are historical artifact values, not 1.6.0 verification results.
+Version 1.6.0 has a GitHub release dated 2026-10-15. Its verified ZIP was 45,920 bytes with SHA-256 `FFF623509F07ACA7A9C4A2207B3BEDAEB008E255C5E996CFF86473122C02DBE9`; 84 unit tests and 19 browser tests passed. These values describe 1.6.0, not the current package.
+
+Version 1.4.0 was tagged on merge commit `84f15df` and has a GitHub release dated 2026-10-11. The owner previously reported submitting it for store review; approval has not been verified here. The 1.5.0 package was 44,568 bytes with SHA-256 `E06CCF55F9F3DC64C48A2A8F4A554590170910DF135FBB99D5C40E89C597E93E`. These are historical artifact values.
