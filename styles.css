@@ -24,11 +24,13 @@ body.chatgpt-toc-open > .chatgpt-toc-app-root [data-app-shell-titlebar="true"] {
   right: var(--chatgpt-toc-width) !important;
 }
 
-/* Initial composers use the same width independently of TOC visibility. */
-:where(body.chatgpt-toc-wide) .chatgpt-toc-home-composer-root,
-:where(body.chatgpt-toc-wide) [data-chatgpt-composer][data-composer-placement="home"] {
+/* Shared composer markers cover Chat, Work, and unfamiliar placements.
+   JS marks their capped ancestors without widening the surrounding pane. */
+:where(body.chatgpt-toc-wide) .chatgpt-toc-composer-width-root {
   --wide-content-max-width: var(--chatgpt-toc-content-max-width);
+  --thread-content-responsive-max-width: var(--wide-content-max-width);
   --thread-content-max-width: var(--wide-content-max-width);
+  --thread-content-width: var(--wide-content-max-width);
   min-width: 0 !important;
   width: 100% !important;
   max-width: var(--wide-content-max-width) !important;

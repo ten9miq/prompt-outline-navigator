@@ -272,9 +272,7 @@
       }
       const source = shared.findTocSource(document);
       const kind = source?.kind || (this.sourcePath === pathname ? this.source?.kind : null);
-      const homeComposer = Array.from(document.querySelectorAll('[data-chatgpt-composer][data-composer-placement="home"]'))
-        .find((element) => element.getBoundingClientRect().width > 0 && !element.closest('[hidden],[aria-hidden="true"],[inert]'));
-      this.refreshHomeComposerRoot(homeComposer);
+      this.refreshComposerWidthRoots();
       // Keep scoped conversation/composer styles active even when an editor
       // becomes the TOC source or the conversation DOM is temporarily absent.
       document.body.classList.add('chatgpt-toc-wide');
@@ -301,19 +299,29 @@
       this.refreshAppRoot();
     },
 
-    refreshHomeComposerRoot(composer) {
-      let root = null;
-      for (let element = composer?.parentElement; element && element !== document.body; element = element.parentElement) {
-        const style = getComputedStyle(element);
-        if (style.display !== 'contents' && style.maxWidth !== 'none' && element.getBoundingClientRect().width > 0) {
-          root = element;
-          break;
+    refreshComposerWidthRoots() {
+      const roots = new Set();
+      for (const composer of document.querySelectorAll(SELECTORS.composer)) {
+        if (composer.getBoundingClientRect().width === 0 ||
+            composer.closest('[hidden],[aria-hidden="true"],[inert],nav,#chatgpt-toc-sidebar')) continue;
+        roots.add(composer);
+        // Lift all nested content caps within this pane, independently of the
+        // current route, composer placement, or generated utility class names.
+        // Leave pane boundaries and unrelated controls at their native width.
+        for (let element = composer.parentElement; element && element !== document.body; element = element.parentElement) {
+          if (element.matches('main,[role="main"],aside,[role="complementary"],nav,dialog,[role="dialog"],[role="alertdialog"],[data-app-shell-focus-area],[data-app-shell-frame],.chatgpt-toc-app-root')) break;
+          const style = getComputedStyle(element);
+          if (style.display !== 'contents' && style.maxWidth !== 'none' && style.maxWidth !== '100%' &&
+              element.getBoundingClientRect().width > 0) roots.add(element);
         }
       }
-      if (root === this.homeComposerRoot && (!root || root.classList.contains('chatgpt-toc-home-composer-root'))) return;
-      this.homeComposerRoot?.classList.remove('chatgpt-toc-home-composer-root');
-      this.homeComposerRoot = root;
-      root?.classList.add('chatgpt-toc-home-composer-root');
+      this.composerWidthRoots?.forEach((element) => {
+        if (!roots.has(element)) element.classList.remove('chatgpt-toc-composer-width-root');
+      });
+      roots.forEach((element) => {
+        if (!element.classList.contains('chatgpt-toc-composer-width-root')) element.classList.add('chatgpt-toc-composer-width-root');
+      });
+      this.composerWidthRoots = roots;
     },
 
     captureTocScrollState() {

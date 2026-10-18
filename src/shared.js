@@ -14,6 +14,7 @@
       conversationTurn: '[data-testid^="conversation-turn-"],[data-turn-key]',
       conversationScroll: '[data-app-action-timeline-scroll]',
       threadComposer: '[data-chatgpt-composer][data-composer-placement="thread"]',
+      composer: '[data-chatgpt-composer],[data-thread-find-composer]',
       assistantContent: '[data-markdown-text-style="assistant-message"]',
       conversationIdentity: '[data-chatgpt-selection-conversation-id]',
       userPromptContent: '[data-user-message-bubble="true"]'

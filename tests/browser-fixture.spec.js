@@ -563,6 +563,71 @@ test('initial composer widens independently of TOC and survives first-message re
   expect(await page.locator('#first-message-composer').evaluate((e) => getComputedStyle(e).getPropertyValue('--thread-content-max-width'))).toContain('min(80vw');
 });
 
+test('shared composer markers widen Work and unfamiliar placements through nested caps', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await openConversationFixture(page);
+  await expect(page.locator('#results')).toHaveClass(/\bpass\b/);
+  await page.evaluate(() => {
+    document.getElementById('thread').hidden = true;
+    const main = document.createElement('main');
+    main.id = 'shared-composer-pane';
+    main.style.cssText = 'width:100%;max-width:none;padding:0';
+    main.innerHTML = `<div id="outer-cap" style="width:100%;max-width:720px;padding:20px;box-sizing:border-box;margin:auto">
+      <div id="inner-cap" style="width:100%;max-width:672px;padding:20px;box-sizing:border-box;margin:auto">
+        <form id="shared-composer" data-chatgpt-composer data-composer-placement="home" style="height:50px"></form>
+      </div></div><textarea id="unrelated-setting" style="box-sizing:border-box;width:300px;max-width:300px"></textarea>
+      <nav><form data-thread-find-composer style="width:150px;height:30px"></form></nav>`;
+    document.getElementById('app').append(main);
+  });
+  const composer = page.locator('#shared-composer');
+  const width = () => composer.evaluate((e) => e.getBoundingClientRect().width);
+  await expect.poll(width).toBe(920);
+  // Match Work's real DOM: only the shared marker remains. Attribute-only
+  // transitions must be detected without relying on a class or route change.
+  await composer.evaluate((e) => {
+    e.setAttribute('data-thread-find-composer', 'true');
+    e.removeAttribute('data-chatgpt-composer');
+  });
+  await expect.poll(width).toBe(920);
+  await composer.evaluate((e) => { e.setAttribute('data-composer-placement', 'agent-configuration'); });
+  await expect.poll(width).toBe(920);
+  await composer.evaluate((e) => { e.removeAttribute('data-composer-placement'); });
+  await expect.poll(width).toBe(920);
+  expect(await page.locator('#unrelated-setting').evaluate((e) => e.getBoundingClientRect().width)).toBe(300);
+  await expect(page.locator('#shared-composer-pane nav .chatgpt-toc-composer-width-root')).toHaveCount(0);
+  await expect(page.locator('#shared-composer-pane')).not.toHaveClass(/chatgpt-toc-composer-width-root/);
+  // Removing the last semantic marker restores the native caps.
+  await composer.evaluate((e) => { e.removeAttribute('data-thread-find-composer'); });
+  await expect(page.locator('#shared-composer-pane .chatgpt-toc-composer-width-root')).toHaveCount(0);
+  await expect.poll(width).toBe(632);
+  await composer.evaluate((e) => { e.setAttribute('data-thread-find-composer', 'true'); });
+  await expect.poll(width).toBe(920);
+  await page.locator('#shared-composer-pane').evaluate((e) => { e.hidden = true; });
+  await expect(page.locator('#shared-composer-pane .chatgpt-toc-composer-width-root')).toHaveCount(0);
+});
+
+test('multiple composer panes lift local caps without changing dialog boundaries', async ({ page }) => {
+  await openConversationFixture(page);
+  await expect(page.locator('#results')).toHaveClass(/\bpass\b/);
+  await page.evaluate(() => {
+    for (const [id, width] of [['first-pane', 420], ['second-pane', 500]]) {
+      const dialog = document.createElement('div');
+      dialog.id = id;
+      dialog.setAttribute('role', 'dialog');
+      dialog.style.cssText = `position:fixed;top:50px;left:0;width:${width}px;max-width:${width}px`;
+      dialog.innerHTML = '<div style="width:100%;max-width:200px"><form data-thread-find-composer style="height:50px"></form></div>';
+      document.body.append(dialog);
+    }
+  });
+  for (const [id, width] of [['first-pane', 420], ['second-pane', 500]]) {
+    await expect.poll(() => page.locator(`#${id} form`).evaluate((e) => e.getBoundingClientRect().width)).toBe(width);
+    expect(await page.locator(`#${id}`).evaluate((e) => e.getBoundingClientRect().width)).toBe(width);
+    await expect(page.locator(`#${id}`)).not.toHaveClass(/chatgpt-toc-composer-width-root/);
+  }
+  await page.locator('#first-pane').evaluate((e) => { e.remove(); });
+  await expect.poll(() => page.locator('#second-pane form').evaluate((e) => e.getBoundingClientRect().width)).toBe(500);
+});
+
 test('embedded editors retain prompts, expose titles and sections, and track edits and remounts', async ({ page }) => {
   const errors = [];
   page.on('pageerror', (error) => errors.push(error.message));

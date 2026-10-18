@@ -45,7 +45,7 @@
         childList: true,
         subtree: true,
         attributes: true,
-        attributeFilter: ['data-chatgpt-selection-conversation-id', 'class', 'style', 'hidden', 'open', 'aria-hidden', 'aria-modal', 'role']
+        attributeFilter: ['data-chatgpt-selection-conversation-id', 'data-chatgpt-composer', 'data-thread-find-composer', 'data-composer-placement', 'class', 'style', 'hidden', 'open', 'aria-hidden', 'aria-modal', 'role']
       });
     }
 
