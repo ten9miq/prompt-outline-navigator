@@ -435,6 +435,10 @@ body.chatgpt-toc-resizing > .chatgpt-toc-app-root > :first-child { transition: n
 .toc-item.toc-h6 { padding-left: 30px; }
 
 .toc-text {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
   min-width: 0;
   flex: 1;
   color: inherit;

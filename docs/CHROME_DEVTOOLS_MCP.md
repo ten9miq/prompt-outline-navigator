@@ -21,6 +21,8 @@ Node.jsはPlaywrightに必要な20以降を使用します。初回は`npm ci`�
 
 ## 2. 専用Chromeを起動する
 
+このプロジェクトの実画面調査・検証では、以下の専用Chromeを使用します。指定URLが普段使いのBraveやChromeの既存タブに開かれていても、そのタブを読み取ったり操作したりせず、専用Chromeで対象URLを開いてください。ユーザーがブラウザーやタブを明示指定した場合は、その指示を優先します。MCPに接続できない場合も既存タブへ切り替えず、以下の起動・接続手順を確認し、解消できない接続・ログインの問題を報告します。
+
 今回安定して使えたのは、永続的な専用プロファイルと固定のdebug portへの接続です。通常Chromeのプロファイルをコピーせず、専用Chrome内でユーザーがChatGPTへログインします。専用プロファイルを次回も使うと、そのログイン状態や導入した拡張を再利用できます。ただしセッションの有効期限はChatGPT側の仕様に従います。
 
 まず9222の使用状況を確認します。
@@ -32,7 +34,7 @@ Get-NetTCPConnection -LocalPort 9222 -State Listen -ErrorAction SilentlyContinue
 
 通常Chromeの`chrome://inspect/#remote-debugging`でremote debuggingを有効にしている場合は、ユーザーがOFFにして同じポートを空けます。別のChromeやBraveが待ち受けていると、MCPは意図と異なるブラウザーへ接続します。勝手に既存ブラウザーを終了したり、プロファイルのロックを削除したりしません。
 
-9222が空いている状態で、ユーザーがPowerShellから起動します。Chromeのインストール場所が異なる場合は実際の実行ファイルへ置き換えてください。
+9222が空いている状態で、エージェントが以下の手順で起動します。必要に応じてユーザーがPowerShellから起動しても構いません。Chromeのインストール場所が異なる場合は実際の実行ファイルへ置き換えてください。
 
 ```powershell
 & 'C:\Program Files\Google\Chrome\Application\chrome.exe' `

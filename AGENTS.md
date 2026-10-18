@@ -1,5 +1,13 @@
 # Repository instructions
 
+## Browser investigation and verification
+
+- For live-page investigation and verification, follow `docs/CHROME_DEVTOOLS_MCP.md` and use the dedicated Google Chrome profile `%LOCALAPPDATA%\Chrome-MCP-Test` with remote debugging port `9222` through Chrome DevTools MCP.
+- If that dedicated Chrome is not running, launch it using the documented procedure. If it is already running, verify the executable and process arguments before reusing it; do not launch a duplicate instance.
+- Open the requested URL in the dedicated Chrome. Do not inspect or operate existing tabs in the user's everyday browsers (including Brave), even when they already contain the requested URL, unless the user explicitly requests that browser or tab.
+- If MCP cannot connect, check the documented Chrome startup and connection steps. Do not fall back to the user's everyday browser tabs. Report unresolved connection or login requirements; the user completes login and authentication challenges in the dedicated Chrome.
+- Do not terminate unrelated browsers, remove profile locks, or change their settings to free the debug port.
+
 ## README maintenance
 
 - Keep `README.md` as the English documentation and `README.ja.md` as its Japanese counterpart.

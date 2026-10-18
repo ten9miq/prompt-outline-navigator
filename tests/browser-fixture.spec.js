@@ -635,6 +635,54 @@ test('embedded editors retain prompts, expose titles and sections, and track edi
   expect(errors).toEqual([]);
 });
 
+test('editor opening labels preserve line breaks and long entries stay within two lines', async ({ page }) => {
+  await openConversationFixture(page);
+  await expect(page.locator('#results')).toHaveClass(/\bpass\b/);
+  await page.evaluate(() => {
+    document.getElementById('thread').style.cssText = 'position:fixed;top:40px;left:0;width:800px;height:500px;overflow-y:auto';
+    const answer = document.querySelector('[data-message-author-role="assistant"]');
+    answer.innerHTML = `<div style="height:800px"></div>
+      <div data-markdown-copy-content><div id="opening-editor" class="ProseMirror"><p><br><span> </span><br><span>First <em>formatted</em> line</span><br>Later body must not appear</p><p style="height:800px">Body</p></div></div>
+      <h2 id="long-heading">${'Long heading '.repeat(50)}</h2>
+      <div style="height:800px"></div>
+      <h2 id="same-prefix-heading">${'Long heading '.repeat(50)}different destination</h2>
+      <div style="height:800px"></div>`;
+  });
+  const opening = page.locator('.toc-item').filter({ hasText: /^First formatted line$/ });
+  await expect(opening).toHaveCount(1);
+  await expect(opening.locator('.toc-text')).toHaveAttribute('title', 'First formatted line');
+  const longItem = page.locator('.toc-item').filter({ hasText: /different destination$/ });
+  for (const width of [160, 200, 600]) {
+    await page.locator('#chatgpt-toc-sidebar').evaluate((sidebar, width) => { sidebar.style.width = `${width}px`; }, width);
+    const metrics = await longItem.locator('.toc-text').evaluate((text) => ({
+      height: text.getBoundingClientRect().height, lineHeight: parseFloat(getComputedStyle(text).lineHeight),
+      contentHeight: text.scrollHeight, title: text.title, label: text.textContent
+    }));
+    expect(metrics.height).toBeLessThanOrEqual(metrics.lineHeight * 2 + 1);
+    expect(metrics.contentHeight).toBeGreaterThan(metrics.height);
+    expect(metrics.title).toBe(metrics.label);
+  }
+  await longItem.click();
+  await expect.poll(() => page.locator('#same-prefix-heading').evaluate((heading) => Math.abs(
+    heading.getBoundingClientRect().top - document.getElementById('thread').getBoundingClientRect().top - TOCNavigator.getNavigationOffset(innerHeight)
+  ))).toBeLessThanOrEqual(2);
+  await opening.click();
+  await expect.poll(() => page.locator('#opening-editor').evaluate((editor) => Math.abs(
+    editor.getBoundingClientRect().top - document.getElementById('thread').getBoundingClientRect().top - TOCNavigator.getNavigationOffset(innerHeight)
+  ))).toBeLessThanOrEqual(2);
+  for (const [html, expected] of [
+    ['<p>\n\nUpdated opening\nAnother line</p>', 'Updated opening'],
+    [`<p>${'長'.repeat(150)}<br>Later body</p>`, `${'長'.repeat(80)}…`],
+    ['<div>First block</div><div>Second block</div>', 'First block'],
+    ['<p><br></p>', 'Untitled document'],
+    ['<h1>Actual title</h1><p>Body opening</p>', 'Actual title']
+  ]) {
+    await page.locator('#opening-editor').evaluate((editor, html) => { editor.innerHTML = html; }, html);
+    await expect(page.locator('.toc-item .toc-text').first()).toHaveText(expected);
+    await expect(page.locator('.toc-item .toc-text').first()).toHaveAttribute('title', expected);
+  }
+});
+
 test('standalone documents without h1 use their opening and numbered bold sections', async ({ page }) => {
   await openConversationFixture(page);
   await expect(page.locator('#results')).toHaveClass(/\bpass\b/);

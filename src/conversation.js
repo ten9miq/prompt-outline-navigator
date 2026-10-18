@@ -494,6 +494,7 @@
       const text = document.createElement('span');
       text.className = 'toc-text';
       text.textContent = shared.getOutlineText(heading);
+      text.title = text.textContent;
       item.append(text);
 
       const nextHeading = group.headings[index];
@@ -527,7 +528,9 @@
           if (assistant) this.reconcileAssistantTurn(assistant);
           return;
         }
-        item.querySelector('.toc-text').textContent = shared.getOutlineText(heading);
+        const text = item.querySelector('.toc-text');
+        text.textContent = shared.getOutlineText(heading);
+        text.title = text.textContent;
       } finally {
         this.restoreTocScrollState(tocScrollState);
       }

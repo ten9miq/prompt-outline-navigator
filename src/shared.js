@@ -47,14 +47,27 @@
   api.getOutlineText = (element) => outlineMetadata.get(element)?.text ?? element.textContent.trim();
   api.getOutlineLevel = (element) => outlineMetadata.get(element)?.level ??
     Math.max(1, Math.min(6, Number(element.getAttribute?.('aria-level') || element.tagName.slice(1)) || 1));
+  const getFirstContentLine = (element) => {
+    if (!element) return '';
+    // textContent drops <br> boundaries. Work on a detached copy so the editor
+    // and its selection are never changed while deriving the fallback label.
+    const copy = element.cloneNode(true);
+    copy.querySelectorAll('br').forEach((br) => br.replaceWith('\n'));
+    copy.querySelectorAll('p,div,li,blockquote,pre').forEach((block) => block.append('\n'));
+    return copy.textContent.split(/\r\n|[\n\r\u2028\u2029]/).map((line) => line.trim()).find(Boolean) || '';
+  };
   api.getEditorTitle = (editor) => {
     const card = editor.closest?.('[class~="group/writing-block-surface"]');
     const subject = card?.querySelector('textarea')?.value?.trim();
     const heading = Array.from(editor.querySelectorAll('h1,[role="heading"][aria-level="1"]'))
       .find(isOutlineContent)?.textContent.trim();
-    const opening = Array.from(editor.querySelectorAll('p'))
-      .find((p) => isOutlineContent(p) && p.textContent.trim())?.textContent.trim();
-    return api.truncateText(subject || heading || opening || editor.textContent?.trim() || 'Untitled document');
+    if (subject || heading) return api.truncateText(subject || heading);
+    for (const paragraph of editor.querySelectorAll('p')) {
+      if (!isOutlineContent(paragraph)) continue;
+      const opening = getFirstContentLine(paragraph);
+      if (opening) return api.truncateText(opening, 80);
+    }
+    return api.truncateText(getFirstContentLine(editor) || 'Untitled document', 80);
   };
   api.collectOutlineTargets = (root) => {
     const targets = Array.from(root.querySelectorAll(api.SELECTORS.headings)).filter(isOutlineContent);
