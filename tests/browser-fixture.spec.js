@@ -90,7 +90,9 @@ test('resizing saves width and hover previews allow navigation without resizing 
   await expect.poll(appWidth).toBe(1280);
   const writes = await page.evaluate(() => globalThis.__tocWrites);
   expect(writes).toEqual([{ sidebarVisible: false }]);
-  await page.mouse.move(1279, 400);
+  await page.mouse.move(1256, 400);
+  await expect(sidebar).toHaveAttribute('aria-hidden', 'true');
+  await page.mouse.move(1264, 400);
   await expect(sidebar).toHaveAttribute('aria-hidden', 'false');
   await expect.poll(() => sidebar.evaluate((e) => Math.round(e.getBoundingClientRect().left))).toBe(960);
   expect(await appWidth()).toBe(1280);

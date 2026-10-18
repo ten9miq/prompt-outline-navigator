@@ -256,8 +256,8 @@ body.chatgpt-toc-resizing > .chatgpt-toc-app-root > :first-child { transition: n
 #chatgpt-toc-hover-edge {
   position: fixed;
   inset: 0 0 0 auto;
-  width: 6px;
-  z-index: 40;
+  width: 20px;
+  z-index: 39;
 }
 #chatgpt-toc-hover-edge[hidden] { display: none !important; }
 
