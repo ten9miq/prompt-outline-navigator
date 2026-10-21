@@ -18,6 +18,246 @@ async function openConversationFixture(page) {
   await page.goto('https://chatgpt.com/c/fixture');
 }
 
+test('conversation-id roots support attachment-only prompts and late source attributes', async ({ page }) => {
+  const errors = [];
+  page.on('pageerror', (error) => errors.push(error.message));
+  await openConversationFixture(page);
+  await expect(page.locator('#results')).toHaveClass(/\bpass\b/);
+  await page.evaluate(() => {
+    const root = document.getElementById('thread');
+    root.id = 'current-transcript';
+    root.innerHTML = `<div data-turn-key="attachment-turn">
+      <div class="group/user-message" data-chatgpt-search-unit-key="file:user" data-chatgpt-search-message-ids="file-id"><button>notes.txt</button></div>
+      <div data-chatgpt-search-unit-key="file:assistant" data-chatgpt-search-message-ids="answer-id answer-id">
+        <h4 data-conversation-role="assistant">Assistant</h4>
+        <div data-message-author-role="assistant"><h2 id="answer-heading">Attachment analysis</h2><p style="height:1600px">Body</p></div>
+        <button><h2>Toolbar heading</h2></button>
+      </div></div>`;
+    history.pushState({}, '', '/c/uuid-root');
+    window.dispatchEvent(new PopStateEvent('popstate'));
+  });
+  await expect(page.locator('.toc-group')).toHaveCount(0);
+  // These attributes can arrive after the message children, without childList changes.
+  await page.locator('#current-transcript').evaluate((root) => {
+    root.setAttribute('data-chatgpt-conversation-selection-target', 'anonymized-conversation-id');
+    root.setAttribute('data-thread-find-target', 'conversation');
+  });
+  await expect(page.locator('.toc-group')).toHaveCount(1);
+  await expect(page.locator('.toc-item .toc-text')).toHaveText(['Attachment analysis']);
+  await expect(page.locator('.toc-group-prompt')).toHaveText('');
+  await page.locator('.toc-item').click();
+  await expect(page.locator('.toc-item')).toHaveClass(/active/);
+  // Reuse the same element for a different conversation: discard cached entries.
+  await page.locator('#current-transcript').evaluate((root) => {
+    root.setAttribute('data-chatgpt-conversation-selection-target', 'next-conversation-id');
+    root.innerHTML = '<div data-turn-key="next-turn"><div data-message-author-role="assistant"><h2>Next conversation</h2></div></div>';
+  });
+  await expect(page.locator('.toc-group')).toHaveCount(1);
+  await expect(page.locator('.toc-item .toc-text')).toHaveText(['Next conversation']);
+  expect(errors).toEqual([]);
+});
+
+test('late role markers and prompts recover without dropping distinct responses in one turn', async ({ page }) => {
+  const errors = [];
+  page.on('pageerror', (error) => errors.push(error.message));
+  await openConversationFixture(page);
+  await expect(page.locator('#results')).toHaveClass(/\bpass\b/);
+  await page.evaluate(() => {
+    document.getElementById('thread').innerHTML = `<div data-turn-key="shared-turn">
+      <div id="late-answer" data-chatgpt-search-unit-key="answer" data-chatgpt-search-message-ids="answer-1">
+        <h4 id="late-role">Assistant</h4><h2>First answer</h2>
+      </div></div>`;
+    history.pushState({}, '', '/c/late-messages');
+    window.dispatchEvent(new PopStateEvent('popstate'));
+  });
+  await expect(page.locator('.toc-group')).toHaveCount(0);
+  await page.locator('#late-role').evaluate((role) => role.setAttribute('data-conversation-role', 'assistant'));
+  await expect(page.locator('.toc-item .toc-text')).toHaveText(['First answer']);
+  await page.evaluate(() => {
+    const answer = document.getElementById('late-answer');
+    answer.insertAdjacentHTML('beforebegin', '<div data-chatgpt-search-unit-key="late:user" data-chatgpt-search-message-ids="late-user"><div data-message-author-role="user"><div class="whitespace-pre-wrap" id="late-prompt-body"></div></div></div>');
+  });
+  await page.locator('#late-prompt-body').evaluate((body) => body.append('Recovered prompt'));
+  await expect(page.locator('.toc-group-prompt')).toHaveText(['Recovered prompt']);
+  await page.evaluate(() => {
+    const answer = document.getElementById('late-answer');
+    answer.insertAdjacentHTML('afterend', '<div data-chatgpt-search-unit-key="answer-2" data-chatgpt-search-message-ids="answer-2"><h4 data-conversation-role="assistant">Assistant</h4><h2>Second answer</h2></div>');
+  });
+  await expect(page.locator('.toc-group-prompt')).toHaveText(['Recovered prompt', 'Recovered prompt']);
+  await expect(page.locator('.toc-item .toc-text')).toHaveText(['First answer', 'Second answer']);
+  // A remount with the same message id replaces the old group instead of duplicating it.
+  await page.locator('#late-answer').evaluate((answer) => {
+    const replacement = answer.cloneNode(true);
+    replacement.querySelector('h2').textContent = 'Remounted first answer';
+    answer.replaceWith(replacement);
+  });
+  await expect(page.locator('.toc-group')).toHaveCount(2);
+  await expect(page.locator('.toc-item .toc-text')).toHaveText(['Remounted first answer', 'Second answer']);
+  expect(errors).toEqual([]);
+});
+
+test('editor outlines update during continuous edits and discover late editor attributes', async ({ page }) => {
+  const errors = [];
+  page.on('pageerror', (error) => errors.push(error.message));
+  await openConversationFixture(page);
+  await expect(page.locator('#results')).toHaveClass(/\bpass\b/);
+  await page.evaluate(() => {
+    document.getElementById('thread').innerHTML = `<div data-turn-key="draft-turn">
+      <div data-message-author-role="user"><div class="whitespace-pre-wrap">Edit this draft</div></div>
+      <div data-message-author-role="assistant"><section class="group/writing-block-surface">
+        <div id="late-copy"><div id="live-draft"><p>Draft opening</p><p><strong id="live-section">1. Draft section</strong></p></div></div>
+      </section></div></div>`;
+    history.pushState({}, '', '/c/continuous-editor');
+    window.dispatchEvent(new PopStateEvent('popstate'));
+  });
+  await expect(page.locator('.toc-group')).toHaveCount(1);
+  await expect(page.locator('.toc-item')).toHaveCount(0);
+  await page.locator('#late-copy').evaluate((copy) => copy.setAttribute('data-markdown-copy-content', ''));
+  await page.locator('#live-draft').evaluate((draft) => draft.classList.add('ProseMirror'));
+  await expect(page.locator('.toc-item .toc-text')).toHaveText(['Draft opening', '1. Draft section']);
+  await page.evaluate(() => {
+    let sequence = 0;
+    globalThis.__draftInterval = setInterval(() => {
+      document.getElementById('live-section').firstChild.data = `1. Live section ${++sequence}`;
+    }, 25);
+  });
+  try {
+    // The stream remains active throughout this assertion. A trailing debounce
+    // would never publish the new outline and would time out here.
+    await expect(page.locator('.toc-item .toc-text').last()).toHaveText(/^1\. Live section \d+$/);
+  } finally {
+    await page.evaluate(() => clearInterval(globalThis.__draftInterval));
+  }
+  await page.locator('#live-section').evaluate((section) => { section.textContent = '1. Final section'; });
+  await expect(page.locator('.toc-item .toc-text')).toHaveText(['Draft opening', '1. Final section']);
+  expect(errors).toEqual([]);
+});
+
+test('branched local conversations outline inert raw writing blocks without changing their text', async ({ page }) => {
+  const errors = [];
+  page.on('pageerror', (error) => errors.push(error.message));
+  await openConversationFixture(page);
+  await expect(page.locator('#results')).toHaveClass(/\bpass\b/);
+  await page.evaluate(() => {
+    const old = document.getElementById('thread');
+    const hiddenCopy = old.cloneNode(true);
+    hiddenCopy.removeAttribute('id');
+    hiddenCopy.hidden = true;
+    hiddenCopy.setAttribute('data-chatgpt-conversation-selection-target', 'local-chatgpt:old-branch');
+    hiddenCopy.setAttribute('data-thread-find-target', 'conversation');
+    old.before(hiddenCopy);
+    old.removeAttribute('id');
+    old.setAttribute('data-chatgpt-conversation-selection-target', 'local-chatgpt:active-branch');
+    old.setAttribute('data-thread-find-target', 'conversation');
+    old.setAttribute('data-app-action-timeline-scroll', '');
+    old.style.cssText = 'position:fixed;top:40px;left:0;width:800px;height:500px;overflow-y:auto';
+    old.innerHTML = `<div data-turn-key="raw-turn">
+      <div class="group/user-message" data-chatgpt-search-unit-key="raw:user" data-chatgpt-search-message-ids="raw-file"><button>notes.txt</button></div>
+      <div data-chatgpt-search-unit-key="raw:assistant" data-chatgpt-search-message-ids="raw-answer">
+        <h4 data-conversation-role="assistant">Assistant</h4>
+        <div inert><section data-oai-writing-block-surface class="group/writing-block-surface">
+          <header>Writing controls</header><div id="raw-draft" data-markdown-copy-content style="white-space:pre-wrap;line-height:24px"></div>
+        </section></div>
+        <button><section data-oai-writing-block-surface><div data-markdown-copy-content># Preview</div></section></button>
+        <div data-composer-markdown><section data-oai-writing-block-surface><div data-markdown-copy-content># Composer</div></section></div>
+        <div style="height:800px"></div>
+      </div></div>`;
+    document.getElementById('raw-draft').textContent = ['Meeting notes', '# Summary', 'Body\n'.repeat(50),
+      '```md', '# Code example', '```', '## Lower section', 'Body\n'.repeat(50), '# Closing', 'End'].join('\n');
+    globalThis.__rawOriginal = document.getElementById('raw-draft').textContent;
+    history.pushState({}, '', '/g/project/c/local-chatgpt%3Aactive-branch');
+    window.dispatchEvent(new PopStateEvent('popstate'));
+  });
+  await expect(page.locator('.toc-group')).toHaveCount(1);
+  await expect(page.locator('.toc-item .toc-text')).toHaveText(['Meeting notes', 'Summary', 'Lower section', 'Closing']);
+  const summary = page.locator('.toc-item').filter({ hasText: /^Summary$/ });
+  await summary.locator('.toc-collapse-icon').click();
+  await expect(page.locator('.toc-item').filter({ hasText: /^Lower section$/ })).toBeHidden();
+  await summary.locator('.toc-collapse-icon').click();
+  for (const label of ['Closing', 'Summary', 'Lower section']) {
+    await page.locator('.toc-item').filter({ hasText: new RegExp(`^${label}$`) }).click();
+    await expect.poll(() => page.evaluate((label) => {
+      const owner = document.getElementById('raw-draft');
+      const descriptor = TOCNavigator.parseMarkdownHeadings(owner.textContent).find((h) => h.text === label);
+      const range = document.createRange();
+      range.setStart(owner.firstChild, descriptor.start);
+      range.setEnd(owner.firstChild, descriptor.end);
+      const scroller = owner.closest('[data-app-action-timeline-scroll]');
+      return Math.abs(range.getBoundingClientRect().top - scroller.getBoundingClientRect().top - TOCNavigator.getNavigationOffset(innerHeight));
+    }, label)).toBeLessThanOrEqual(2);
+  }
+  expect(await page.locator('#raw-draft').evaluate((owner) => owner.textContent === globalThis.__rawOriginal && owner.childNodes.length === 1)).toBe(true);
+  // In-place updates and a same-text remount must rebuild live ranges and keep levels stable.
+  await page.locator('#raw-draft').evaluate((owner) => { owner.firstChild.data = owner.textContent.replace('## Lower section', '## Edited section'); });
+  await expect(page.locator('.toc-item .toc-text')).toHaveText(['Meeting notes', 'Summary', 'Edited section', 'Closing']);
+  await page.locator('#raw-draft').evaluate((owner) => { owner.textContent = owner.textContent; });
+  await expect(page.locator('.toc-item').nth(2)).toHaveClass(/toc-h3/);
+  await page.locator('#raw-draft').evaluate((owner) => {
+    const rich = document.createElement('div');
+    rich.className = 'ProseMirror';
+    rich.innerHTML = '<h1>Rich document</h1><h2>Rich section</h2>';
+    owner.closest('[inert]').removeAttribute('inert');
+    owner.replaceChildren(rich);
+  });
+  await expect(page.locator('.toc-item .toc-text')).toHaveText(['Rich document', 'Rich section']);
+  expect(errors).toEqual([]);
+});
+
+test('partial writing revisions retain collapsed original outlines and expand them before navigation', async ({ page }) => {
+  const errors = [];
+  page.on('pageerror', (error) => errors.push(error.message));
+  await openConversationFixture(page);
+  await expect(page.locator('#results')).toHaveClass(/\bpass\b/);
+  await page.evaluate(() => {
+    const root = document.getElementById('thread');
+    root.setAttribute('data-app-action-timeline-scroll', '');
+    root.style.cssText = 'position:fixed;top:40px;left:0;width:800px;height:500px;overflow-y:auto';
+    root.innerHTML = `<div data-turn-key="original-turn">
+      <div data-message-author-role="user"><button>notes.txt</button></div>
+      <div data-message-author-role="assistant"><section data-oai-writing-block-surface id="original-card">
+        <header>Original document</header><div id="original-region"><div data-markdown-copy-content><div class="ProseMirror" contenteditable="false">
+          <h1>Original title</h1><h2>Original summary</h2><p style="height:1200px">Original body</p><h2 id="original-lower">Original details</h2><p style="height:800px">End</p>
+        </div></div></div><button id="original-disclosure" aria-controls="original-region" aria-expanded="true">Expand original</button>
+      </section></div></div>`;
+    document.getElementById('original-disclosure').addEventListener('click', (event) => {
+      const region = document.getElementById('original-region');
+      region.removeAttribute('inert');
+      region.removeAttribute('aria-hidden');
+      region.style.cssText = '';
+      region.replaceChildren(...[...region.childNodes].map((node) => node.cloneNode(true)));
+      event.currentTarget.setAttribute('aria-expanded', 'true');
+    });
+    history.pushState({}, '', '/c/partial-revision');
+    window.dispatchEvent(new PopStateEvent('popstate'));
+  });
+  await expect(page.locator('.toc-group').first().locator('.toc-text')).toHaveText(['Original title', 'Original summary', 'Original details']);
+  await page.evaluate(() => {
+    const region = document.getElementById('original-region');
+    region.setAttribute('inert', '');
+    region.setAttribute('aria-hidden', 'true');
+    region.style.cssText = 'max-height:96px;overflow:hidden';
+    document.getElementById('original-disclosure').setAttribute('aria-expanded', 'false');
+    document.getElementById('thread').insertAdjacentHTML('beforeend', `<div data-turn-key="revision-turn">
+      <div data-message-author-role="user"><div class="whitespace-pre-wrap">Revise the selected paragraph</div></div>
+      <div data-message-author-role="assistant"><section data-oai-writing-block-surface>
+        <div data-markdown-copy-content><div class="ProseMirror"><h1>Revised title</h1><h2>Revised section</h2><p style="height:1200px">Revised body</p></div></div>
+        <button><h2>Preview control</h2></button>
+        <div aria-hidden="true"><h2>Unrelated hidden heading</h2></div>
+      </section></div></div>`);
+  });
+  await expect(page.locator('.toc-group')).toHaveCount(2);
+  await expect(page.locator('.toc-group').first().locator('.toc-text')).toHaveText(['Original title', 'Original summary', 'Original details']);
+  await expect(page.locator('.toc-group').last().locator('.toc-text')).toHaveText(['Revised title', 'Revised section']);
+  const oldDetails = page.locator('.toc-item').filter({ hasText: /^Original details$/ });
+  await oldDetails.click();
+  await expect(page.locator('#original-disclosure')).toHaveAttribute('aria-expanded', 'true');
+  await expect.poll(() => page.locator('#original-lower').evaluate((heading) => Math.abs(
+    heading.getBoundingClientRect().top - document.getElementById('thread').getBoundingClientRect().top - TOCNavigator.getNavigationOffset(innerHeight)
+  ))).toBeLessThanOrEqual(2);
+  await expect(page.locator('.toc-group').first().locator('.toc-text')).toHaveText(['Original title', 'Original summary', 'Original details']);
+  expect(errors).toEqual([]);
+});
+
 test('browser fixture completes its anonymized conversation checks', async ({ page }) => {
   const pageErrors = [];
   const consoleErrors = [];

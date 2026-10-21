@@ -63,22 +63,19 @@
       const requestId = ++this.navigationRequestId;
       this.pendingNavigationRequestId = requestId;
       this.setActive(heading, group);
+      const descriptor = shared.describeOutlineTarget(heading, group?.headings);
+      const disclosure = heading.isConnected && shared.getWritingBlockDisclosure(heading);
+      if (disclosure) {
+        if (disclosure.button.getAttribute('aria-expanded') === 'false') disclosure.button.click();
+        this.waitForWritingBlockExpansion(group, descriptor, requestId);
+        return;
+      }
       if (heading.isConnected) {
         this.scrollToDestination(heading);
-        const descriptor = {
-          index: group?.headings.indexOf(heading) ?? -1,
-          tagName: heading.tagName,
-          text: shared.getOutlineText(heading)
-        };
         this.waitForSmoothScrollEnd(requestId, () => this.settleHeadingDestination(group, descriptor, requestId));
         return;
       }
 
-      const descriptor = {
-        index: group?.headings.indexOf(heading) ?? -1,
-        tagName: heading.tagName,
-        text: shared.getOutlineText(heading)
-      };
       const prompt = this.getConnectedGroupDestination(group);
       if (prompt) {
         this.scrollToDestination(prompt, 'auto');
@@ -95,7 +92,23 @@
     }
 
     findConnectedHeading(group, descriptor) {
-      return findRemountedHeading(group?.headings, descriptor);
+      const heading = findRemountedHeading(group?.headings, descriptor);
+      return heading && !shared.getWritingBlockDisclosure(heading) ? heading : null;
+    }
+
+    waitForWritingBlockExpansion(group, descriptor, requestId, attempts = 0) {
+      if (requestId !== this.navigationRequestId || attempts >= NAVIGATION_RECOVERY_FRAMES) {
+        if (this.pendingNavigationRequestId === requestId) this.pendingNavigationRequestId = null;
+        return;
+      }
+      const heading = this.findConnectedHeading(group, descriptor);
+      if (heading) {
+        this.setActive(heading, group);
+        this.scrollToDestination(heading);
+        this.waitForSmoothScrollEnd(requestId, () => this.settleHeadingDestination(group, descriptor, requestId));
+        return;
+      }
+      requestAnimationFrame(() => this.waitForWritingBlockExpansion(group, descriptor, requestId, attempts + 1));
     }
 
     waitForHeadingDestination(group, descriptor, requestId, attempts = 0) {
@@ -225,7 +238,7 @@
     scrollConversationToElement(element, behavior = 'smooth') {
       const scroller = this.getConversationScrollContainer();
       if (!scroller) {
-        element.scrollIntoView({ behavior, block: 'start' });
+        shared.getOutlineElement(element).scrollIntoView({ behavior, block: 'start' });
         return false;
       }
       const reverse = getComputedStyle(scroller).flexDirection === 'column-reverse';
@@ -428,10 +441,11 @@
     }
 
     scrollToDestination(element, behavior = 'smooth') {
-      element.classList.add('chatgpt-toc-scroll-target');
+      const owner = shared.getOutlineElement(element);
+      owner.classList.add('chatgpt-toc-scroll-target');
       this.scrollConversationToElement(element, behavior);
       this.flashDestination(element);
-      setTimeout(() => element.classList.remove('chatgpt-toc-scroll-target'), 1000);
+      setTimeout(() => owner.classList.remove('chatgpt-toc-scroll-target'), 1000);
     }
 
     cancelPendingNavigation() {
@@ -448,6 +462,7 @@
     }
 
     flashDestination(element) {
+      element = shared.getOutlineElement(element);
       const previousTimer = this.destinationHighlightTimers.get(element);
       if (previousTimer) clearTimeout(previousTimer);
       element.classList.remove('chatgpt-toc-target-highlight');

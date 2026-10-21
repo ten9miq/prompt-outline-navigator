@@ -25,6 +25,14 @@ Prompt Outline Navigator is an independent project and is not affiliated with or
 - Renders prompt and heading text with `textContent`, including text that looks like HTML. TOC entries display at most two lines; hovering over the label shows its text before visual clipping.
 - Supports nested heading collapse, prompt-group collapse, theme-adjusted hierarchy and active-prompt colors for light/dark modes, and SPA navigation.
 
+Conversation detection accepts both boolean and conversation-ID root markers, prioritizes visible explicit conversation roots, and falls back to a marked conversation scroll pane when necessary. Response bodies can be discovered before role markers or message IDs arrive. Nested wrappers and remounts are deduplicated by message identity; delayed prompt recognition corrects the label without overwriting a resolved label for the same prompt ID. Rendered responses are retained even when their prompt is temporarily missing.
+
+Outline inclusion and navigation readiness share one content-state policy. Cached history survives virtualization and replacement of the root within the same conversation; connected hidden alternatives and an answer replaced in the same live response slot are removed. Conversation order is retained when only a sparse set of turns is rendered. Ordinary response tokens do not rebuild outlines; editor changes are coalesced at 120ms intervals and reconcile only affected responses. These safeguards depend on the rendered ChatGPT DOM and do not fetch conversation history.
+
+Writing blocks displayed as raw Markdown, including read-only copies in branched local conversations, also expose a document entry and `#`–`######` heading entries. Fenced code is excluded. Navigation uses text ranges to reach the heading line without inserting elements into the document or changing its text. Switching between raw and rich editor views rebuilds the outline; hidden branch copies, previews, and composers remain excluded.
+
+When a partial writing revision collapses the original document, its headings stay under the original prompt. The exception applies only to the document region linked to its own expand button, not unrelated hidden content. Selecting a heading in that region expands the original document and waits for any remount before scrolling. Collapsed headings are excluded from active-position tracking until expanded.
+
 ## Development
 
 ```powershell
@@ -38,6 +46,8 @@ npm run check
 
 The content scripts are split by responsibility: shared helpers, content-source adapters, sidebar UI, conversation synchronization, navigation, active-position tracking, and the `content.js` bootstrap. Keep their order in `manifest.json` when adding or moving code.
 
+The [TOC reliability audit and regression matrix (Japanese)](docs/TOC_RELIABILITY.md) records the content-state rules, earlier implementation comparisons, protected transitions, and the boundary between fixture and live-page verification. `tests/toc-lifecycle.spec.js` exercises complete state transitions as well as incremental-update isolation.
+
 Load this directory with **Chrome > Extensions > Developer mode > Load unpacked**.
 
 For the Windows workflow used to develop against the live ChatGPT UI, see [Chrome DevTools MCP development and verification (Japanese)](docs/CHROME_DEVTOOLS_MCP.md). It covers a dedicated Chrome profile, Codex connection setup, extension/page reloads, geometry and scrolling measurements, and Console error attribution.
@@ -45,6 +55,8 @@ For the Windows workflow used to develop against the live ChatGPT UI, see [Chrom
 Live-page investigation and verification use that dedicated Chrome (`%LOCALAPPDATA%\Chrome-MCP-Test`, debug port `9222`) through Chrome DevTools MCP. The agent launches it when needed, or verifies and reuses the same dedicated instance. Open target URLs there; do not use existing tabs in everyday browsers such as Brave unless the user explicitly requests them. If connection fails, troubleshoot the documented setup instead of falling back to everyday browser tabs. The user completes login and authentication challenges in the dedicated Chrome.
 
 The Playwright tests serve `tests/browser-fixture.html` at a simulated ChatGPT conversation URL in Chromium and check its anonymized conversation DOM, sidebar initialization, safe text rendering, incremental updates, virtualized turn retention, and pin/unpin behavior, including boundary/title resets that preserve hover mode. They also check document and message-feed adapters on unfamiliar URLs, preview exclusion, initial composer width and first-message DOM transitions, repeated upper/lower navigation, stable sidebar visibility and reserved width across page transitions and modal/non-modal overlays for both saved visibility states without storage writes, attachment-only prompts with long responses, and conversation-root replacement. `tests/layout-fixture.html` verifies conversation and unavailable-screen widths and the sidebar's top clearance at 1280px and 1920px viewport widths. Additional layout checks cover an app shell with an inline viewport width and a composer outside the conversation root. The layout fixture supports manual inspection in a browser; these checks do not replace testing on the live ChatGPT UI.
+
+Regression fixtures also cover conversation-ID roots, attachment-only prompts with nested message wrappers, delayed source/role/editor attributes, missing prompts, distinct responses within one turn, same-root conversation changes, and outline updates during continuous editor changes.
 
 ### Chrome Web Store package
 

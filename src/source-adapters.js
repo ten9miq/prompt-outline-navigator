@@ -4,12 +4,7 @@
   const shared = typeof module !== 'undefined' && module.exports ? require('./shared.js') : globalThis.TOCNavigator;
   const DOCUMENT_SELECTOR = shared.EDITOR_SELECTOR;
   const FEED_SELECTOR = 'article[data-message-id]:has([data-message-id])';
-  const isContentVisible = (element, doc) => {
-    if (element.closest?.('[hidden],[aria-hidden="true"],[inert],nav,#chatgpt-toc-sidebar')) return false;
-    if (element.getClientRects?.().length === 0) return false;
-    const style = doc.defaultView?.getComputedStyle(element);
-    return style?.display !== 'none' && style?.visibility !== 'hidden';
-  };
+  const isContentVisible = (element) => shared.isTocContent(element);
   const findTocSource = (doc = document) => {
     const documents = Array.from(doc.querySelectorAll(DOCUMENT_SELECTOR)).filter((element) =>
       isContentVisible(element, doc) && !element.closest('button,[data-composer-markdown],[class*="PagePreview-"],[class*="PageThumbnail-"]')
@@ -22,7 +17,8 @@
     if (conversation && isContentVisible(conversation, doc) &&
         (conversation.querySelector(shared.SELECTORS.conversationIdentity) ||
          conversation.querySelector(shared.SELECTORS.conversationTurn) ||
-         conversation.querySelector(shared.SELECTORS.userMessage))) {
+         conversation.querySelector(shared.SELECTORS.userMessage) ||
+         conversation.querySelector(shared.SELECTORS.assistantMessage))) {
       return { kind: 'conversation', root: conversation };
     }
     if (documents.length) return { kind: 'document', root: documents.at(-1) };
@@ -44,7 +40,7 @@
     if (source.kind === 'document') return [{ assistant: source.root, prompt: null, key: null }];
     if (source.kind !== 'feed') return [];
     return Array.from(source.root.querySelectorAll(FEED_SELECTOR)).filter((article) =>
-      isContentVisible(article, article.ownerDocument) && !article.closest('button')
+      shared.isTocContent(article, { excludeDialogs: true })
     ).map((article) => {
       const id = article.getAttribute('data-message-id');
       const body = Array.from(article.querySelectorAll('[data-message-id]'))

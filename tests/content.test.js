@@ -116,6 +116,17 @@ test('long prompts are bounded without changing shorter prompts', () => {
   assert.equal(truncateText('a'.repeat(201)), `${'a'.repeat(200)}…`);
 });
 
+test('raw writing blocks expose Markdown headings without treating code as headings', () => {
+  const { parseMarkdownHeadings } = require(sourcePath);
+  const markdown = ['Title', '# Summary', '```md', '## Code sample', '```', '~~~', '# Also code', '~~~~',
+    '    # Indented code', '> # Quoted', '\\# Escaped', '####### Not a heading', '## Details ##', '### 日本語 🚀'].join('\r\n');
+  const headings = parseMarkdownHeadings(markdown);
+  assert.deepEqual(headings.map(({ text, level }) => ({ text, level })), [
+    { text: 'Summary', level: 1 }, { text: 'Details', level: 2 }, { text: '日本語 🚀', level: 3 }
+  ]);
+  for (const heading of headings) assert.match(markdown.slice(heading.start, heading.end), /^#{1,6} /);
+});
+
 test('observed user bubble takes precedence over wrapper labels and controls', () => {
   const prompt = { querySelector: (selector) => selector === SELECTORS.userPromptContent ? { textContent: 'Anonymous prompt' } : { textContent: 'Edit Delete' } };
   assert.equal(getPromptText(prompt), 'Anonymous prompt');
@@ -153,7 +164,7 @@ test('assistant role marker is not collected as response content', () => {
 });
 
 test('DOM-dependent selectors are centralized', () => {
-  assert.match(SELECTORS.thread, /\[data-chatgpt-conversation-selection-target="true"\]\[data-thread-find-target="conversation"\]/);
+  assert.match(SELECTORS.thread, /\[data-chatgpt-conversation-selection-target\]\[data-thread-find-target="conversation"\]/);
   assert.match(SELECTORS.userMessage, /\[data-user-message-bubble="true"\]/);
   assert.match(SELECTORS.assistantMessage, /\[data-chatgpt-search-unit-key\]:has\(\[data-conversation-role="assistant"\]\)/);
   assert.equal(SELECTORS.promptText, '.whitespace-pre-wrap');
@@ -169,6 +180,16 @@ test('DOM-dependent selectors are centralized', () => {
 test('conversation identity uses rendered id and falls back to route path', () => {
   assert.equal(getConversationIdentity({ querySelector: () => ({ getAttribute: () => 'fixture-conversation' }) }, '/ignored'), 'conversation:fixture-conversation');
   assert.equal(getConversationIdentity({ querySelector: () => null }, '/c/fixture-route'), 'path:/c/fixture-route');
+  assert.equal(getConversationIdentity({ getAttribute: () => 'conversation-at-root' }, '/c/fixture-route'), 'conversation:conversation-at-root');
+  assert.equal(getConversationIdentity({ getAttribute: () => 'true' }, '/c/fixture-route'), 'path:/c/fixture-route');
+});
+
+test('fallback conversation identity ignores hidden descendant conversation IDs', () => {
+  const identity = (id, hidden) => ({ getClientRects: () => [1],
+    getAttribute: (name) => name === 'data-chatgpt-selection-conversation-id' ? id : name === 'aria-hidden' && hidden ? 'true' : null });
+  const old = identity('old', true), current = identity('current', false);
+  const root = { querySelectorAll: () => [old, current], querySelector: () => old };
+  assert.equal(getConversationIdentity(root), 'conversation:current');
 });
 
 test('visible conversation root wins over hidden or empty home roots', () => {
@@ -284,6 +305,37 @@ test('a disconnected heading is replaced by its remounted counterpart', () => {
   assert.equal(findRemountedHeading([], { index: 0, tagName: 'H2', text: 'Details' }), null);
 });
 
+test('remounted navigation follows matching text and duplicate occurrence instead of a shifted index', () => {
+  const { describeOutlineTarget } = require(sourcePath);
+  const heading = (text) => ({ textContent: text, tagName: 'H2', isConnected: true });
+  const old = heading('Details');
+  const descriptor = describeOutlineTarget(old, [old]);
+  old.isConnected = false;
+  const inserted = heading('Inserted'), target = heading('Details');
+  assert.equal(findRemountedHeading([inserted, target], descriptor), target);
+  assert.equal(findRemountedHeading([inserted], descriptor), null);
+  const first = heading('Repeated'), second = heading('Repeated');
+  const duplicate = describeOutlineTarget(second, [first, second]);
+  second.isConnected = false;
+  const nextFirst = heading('Repeated'), nextSecond = heading('Repeated');
+  assert.equal(findRemountedHeading([inserted, nextFirst, nextSecond], duplicate), nextSecond);
+});
+
+test('explicit visible conversation roots take priority over ancestor scroll panes', () => {
+  const current = { getClientRects: () => [1], getAttribute: (name) => name === 'data-chatgpt-conversation-selection-target' ? 'current' : null,
+    querySelectorAll: (selector) => selector === SELECTORS.conversationTurn ? [{}] : [] };
+  let fallbackQueries = 0;
+  const doc = { querySelectorAll: (selector) => {
+    if (selector === SELECTORS.thread) return [current];
+    fallbackQueries++;
+    return [{ querySelector: () => ({ getAttribute: () => 'hidden-old-conversation' }) }];
+  } };
+  const root = findConversationRoot(doc);
+  assert.equal(root, current);
+  assert.equal(getConversationIdentity(root), 'conversation:current');
+  assert.equal(fallbackQueries, 0);
+});
+
 test('stable turn groups survive temporary ChatGPT DOM virtualization', () => {
   assert.equal(shouldPreserveDisconnectedGroup({ key: 'test:conversation-turn-2' }), true);
   assert.equal(shouldPreserveDisconnectedGroup({ key: null }), false);
@@ -332,6 +384,16 @@ test('sparse remounted turns do not move a late prompt ahead of cached earlier p
   ChatGPTTOC.prototype.updateGroupOrderAndLabels.call(context, [earlier, later]);
   assert.deepEqual(context.groups, [earlier, cachedMiddle, later]);
   assert.equal(later.title.textContent, 'Prompt 3');
+});
+
+test('cached group order survives a single live tail with missing or clamped equal positions', () => {
+  for (const position of [null, 500]) {
+    const groups = ['A', 'B', 'C'].map((id) => ({ id, lastKnownScrollTop: position, title: {}, section: {} }));
+    const context = { groups, tocContent: { append() {} }, captureTocScrollState: () => null,
+      restoreTocScrollState() {}, updateEarlierPromptLoader() {} };
+    ChatGPTTOC.prototype.updateGroupOrderAndLabels.call(context, [groups[2]]);
+    assert.deepEqual(context.groups.map((group) => group.id), ['A', 'B', 'C']);
+  }
 });
 
 test('virtualized stable turns detach live nodes without discarding cached headings', () => {
@@ -417,6 +479,18 @@ test('the first resolved prompt label stays fixed across remounted prompt nodes'
   remountedPrompt.textContent = 'Changed again while scrolling';
   ChatGPTTOC.prototype.updatePrompt.call(context, remountedPrompt);
   assert.equal(promptText.textContent, 'Original prompt');
+});
+
+test('stable prompt IDs preserve duplicate mounts and correct labels after disconnection', () => {
+  const prompt = (id, text) => ({ id, textContent: text, isConnected: true });
+  const context = { promptToGroups: new WeakMap(), promptObserver: { observe() {} }, detachPrompt() {}, getStableTurnKey: (p) => p.id };
+  const group = { prompt: null, promptText: { textContent: '', hidden: true }, promptTextCaptured: false };
+  ChatGPTTOC.prototype.setGroupPrompt.call(context, group, prompt('u1', 'First resolved'));
+  ChatGPTTOC.prototype.setGroupPrompt.call(context, group, prompt('u1', 'Duplicate mount text'));
+  assert.equal(group.promptText.textContent, 'First resolved');
+  ChatGPTTOC.prototype.setGroupPrompt.call(context, group, null);
+  ChatGPTTOC.prototype.setGroupPrompt.call(context, group, prompt('u2', 'Second prompt'));
+  assert.equal(group.promptText.textContent, 'Second prompt');
 });
 
 test('prompt capture uses the rendered message without relying on a turn index', () => {
@@ -702,7 +776,7 @@ test('connected heading navigation keeps settling against delayed native scrolli
   assert.deepEqual(calls, [
     ['active', heading, group],
     ['scroll', heading],
-    ['settle', group, { index: 0, tagName: 'H2', text: 'Target heading' }, 3]
+    ['settle', group, { element: heading, index: 0, tagName: 'H2', text: 'Target heading', occurrence: 0 }, 3]
   ]);
 });
 
@@ -974,7 +1048,7 @@ test('conversation reset invalidates pending virtualized navigation retries', ()
   assert.equal(context.activeGroup, null);
 });
 
-test('only a user followed by its first assistant creates a response pair', () => {
+test('rendered responses survive missing prompts and multiple assistants per prompt', () => {
   const message = (role, id) => ({ id, matches: (selector) => selector.split(',').includes(`[data-message-author-role="${role}"]`) });
   const orphan = message('assistant', 'orphan');
   const firstPrompt = message('user', 'user-1');
@@ -991,7 +1065,9 @@ test('only a user followed by its first assistant creates a response pair', () =
     secondPrompt,
     secondAssistant
   ]), [
+    { prompt: null, assistant: orphan },
     { prompt: firstPrompt, assistant: firstAssistant },
+    { prompt: firstPrompt, assistant: duplicateAssistant },
     { prompt: secondPrompt, assistant: secondAssistant }
   ]);
 });
