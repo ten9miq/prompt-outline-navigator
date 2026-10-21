@@ -70,7 +70,7 @@ The script runs `npm run build` (JavaScript syntax checks, unit and browser test
 
 See [release preparation](docs/RELEASE.md) for listing drafts, privacy declarations, safe sample screenshots and final submission steps. Regenerate the sample screenshots with `node scripts/capture-store-screenshots.js`.
 
-The current version is `1.6.1`, with shorter document outline labels, shared composer width adjustments for Chat and Work, and a 20px hover activation area. The verified store package is `dist/prompt-outline-navigator-1.6.1-chrome-web-store.zip`. Download the ZIP and SHA-256 checksum from the [GitHub release](https://github.com/ten9miq/prompt-outline-navigator/releases/tag/v1.6.1). Chrome Web Store submission is separate.
+The current version is `1.6.2`, with more reliable outline discovery, partial writing revisions, message identity and virtualized-history handling. The verified store package is `dist/prompt-outline-navigator-1.6.2-chrome-web-store.zip`. Download the ZIP and SHA-256 checksum from the [GitHub release](https://github.com/ten9miq/prompt-outline-navigator/releases/tag/v1.6.2). Chrome Web Store review and publication are tracked separately. The previous [1.6.1 release](https://github.com/ten9miq/prompt-outline-navigator/releases/tag/v1.6.1) introduced shorter document labels, shared Chat/Work composer width adjustments and a 20px hover activation area.
 
 The previous version `1.6.0` and its verified store package were prepared at the owner's request. The ZIP is `dist/prompt-outline-navigator-1.6.0-chrome-web-store.zip`. See the [GitHub release](https://github.com/ten9miq/prompt-outline-navigator/releases/tag/v1.6.0) for downloads; Chrome Web Store submission is separate.
 
