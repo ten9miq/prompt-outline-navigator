@@ -41,6 +41,8 @@
       this.activeGroup = null;
       this.activeUpdateFrame = null;
       this.structureSyncTimer = null;
+      this.structureSyncRequested = false;
+      this.dirtyAssistants = new Set();
       this.threadBindFrame = null;
       this.navigationRequestId = 0;
       this.pendingNavigationRequestId = null;

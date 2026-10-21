@@ -4,11 +4,11 @@
 
   const api = {
     SELECTORS: Object.freeze({
-      thread: '[data-chatgpt-conversation-selection-target="true"][data-thread-find-target="conversation"],#thread',
+      thread: '[data-chatgpt-conversation-selection-target][data-thread-find-target="conversation"],#thread',
       main: 'main',
-      userMessage: '[data-message-author-role="user"],[data-chatgpt-search-unit-key][data-chatgpt-search-message-ids]:is(:has([data-user-message-bubble="true"]),[class~="group/user-message"])',
+      userMessage: '[data-message-author-role="user"],[data-chatgpt-search-unit-key]:is(:has([data-user-message-bubble="true"]),[class~="group/user-message"])',
       promptText: '.whitespace-pre-wrap',
-      assistantMessage: '[data-message-author-role="assistant"],[data-chatgpt-search-unit-key]:has([data-conversation-role="assistant"])',
+      assistantMessage: '[data-message-author-role="assistant"],[data-chatgpt-search-unit-key]:has([data-conversation-role="assistant"]),[data-chatgpt-search-unit-key]:has([data-markdown-text-style="assistant-message"])',
       headings: 'h1,h2,h3,h4,h5,h6,[role="heading"][aria-level]',
       stableTurn: '[data-message-id],[data-turn-id],[data-turn-key]',
       conversationTurn: '[data-testid^="conversation-turn-"],[data-turn-key]',
@@ -19,6 +19,17 @@
       conversationIdentity: '[data-chatgpt-selection-conversation-id]',
       userPromptContent: '[data-user-message-bubble="true"]'
     }),
+    SOURCE_ATTRIBUTES: Object.freeze([
+      'data-chatgpt-conversation-selection-target', 'data-thread-find-target',
+      'data-chatgpt-selection-conversation-id', 'data-chatgpt-selection-message-id',
+      'data-message-author-role', 'data-chatgpt-search-unit-key', 'data-chatgpt-search-message-ids',
+      'data-conversation-role', 'data-user-message-bubble', 'data-markdown-text-style', 'data-markdown-copy-content', 'data-composer-markdown',
+      'data-oai-writing-block-surface',
+      'data-turn-key', 'data-turn-id', 'data-message-id', 'data-testid',
+      'role', 'aria-level', 'hidden', 'aria-hidden', 'inert', 'class', 'id', 'aria-controls', 'aria-expanded', 'contenteditable'
+    ]),
+    MESSAGE_ATTRIBUTES: Object.freeze(['data-message-author-role', 'data-chatgpt-search-unit-key', 'data-chatgpt-search-message-ids',
+      'data-conversation-role', 'data-user-message-bubble', 'data-markdown-text-style', 'data-message-id', 'data-turn-id', 'data-turn-key', 'data-chatgpt-selection-message-id']),
     PROMPT_LIMIT: 200,
     ACTIVE_ROOT_MARGIN: '0px 0px -90% 0px',
     STRUCTURE_SETTLE_DELAY: 120,
@@ -41,13 +52,108 @@
     return typeof prompt.querySelector === 'function' ? '' : api.truncateText(prompt.textContent);
   };
 
-  api.EDITOR_SELECTOR = '[data-markdown-copy-content] .ProseMirror:not([data-composer-markdown])';
+  api.WRITING_BLOCK_SELECTOR = '[data-oai-writing-block-surface],[class~="group/writing-block-surface"]';
+  api.RAW_EDITOR_SELECTOR = `:is(${api.WRITING_BLOCK_SELECTOR}) [data-markdown-copy-content]:not(.ProseMirror):not(:has(.ProseMirror))`;
+  api.EDITOR_SELECTOR = `[data-markdown-copy-content] .ProseMirror:not([data-composer-markdown]),${api.RAW_EDITOR_SELECTOR}`;
   const outlineMetadata = new WeakMap();
+  api.getOutlineElement = (target) => outlineMetadata.get(target)?.owner || target;
+  api.isTextOutlineTarget = (target) => Boolean(outlineMetadata.get(target)?.owner);
+  api.getWritingBlockRegion = (target) => {
+    const owner = api.getOutlineElement(target);
+    const card = owner?.closest?.(api.WRITING_BLOCK_SELECTOR);
+    if (!card) return null;
+    for (const button of card.querySelectorAll('button[aria-controls][aria-expanded]')) {
+      if (button.closest(api.WRITING_BLOCK_SELECTOR) !== card) continue;
+      const ids = button.getAttribute('aria-controls').trim().split(/\s+/);
+      const region = Array.from(card.querySelectorAll('[id]')).find((element) =>
+        ids.includes(element.id) && element.contains(owner));
+      if (region) return { button, region, card };
+    }
+    return null;
+  };
+  api.getWritingBlockDisclosure = (target) => {
+    const disclosure = api.getWritingBlockRegion(target);
+    return disclosure && (disclosure.button.getAttribute('aria-expanded') === 'false' ||
+      disclosure.region.hidden || disclosure.region.getAttribute('aria-hidden') === 'true') ? disclosure : null;
+  };
+  // Inclusion and navigability are different states: a collapsed document still
+  // belongs in its prompt's outline, but must be expanded before navigation.
+  api.isTocContent = (target, { allowCollapsed = false, excludeDialogs = false } = {}) => {
+    const element = api.getOutlineElement(target);
+    if (!element || element.closest?.(
+      'nav,button,#chatgpt-toc-sidebar,[data-composer-markdown],[class*="PagePreview-"],[class*="PageThumbnail-"]'
+    )) return false;
+    if (excludeDialogs && element.closest?.('[role="dialog"],[role="alertdialog"]')) return false;
+    const disclosure = allowCollapsed ? api.getWritingBlockDisclosure(element) : null;
+    for (let ancestor = element; ancestor; ancestor = ancestor.parentElement) {
+      if (ancestor === disclosure?.region) continue;
+      if (ancestor.hasAttribute?.('hidden') || ancestor.getAttribute?.('aria-hidden') === 'true') return false;
+    }
+    const anchor = disclosure?.card || element;
+    if (anchor.getClientRects?.().length === 0) return false;
+    const getStyle = element.ownerDocument?.defaultView?.getComputedStyle;
+    const style = getStyle?.call(element.ownerDocument.defaultView, anchor);
+    return style?.display !== 'none' && style?.visibility !== 'hidden';
+  };
   const isOutlineContent = (element) => !element.hasAttribute('data-conversation-role') &&
-    !element.closest?.('[hidden],[aria-hidden="true"],[inert],nav,button,[data-composer-markdown],[class*="PagePreview-"],[class*="PageThumbnail-"]');
+    api.isTocContent(element, { allowCollapsed: true });
   api.getOutlineText = (element) => outlineMetadata.get(element)?.text ?? element.textContent.trim();
   api.getOutlineLevel = (element) => outlineMetadata.get(element)?.level ??
     Math.max(1, Math.min(6, Number(element.getAttribute?.('aria-level') || element.tagName.slice(1)) || 1));
+  api.parseMarkdownHeadings = (text) => {
+    const headings = [];
+    let fence = null;
+    for (const match of text.matchAll(/[^\r\n]*(?:\r\n|[\r\n]|$)/g)) {
+      const line = match[0].replace(/[\r\n]+$/, '');
+      const marker = line.match(/^ {0,3}(`{3,}|~{3,})(.*)$/);
+      if (fence) {
+        if (marker && marker[1][0] === fence[0] && marker[1].length >= fence.length && !marker[2].trim()) fence = null;
+        continue;
+      }
+      if (marker) { fence = marker[1]; continue; }
+      const heading = line.match(/^ {0,3}(#{1,6})[\t ]+(.+?)\s*$/);
+      if (!heading) continue;
+      const label = heading[2].replace(/[\t ]+#+[\t ]*$/, '').trim();
+      if (label) headings.push({ text: label, level: heading[1].length, start: match.index, end: match.index + line.length });
+    }
+    return headings;
+  };
+  const textOutlineCache = new WeakMap();
+  // Keep React/editor-owned text untouched. Ranges supply heading-line geometry;
+  // the owning block supplies DOM operations such as destination highlighting.
+  const collectTextOutlineTargets = (owner) => {
+    if (owner.children.length) return [];
+    const text = owner.textContent;
+    const cached = textOutlineCache.get(owner);
+    if (cached?.text === text && cached.targets.every((target) => target.isConnected)) {
+      cached.targets.forEach((target) => { outlineMetadata.get(target).level = outlineMetadata.get(target).baseLevel; });
+      return cached.targets;
+    }
+    const nodes = [];
+    const walker = owner.ownerDocument.createTreeWalker(owner, 4 /* SHOW_TEXT */);
+    let node, offset = 0;
+    while ((node = walker.nextNode())) {
+      nodes.push({ node, start: offset, end: offset + node.length });
+      offset += node.length;
+    }
+    const targets = api.parseMarkdownHeadings(text).map((heading) => {
+      const first = nodes.find((part) => part.end > heading.start);
+      const last = nodes.find((part) => part.end >= heading.end);
+      const range = owner.ownerDocument.createRange();
+      range.setStart(first.node, heading.start - first.start);
+      range.setEnd(last.node, heading.end - last.start);
+      const target = {
+        tagName: `H${heading.level}`,
+        get isConnected() { return owner.isConnected && !range.collapsed && range.startContainer.nodeType === 3 && owner.contains(range.startContainer); },
+        closest: (selector) => owner.closest(selector),
+        getBoundingClientRect: () => range.getBoundingClientRect()
+      };
+      outlineMetadata.set(target, { ...heading, baseLevel: heading.level, owner });
+      return target;
+    });
+    textOutlineCache.set(owner, { text, targets });
+    return targets;
+  };
   const getFirstContentLine = (element) => {
     if (!element) return '';
     // textContent drops <br> boundaries. Work on a detached copy so the editor
@@ -58,11 +164,15 @@
     return copy.textContent.split(/\r\n|[\n\r\u2028\u2029]/).map((line) => line.trim()).find(Boolean) || '';
   };
   api.getEditorTitle = (editor) => {
-    const card = editor.closest?.('[class~="group/writing-block-surface"]');
+    const card = editor.closest?.(api.WRITING_BLOCK_SELECTOR);
     const subject = card?.querySelector('textarea')?.value?.trim();
     const heading = Array.from(editor.querySelectorAll('h1,[role="heading"][aria-level="1"]'))
       .find(isOutlineContent)?.textContent.trim();
     if (subject || heading) return api.truncateText(subject || heading);
+    if (editor.matches?.(api.RAW_EDITOR_SELECTOR) && !editor.children.length) {
+      const opening = getFirstContentLine(editor);
+      return api.truncateText(api.parseMarkdownHeadings(opening)[0]?.text || opening || 'Untitled document', 80);
+    }
     for (const paragraph of editor.querySelectorAll('p')) {
       if (!isOutlineContent(paragraph)) continue;
       const opening = getFirstContentLine(paragraph);
@@ -76,7 +186,8 @@
     const editors = [root, ...root.querySelectorAll(api.EDITOR_SELECTOR)]
       .filter((element) => element.matches?.(api.EDITOR_SELECTOR) && isOutlineContent(element));
     for (const editor of editors) {
-      const headings = targets.filter((element) => editor.contains(element));
+      targets.push(...collectTextOutlineTargets(editor));
+      const headings = targets.filter((element) => editor.contains(api.getOutlineElement(element)));
       const title = api.getEditorTitle(editor);
       const firstHeading = headings[0];
       // A real level-one heading already serves as the document entry.
@@ -86,7 +197,7 @@
         outlineMetadata.set(editor, { text: title, level: 1 });
         targets.push(editor);
         headings.forEach((element) => outlineMetadata.set(element, {
-          text: element.textContent.trim(), level: Math.min(6, api.getOutlineLevel(element) + 1)
+          ...outlineMetadata.get(element), text: api.getOutlineText(element), level: Math.min(6, api.getOutlineLevel(element) + 1)
         }));
       }
       if (!headings.length) {
@@ -101,27 +212,28 @@
         }
       }
     }
-    return [...new Set(targets)].sort((left, right) => left === right ? 0 :
-      left.compareDocumentPosition?.(right) & 2 ? 1 : -1);
+    return [...new Set(targets)].sort((left, right) => {
+      const leftOwner = api.getOutlineElement(left), rightOwner = api.getOutlineElement(right);
+      if (leftOwner === rightOwner) return (outlineMetadata.get(left)?.start ?? -1) - (outlineMetadata.get(right)?.start ?? -1);
+      return leftOwner.compareDocumentPosition?.(rightOwner) & 2 ? 1 : -1;
+    });
   };
 
   api.elementMatchesOrContains = (node, selector) =>
     node instanceof Element && (node.matches(selector) || Boolean(node.querySelector(selector)));
 
   api.findConversationRoot = (doc = document) => {
-    const candidates = Array.from(doc.querySelectorAll(api.SELECTORS.thread));
-    if (!candidates.length) return null;
-    const getStyle = doc.defaultView?.getComputedStyle?.bind(doc.defaultView) ||
-      (typeof getComputedStyle === 'function' ? getComputedStyle : null);
-    const visible = candidates.filter((element) => {
-      const rects = element.getClientRects?.();
-      if (rects && rects.length === 0) return false;
-      const style = getStyle?.(element);
-      return style?.display !== 'none' && style?.visibility !== 'hidden';
-    });
-    if (!visible.length) return null;
-    const turnCount = (element) => element.querySelectorAll?.(api.SELECTORS.conversationTurn).length || 0;
-    return visible.reduce((best, element) => turnCount(element) > turnCount(best) ? element : best);
+    const visible = Array.from(doc.querySelectorAll(api.SELECTORS.thread))
+      .filter((element) => api.isTocContent(element, { excludeDialogs: true }));
+    const turnCount = (element) => (element.querySelectorAll?.(api.SELECTORS.conversationTurn).length || 0) +
+      (element.querySelectorAll?.(`${api.SELECTORS.userMessage},${api.SELECTORS.assistantMessage}`).length || 0);
+    const populated = visible.filter((element) => turnCount(element));
+    if (populated.length) return populated.reduce((best, element) => turnCount(element) > turnCount(best) ? element : best);
+    // A scroll pane can contain cached roots from other conversations. Use it
+    // only when no populated, explicit conversation root is available.
+    const fallback = Array.from(doc.querySelectorAll(api.SELECTORS.conversationScroll)).find((element) =>
+      api.isTocContent(element, { excludeDialogs: true }) && api.collectConversationMessages(element).length);
+    return fallback || visible[0] || null;
   };
 
   api.hasVisibleDialog = (doc = document, documentRoot = null) => Array.from(
@@ -134,27 +246,48 @@
     return rect.width > 0 && rect.height > 0 && style.display !== 'none' && style.visibility !== 'hidden';
   });
 
-  api.pairConversationMessages = (messages, getKey = () => null) => {
+  api.pairConversationMessages = (messages, getKey = () => null, getScope = null) => {
     const pairs = [];
     const keyedPairIndexes = new Map();
     let pendingPrompt = null;
+    let previousAssistant = null;
     for (const message of messages) {
       if (message.matches(api.SELECTORS.userMessage)) {
         pendingPrompt = message;
+        previousAssistant = null;
         continue;
       }
-      if (pendingPrompt) {
-        const key = getKey(message);
-        const pair = key ? { prompt: pendingPrompt, assistant: message, key } : { prompt: pendingPrompt, assistant: message };
-        if (key && keyedPairIndexes.has(key)) pairs[keyedPairIndexes.get(key)] = pair;
-        else {
-          if (key) keyedPairIndexes.set(key, pairs.length);
-          pairs.push(pair);
-        }
+      // An attachment prompt may not be recognized yet, or its DOM may already
+      // be virtualized away. Neither should suppress a rendered response.
+      if (previousAssistant && getScope && (!getScope(message) || getScope(message) !== getScope(previousAssistant))) pendingPrompt = null;
+      const key = getKey(message);
+      const pair = key ? { prompt: pendingPrompt, assistant: message, key } : { prompt: pendingPrompt, assistant: message };
+      if (key && keyedPairIndexes.has(key)) pairs[keyedPairIndexes.get(key)] = pair;
+      else {
+        if (key) keyedPairIndexes.set(key, pairs.length);
+        pairs.push(pair);
       }
-      pendingPrompt = null;
+      previousAssistant = message;
     }
     return pairs;
+  };
+
+  api.collectConversationMessages = (root) => Array.from(root.querySelectorAll(
+    `${api.SELECTORS.userMessage},${api.SELECTORS.assistantMessage}`
+  )).filter((message) => {
+    if (!api.isTocContent(message, { excludeDialogs: true })) return false;
+    // Modern search-unit wrappers can contain legacy author-role wrappers.
+    // Treat the outer message as the owner, rather than pairing both copies.
+    const selector = message.matches(api.SELECTORS.userMessage) ? api.SELECTORS.userMessage : api.SELECTORS.assistantMessage;
+    const owner = message.parentElement?.closest(selector);
+    return !owner || !root.contains(owner);
+  });
+
+  api.getConversationMessageOwner = (element, selector, root) => {
+    let owner = element.closest?.(selector);
+    if (!owner || !root?.contains(owner)) return null;
+    for (let parent = owner.parentElement?.closest(selector); parent && root.contains(parent); parent = owner.parentElement?.closest(selector)) owner = parent;
+    return owner;
   };
 
   api.getNavigationOffset = (viewportHeight) => Math.max(72, Math.min(120, viewportHeight * 0.1));
@@ -195,17 +328,29 @@
   };
 
   api.findRemountedHeading = (headings, descriptor) => {
+    if (descriptor.element?.isConnected && headings?.includes(descriptor.element)) return descriptor.element;
     const indexed = headings?.[descriptor.index];
-    if (indexed?.isConnected && indexed.tagName === descriptor.tagName) return indexed;
-    return headings?.find((candidate) => candidate.isConnected &&
-      candidate.tagName === descriptor.tagName && api.getOutlineText(candidate) === descriptor.text) || null;
+    const matches = headings?.filter((candidate) => candidate.isConnected &&
+      candidate.tagName === descriptor.tagName && api.getOutlineText(candidate) === descriptor.text) || [];
+    if (descriptor.occurrence != null) return matches[descriptor.occurrence] || null;
+    return matches.includes(indexed) ? indexed : matches[0] || null;
   };
+
+  api.describeOutlineTarget = (heading, headings = []) => ({
+    element: heading, index: headings.indexOf(heading), tagName: heading.tagName, text: api.getOutlineText(heading),
+    occurrence: headings.filter((candidate) => candidate.tagName === heading.tagName &&
+      api.getOutlineText(candidate) === api.getOutlineText(heading)).indexOf(heading)
+  });
 
   api.shouldPreserveDisconnectedGroup = (group) => Boolean(group?.key);
 
   api.getConversationIdentity = (thread, pathname = '') => {
-    const conversationId = thread?.querySelector?.(api.SELECTORS.conversationIdentity)
-      ?.getAttribute?.('data-chatgpt-selection-conversation-id');
+    const selectionId = thread?.getAttribute?.('data-chatgpt-conversation-selection-target');
+    const identities = thread?.querySelectorAll?.(api.SELECTORS.conversationIdentity);
+    const renderedIdentity = identities?.length ? Array.from(identities).find((element) => api.isTocContent(element))
+      : thread?.querySelector?.(api.SELECTORS.conversationIdentity);
+    const conversationId = (selectionId && !['true', 'false'].includes(selectionId) ? selectionId : null) ||
+      renderedIdentity?.getAttribute?.('data-chatgpt-selection-conversation-id');
     return conversationId ? `conversation:${conversationId}` : `path:${pathname}`;
   };
 

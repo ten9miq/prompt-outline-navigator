@@ -92,6 +92,7 @@
     getActiveHeadingInRange(range, activationY) {
       const targets = Array.from(range.group?.headings || range.assistant?.querySelectorAll(SELECTORS.headings) || [])
         .filter((heading) => this.headingToTocItem.has(heading))
+        .filter((heading) => !shared.getWritingBlockDisclosure(heading))
         .map((heading) => ({ element: heading, heading, group: range.group }));
       return findActiveTrackingTarget(targets, activationY)?.heading || null;
     }
