@@ -26,7 +26,7 @@ Dedicated Chrome checks confirmed outline generation in an ordinary conversation
 | ZIP size | `49,928 bytes` |
 | SHA-256 | `22AA4AF858708343B0CD19AAC5174560422142FDB4F7344180CE3C60172743C8` |
 | Checksum file | `dist/prompt-outline-navigator-1.6.2-chrome-web-store.zip.sha256` |
-| Tag / GitHub release target | `v1.6.2` / `https://github.com/ten9miq/prompt-outline-navigator/releases/tag/v1.6.2` |
+| Tag / GitHub release | `v1.6.2` / `https://github.com/ten9miq/prompt-outline-navigator/releases/tag/v1.6.2` |
 
 The package contains only manifest-referenced runtime files, icons and `LICENSE`. Logs, private content, dependencies, tests and documentation are excluded. Upload this exact ZIP for the release.
 
@@ -79,6 +79,10 @@ Single purpose: provide a local outline and in-page navigation for supported Cha
 拡張固有のログイン・課金はありません。審査者自身のChatGPTアカウントと機密情報のない会話で確認できます。ログイン情報や私的な会話URLは審査資料に含めません。
 
 ## Publication status and final steps / 公開範囲と最終工程
+
+On 2026-10-22 (JST), the completed branch was merged into `main` as `b189231` and tagged `v1.6.2`. The GitHub release is published with the verified ZIP and checksum. Version 1.6.2 was uploaded to the existing Chrome Web Store item, the Japanese listing and sample screenshots were updated, and review instructions were saved. Existing privacy declarations, free/public distribution and regions were preserved. Submission completed with automatic publication after approval selected; the dashboard confirmed **審査待ち (pending review)**. Store approval and public availability of 1.6.2 are not yet confirmed.
+
+2026年10月22日（日本時間）にGitHub公開とChrome Web Storeへの審査提出まで完了しました。ストアは承認後に自動公開する設定です。審査提出と公開完了は区別し、1.6.2のストア公開済みとは扱っていません。
 
 The owner requested the complete publication workflow: commit and merge, one version increment, verified ZIP/checksum, GitHub release, and update upload/review submission to the existing Chrome Web Store item. Store approval and public availability must be confirmed separately from upload or GitHub publication.
 
