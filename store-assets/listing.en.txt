@@ -3,6 +3,8 @@ Prompt Outline Navigator adds a live outline and navigation sidebar to supported
 Features:
 • Generate an outline from user prompts and response headings in normal and GPT/project conversations.
 • Keep embedded writing editors under their original prompt, with entries for subjects, document titles and sections.
+• Support read-only Markdown writing blocks and retain headings when a partial revision collapses the original document; selecting an entry expands the document before navigation.
+• Follow delayed rendering, regenerated answers and conversation remounts while preventing duplicate responses and preserving history order.
 • When an editor has no real headings, use short numbered paragraphs whose entire text is bold as fallback section entries.
 • Also navigate active Space documents and dot message feeds when their supported content structure is present.
 • Track your current prompt and heading, and collapse prompt groups and heading levels.
