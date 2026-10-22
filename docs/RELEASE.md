@@ -78,9 +78,9 @@ Single purpose: provide a local outline and in-page navigation for supported Cha
 
 ## Publication status and final steps / 公開範囲と最終工程
 
-The 1.6.3 release workflow commits the navigation fix, increments the version once immediately before merging into `main`, tags the merge as `v1.6.3`, and publishes a GitHub release containing the verified ZIP and checksum. Chrome Web Store upload, review submission and store publication are separate steps and are not performed as part of this GitHub release.
+Version 1.6.3 was merged into `main` as `700f1a8`, tagged `v1.6.3`, and published on GitHub with the verified ZIP and checksum. On 2026-10-23 (JST), that same ZIP was uploaded to the existing Chrome Web Store item `nleamodjnjbpcemdbcemfpbaelkkmmpe`. Before upload, both the published and draft versions were 1.6.2 with no pending review; after processing, the draft version was confirmed as 1.6.3. Submission completed with automatic publication after approval selected, and the dashboard confirmed **審査待ち (pending review)**. Existing listing content, images, privacy declarations and distribution settings were preserved. Store approval and public availability of 1.6.3 are not yet confirmed.
 
-1.6.3は修正のコミット、版数の更新、mainへのマージ、タグと検証済みZIP・チェックサムを含むGitHubリリースを対象とします。Chrome Web Storeへのアップロード・審査提出・ストア公開は今回のGitHubリリースとは別工程です。
+2026年10月23日（日本時間）に、GitHubで公開したものと同じ検証済みZIPを既存のChrome Web Store項目へアップロードし、ドラフト版が1.6.3であることを確認して審査に提出しました。承認後の自動公開を選択し、ダッシュボードの「審査待ち」を確認しています。既存の掲載内容・画像・プライバシー申告・公開設定は維持しました。審査提出と承認・公開は区別し、1.6.3のストア公開済みとは扱っていません。
 
 1. Merge the completed branch using version `1.6.3`, then tag the merge as `v1.6.3`.
 2. Push release sources/tag and publish the GitHub release with the verified ZIP and checksum.
@@ -92,7 +92,7 @@ The 1.6.3 release workflow commits the navigation fix, increments the version on
 
 ## Previous releases / 過去版
 
-Version 1.6.2 was merged as `b189231` and tagged/released on 2026-10-22 (JST). Its ZIP was 49,928 bytes with SHA-256 `22AA4AF858708343B0CD19AAC5174560422142FDB4F7344180CE3C60172743C8`; 90 unit tests and 41 browser tests passed. It improved outline discovery, partial writing revisions, message identity and virtualized-history handling. The existing store item received the update, Japanese listing, sample screenshots and reviewer instructions. On 2026-10-22 the dashboard confirmed pending review with automatic publication after approval; approval/public availability has not been rechecked for the 1.6.3 GitHub release.
+Version 1.6.2 was merged as `b189231` and tagged/released on 2026-10-22 (JST). Its ZIP was 49,928 bytes with SHA-256 `22AA4AF858708343B0CD19AAC5174560422142FDB4F7344180CE3C60172743C8`; 90 unit tests and 41 browser tests passed. It improved outline discovery, partial writing revisions, message identity and virtualized-history handling. The existing store item received the update, Japanese listing, sample screenshots and reviewer instructions. On 2026-10-22 the dashboard confirmed pending review with automatic publication after approval. On 2026-10-23, before uploading 1.6.3, the dashboard confirmed 1.6.2 as published with public distribution.
 
 Version 1.6.1 was prepared on 2026-10-18 and is published in Chrome Web Store (confirmed on 2026-10-22). Its original verified ZIP was 46,425 bytes with SHA-256 `A4283B195C4367B07195E7F9AFCB2C1C34D7E3DDFD36DC774366C55C41898424`; 84 unit tests and 22 browser tests passed.
 
