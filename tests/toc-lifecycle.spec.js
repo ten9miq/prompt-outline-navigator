@@ -285,6 +285,50 @@ test('ordinary token appends and text-node updates never reconcile unrelated tur
   expect(errors).toEqual([]);
 });
 
+for (const destination of ['heading', 'prompt']) {
+  test(`cached ${destination} navigation finds a later turn after earlier history shifts its coordinates`, async ({ page }) => {
+    const errors = await openFixture(page,
+      turn('middle', '<h2>Middle answer</h2><p style="height:1200px">Middle body</p>') +
+      turn('tail', '<h2 id="tail-heading">Tail answer</h2><p style="height:1200px">Tail body</p>', 'Tail prompt'));
+    await expect(labels(page)).toHaveText(['Middle answer', 'Tail answer']);
+    await page.evaluate((earlier) => {
+      const thread = document.getElementById('thread');
+      thread.style.overflowAnchor = 'none';
+      const tail = thread.querySelector('[data-turn-key="tail"]');
+      const markup = tail.outerHTML;
+      const placeholder = document.createElement('div');
+      placeholder.id = 'tail-placeholder';
+      placeholder.style.height = `${tail.getBoundingClientRect().height}px`;
+      tail.replaceWith(placeholder);
+      thread.insertAdjacentHTML('afterbegin', earlier);
+      thread.scrollTop = 0;
+      // Anonymous virtualizer: the tail mounts only when its new position is reached.
+      thread.addEventListener('scroll', () => {
+        const pending = document.getElementById('tail-placeholder');
+        if (pending && thread.scrollTop + thread.clientHeight >= pending.offsetTop - thread.offsetTop - 500) {
+          pending.outerHTML = markup;
+        }
+      });
+    }, turn('earlier', '<h2>Earlier answer</h2><p style="height:8000px">Earlier body</p>'));
+    await expect(labels(page)).toHaveCount(3);
+    await expect(labels(page).last()).toHaveText('Tail answer');
+    await expect(page.locator('#tail-heading')).toHaveCount(0);
+    const selected = destination === 'heading' ? item(page, 'Tail answer') : page.locator('.toc-group-header').last();
+    await selected.evaluate((element) => element.click());
+    const target = destination === 'heading' ? '#tail-heading' : '[data-turn-key="tail"] [data-message-author-role="user"]';
+    await expectAligned(page, target);
+    const top = await page.locator('#thread').evaluate((element) => element.scrollTop);
+    await page.mouse.move(400, 250);
+    await page.mouse.wheel(0, 160);
+    await expect.poll(() => page.locator('#thread').evaluate((element) => element.scrollTop)).toBeGreaterThan(top + 100);
+    await page.waitForTimeout(600);
+    const position = await page.locator('#thread').evaluate((element) => element.scrollTop);
+    expect(position).toBeGreaterThan(top + 100);
+    expect(position).toBeLessThan(top + 300);
+    expect(errors).toEqual([]);
+  });
+}
+
 for (const cancellation of ['new click', 'conversation change']) {
   test(`a ${cancellation} cancels delayed document navigation`, async ({ page }) => {
     const errors = await openFixture(page, turn('original', card('aria-hidden="true" inert')) +

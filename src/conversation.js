@@ -674,6 +674,7 @@
       this.smoothScrollCleanup?.();
       this.navigationRequestId += 1;
       this.pendingNavigationRequestId = null;
+      this.groupRecovery = null;
       this.headingObserver?.disconnect();
       this.promptObserver?.disconnect();
       this.groups.forEach((group) => group.section.remove());

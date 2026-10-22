@@ -1,32 +1,30 @@
 # Release preparation / リリース準備
 
-Release target: **1.6.2**, prepared on **2026-10-22**. This patch stabilizes outline discovery and document/conversation lifecycle handling. Manifest, package, lockfile, store ZIP, merge, tag and GitHub release use the same version.
+Release target: **1.6.3**, prepared on **2026-10-23**. This patch fixes cached TOC navigation after earlier history changes the coordinates in long conversations. Manifest, package, lockfile, store ZIP, merge, tag and GitHub release use the same version.
 
 ## Release contents / 更新内容
 
-- Discover conversation-ID roots, attachment-only prompts, staged response bodies, raw Markdown writing blocks and rich editors.
-- Keep headings under their original prompt through partial writing revisions, collapsed documents, delayed expansion and remounts.
-- Resolve nested message identities, deduplicate responses, correct delayed prompt labels and retain resolved labels for the same prompt ID.
-- Preserve virtualized history and conversation order across same-conversation root replacement; remove hidden alternatives and answers replaced in the same live response slot.
-- Reconcile affected responses without rebuilding unrelated outlines for ordinary text tokens. Cancel pending navigation on a new click or conversation change.
+- When a cached destination does not remount at its remembered coordinate, narrow the search using currently rendered turn order.
+- Support both heading and prompt navigation, normal and reverse scrollers, and cancellation by a new click, user scrolling or conversation change.
+- Add regression fixtures for prepended history, late tail remounts and position stability after a wheel scroll; add unit checks for search direction and request isolation.
 - Preserve existing permissions, local-only processing and sidebar settings.
 
-目次生成を個別の見出し検出だけでなく、本文の状態判定・対応付け・履歴保持・更新・移動まで見直しました。部分修正で折りたたまれた元文書の見出しを保持し、展開・再描画後に移動します。通常会話、文章エディタ、独立文書、フィードを回帰検証しています。
+長い会話で上の履歴を読み込むと保持済み項目の座標がずれ、最下部の目次をクリックしても本文へ到達できない問題を修正しました。古い座標で対象が再表示されない場合は、描画中のターンの順序から探索範囲を絞り込みます。
 
 ## Validation and artifacts / 検証と成果物
 
-`npm run build` passed for 1.6.2: syntax checks, **90 unit tests** and **41 Playwright browser tests**. The unchanged runtime was packaged immediately afterward with `-SkipTests`; all 14 manifest-derived files and hashes were verified. Light/dark sample screenshots were regenerated from fictional repository-owned content and inspected.
+The package builder ran `npm run build` for 1.6.3: syntax checks, **92 unit tests** and **43 Playwright browser tests** passed. All 14 manifest-derived ZIP files and hashes were verified against the release source. The two new browser regression cases failed against the pre-fix navigation implementation and passed after the fix. Existing sample screenshots are unchanged.
 
-Dedicated Chrome checks confirmed outline generation in an ordinary conversation and a project conversation containing partial writing revisions. The original document retained 11 headings and its revision retained 17; selecting an old heading expanded its document, reached the target within about 0.31px, and showed no scroll drift in the subsequent observation. Special transitions such as virtualization, delayed attributes and regenerated answers were tested with anonymized fixtures, not new live posts. See [the reliability audit](TOC_RELIABILITY.md).
+Dedicated Chrome checks on 2026-10-22 reproduced the issue in an existing long project conversation: loading earlier history increased the scroll height from about 15,400px to 34,300px, but the old code repeatedly selected a stale coordinate without rendering the destination. After the fix, the last heading remounted within about 1.5 seconds and stayed at the resulting position; a subsequent PageUp changed the position and showed no delayed return. The fixture tests separately verify prompt/heading alignment and wheel scrolling. Private conversation content and URLs are excluded from release artifacts. See [the earlier reliability audit](TOC_RELIABILITY.md) for the broader lifecycle checks.
 
 | Artifact | Status |
 | --- | --- |
-| Source version | `1.6.2` |
-| Submission ZIP | `dist/prompt-outline-navigator-1.6.2-chrome-web-store.zip` |
-| ZIP size | `49,928 bytes` |
-| SHA-256 | `22AA4AF858708343B0CD19AAC5174560422142FDB4F7344180CE3C60172743C8` |
-| Checksum file | `dist/prompt-outline-navigator-1.6.2-chrome-web-store.zip.sha256` |
-| Tag / GitHub release | `v1.6.2` / `https://github.com/ten9miq/prompt-outline-navigator/releases/tag/v1.6.2` |
+| Source version | `1.6.3` |
+| Submission ZIP | `dist/prompt-outline-navigator-1.6.3-chrome-web-store.zip` |
+| ZIP size | `50,455 bytes` |
+| SHA-256 | `7F965F4732BF12DA08257939D210214D8057BA331B12013384C0690ECF01961E` |
+| Checksum file | `dist/prompt-outline-navigator-1.6.3-chrome-web-store.zip.sha256` |
+| Tag / GitHub release | `v1.6.3` / `https://github.com/ten9miq/prompt-outline-navigator/releases/tag/v1.6.3` |
 
 The package contains only manifest-referenced runtime files, icons and `LICENSE`. Logs, private content, dependencies, tests and documentation are excluded. Upload this exact ZIP for the release.
 
@@ -80,21 +78,21 @@ Single purpose: provide a local outline and in-page navigation for supported Cha
 
 ## Publication status and final steps / 公開範囲と最終工程
 
-On 2026-10-22 (JST), the completed branch was merged into `main` as `b189231` and tagged `v1.6.2`. The GitHub release is published with the verified ZIP and checksum. Version 1.6.2 was uploaded to the existing Chrome Web Store item, the Japanese listing and sample screenshots were updated, and review instructions were saved. Existing privacy declarations, free/public distribution and regions were preserved. Submission completed with automatic publication after approval selected; the dashboard confirmed **審査待ち (pending review)**. Store approval and public availability of 1.6.2 are not yet confirmed.
+The 1.6.3 release workflow commits the navigation fix, increments the version once immediately before merging into `main`, tags the merge as `v1.6.3`, and publishes a GitHub release containing the verified ZIP and checksum. Chrome Web Store upload, review submission and store publication are separate steps and are not performed as part of this GitHub release.
 
-2026年10月22日（日本時間）にGitHub公開とChrome Web Storeへの審査提出まで完了しました。ストアは承認後に自動公開する設定です。審査提出と公開完了は区別し、1.6.2のストア公開済みとは扱っていません。
+1.6.3は修正のコミット、版数の更新、mainへのマージ、タグと検証済みZIP・チェックサムを含むGitHubリリースを対象とします。Chrome Web Storeへのアップロード・審査提出・ストア公開は今回のGitHubリリースとは別工程です。
 
-The owner requested the complete publication workflow: commit and merge, one version increment, verified ZIP/checksum, GitHub release, and update upload/review submission to the existing Chrome Web Store item. Store approval and public availability must be confirmed separately from upload or GitHub publication.
-
-1. Merge the completed branch using version `1.6.2`, then tag the merge as `v1.6.2`.
+1. Merge the completed branch using version `1.6.3`, then tag the merge as `v1.6.3`.
 2. Push release sources/tag and publish the GitHub release with the verified ZIP and checksum.
-3. The dashboard's published and draft versions were both confirmed as `1.6.1` before this update. Upload 1.6.2, update the Japanese listing/screenshots, and retain the existing privacy and distribution settings.
-4. Submit for review with publication after approval, preserving the public listing. Record the actual submission result separately.
+3. For a separately requested store submission, first check the current published/draft versions and any pending review. Preserve existing privacy, distribution, regions and pricing.
+4. Upload the verified ZIP and submit for review only as part of that store workflow. Record the actual submission result separately.
 5. Do not describe the store update as published until the dashboard/public listing confirms it.
 
 この準備記録そのものは、Chrome Web Storeの審査承認・ストア公開を意味しません。GitHubの公開結果とストアの審査・公開結果を分けて報告します。
 
 ## Previous releases / 過去版
+
+Version 1.6.2 was merged as `b189231` and tagged/released on 2026-10-22 (JST). Its ZIP was 49,928 bytes with SHA-256 `22AA4AF858708343B0CD19AAC5174560422142FDB4F7344180CE3C60172743C8`; 90 unit tests and 41 browser tests passed. It improved outline discovery, partial writing revisions, message identity and virtualized-history handling. The existing store item received the update, Japanese listing, sample screenshots and reviewer instructions. On 2026-10-22 the dashboard confirmed pending review with automatic publication after approval; approval/public availability has not been rechecked for the 1.6.3 GitHub release.
 
 Version 1.6.1 was prepared on 2026-10-18 and is published in Chrome Web Store (confirmed on 2026-10-22). Its original verified ZIP was 46,425 bytes with SHA-256 `A4283B195C4367B07195E7F9AFCB2C1C34D7E3DDFD36DC774366C55C41898424`; 84 unit tests and 22 browser tests passed.
 

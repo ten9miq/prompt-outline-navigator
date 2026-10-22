@@ -46,6 +46,7 @@
       this.threadBindFrame = null;
       this.navigationRequestId = 0;
       this.pendingNavigationRequestId = null;
+      this.groupRecovery = null;
       this.preserveTocScrollOnActiveUpdate = false;
       this.boundScheduleActiveUpdate = () => this.scheduleActiveUpdate();
 

@@ -192,8 +192,48 @@
     }
 
     retryGroupRecovery(group) {
+      const recovery = this.groupRecovery;
+      if (recovery?.group === group && recovery.requestId === this.navigationRequestId) {
+        if (this.seekVirtualizedGroup(group, recovery)) return true;
+      } else {
+        this.groupRecovery = { group, requestId: this.navigationRequestId };
+      }
       if (this.scrollToRememberedGroupDestination(group)) return true;
       return this.loadEarlierConversationTurns();
+    }
+
+    seekVirtualizedGroup(group, recovery) {
+      const index = this.groups?.indexOf(group) ?? -1;
+      const scroller = this.getConversationScrollContainer();
+      if (index < 0 || !scroller) return false;
+      const reverse = getComputedStyle(scroller).flexDirection === 'column-reverse';
+      const range = Math.max(0, scroller.scrollHeight - scroller.clientHeight);
+      const min = reverse ? -range : 0;
+      const max = reverse ? 0 : range;
+      if (recovery.scroller !== scroller || recovery.range !== range) {
+        Object.assign(recovery, { scroller, range, lower: min, upper: max });
+      }
+      const viewportTop = scroller.getBoundingClientRect().top + (scroller.clientTop || 0);
+      const live = this.groups.map((candidate, position) => {
+        const element = candidate.prompt?.isConnected ? candidate.prompt : candidate.assistant;
+        if (!element?.isConnected || !this.thread?.contains(element)) return null;
+        const top = scroller.scrollTop + element.getBoundingClientRect().top - viewportTop;
+        return { position, top: Math.max(min, Math.min(max, top)) };
+      }).filter(Boolean);
+      if (!live.length || live.some((candidate) => candidate.position === index)) return false;
+
+      // Prepending history changes the coordinate system of cached destinations.
+      // Narrow the search using live turn order instead of repeating a stale pixel offset.
+      const before = live.filter((candidate) => candidate.position < index);
+      const after = live.filter((candidate) => candidate.position > index);
+      for (const candidate of before) recovery.lower = Math.max(recovery.lower, candidate.top);
+      for (const candidate of after) recovery.upper = Math.min(recovery.upper, candidate.top);
+      if (!after.length) recovery.lower = Math.max(recovery.lower, scroller.scrollTop);
+      if (!before.length) recovery.upper = Math.min(recovery.upper, scroller.scrollTop);
+      if (recovery.lower > recovery.upper) return false;
+      const top = (recovery.lower + recovery.upper) / 2;
+      scroller.scrollTo({ top, behavior: 'auto' });
+      return true;
     }
 
     getConversationScrollContainer() {
@@ -450,6 +490,7 @@
 
     cancelPendingNavigation() {
       this.smoothScrollCleanup?.();
+      this.groupRecovery = null;
       if (this.pendingNavigationRequestId === null) return;
       this.navigationRequestId += 1;
       this.pendingNavigationRequestId = null;

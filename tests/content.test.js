@@ -872,6 +872,49 @@ test('virtualized prompt recovery prefers its remembered position over page star
   }
 });
 
+test('virtualized recovery narrows stale positions in both directions and reverse scrollers', () => {
+  const previousGetComputedStyle = globalThis.getComputedStyle;
+  try {
+    for (const { reverse, forward, start, anchorTop, expected } of [
+      { reverse: false, forward: true, start: 1500, anchorTop: 1000, expected: [2750, 3375] },
+      { reverse: false, forward: false, start: 2000, anchorTop: 1000, expected: [500, 250] },
+      { reverse: true, forward: true, start: -2500, anchorTop: -3000, expected: [-1250, -625] },
+      { reverse: true, forward: false, start: -500, anchorTop: -1000, expected: [-2500, -3250] }
+    ]) {
+      globalThis.getComputedStyle = () => ({ flexDirection: reverse ? 'column-reverse' : 'column' });
+      const calls = [];
+      const scroller = { scrollTop: start, scrollHeight: 4500, clientHeight: 500,
+        getBoundingClientRect: () => ({ top: 40 }),
+        scrollTo({ top }) { calls.push(top); this.scrollTop = top; } };
+      const prompt = { isConnected: true, getBoundingClientRect: () => ({ top: anchorTop - scroller.scrollTop + 40 }) };
+      const live = { prompt };
+      const target = { lastKnownScrollTop: 200 };
+      const context = { groups: forward ? [live, target] : [target, live],
+        thread: { contains: (element) => element === prompt }, getConversationScrollContainer: () => scroller };
+      const recovery = {};
+      assert.equal(ChatGPTTOC.prototype.seekVirtualizedGroup.call(context, target, recovery), true);
+      assert.equal(ChatGPTTOC.prototype.seekVirtualizedGroup.call(context, target, recovery), true);
+      assert.deepEqual(calls, expected);
+    }
+  } finally {
+    if (previousGetComputedStyle === undefined) delete globalThis.getComputedStyle;
+    else globalThis.getComputedStyle = previousGetComputedStyle;
+  }
+});
+
+test('a new navigation request starts with its own remembered destination', () => {
+  const group = {};
+  const calls = [];
+  const context = { navigationRequestId: 1,
+    scrollToRememberedGroupDestination: () => { calls.push('remembered'); return true; },
+    seekVirtualizedGroup: () => { calls.push('seek'); return true; } };
+  ChatGPTTOC.prototype.retryGroupRecovery.call(context, group);
+  ChatGPTTOC.prototype.retryGroupRecovery.call(context, group);
+  context.navigationRequestId++;
+  ChatGPTTOC.prototype.retryGroupRecovery.call(context, group);
+  assert.deepEqual(calls, ['remembered', 'seek', 'remembered']);
+});
+
 test('navigation settling corrects a destination after the initial scroll', () => {
   const previousWindow = globalThis.window;
   const previousAnimationFrame = globalThis.requestAnimationFrame;
