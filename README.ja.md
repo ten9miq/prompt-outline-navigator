@@ -70,7 +70,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File scripts/build-store-package.
 
 掲載原稿、プライバシー申告、個人情報を含まないサンプル画像と公開前の手順は[公開準備](docs/RELEASE.md)を参照してください。サンプル画像は`node scripts/capture-store-screenshots.js`で再生成できます。
 
-現在の版数は`1.6.2`です。目次の検出、文章の部分修正、メッセージの識別、仮想化された履歴の保持を改善しています。検証済みストア用ZIPは`dist/prompt-outline-navigator-1.6.2-chrome-web-store.zip`です。ZIPとSHA-256チェックサムは[GitHubリリース](https://github.com/ten9miq/prompt-outline-navigator/releases/tag/v1.6.2)からダウンロードできます。Chromeウェブストアの審査・公開状態は別途確認します。前の[1.6.1リリース](https://github.com/ten9miq/prompt-outline-navigator/releases/tag/v1.6.1)では、文書ラベルの短縮、Chat・Work共通の入力欄の幅補正、ホバー反応範囲の20pxへの拡大を行いました。
+現在の版数は`1.6.3`です。長い会話で過去の履歴の読み込みによって座標がずれた後、保持済みの目次項目へ移動できない問題を修正しています。検証済みストア用ZIPは`dist/prompt-outline-navigator-1.6.3-chrome-web-store.zip`です。ZIPとSHA-256チェックサムは[GitHubリリース](https://github.com/ten9miq/prompt-outline-navigator/releases/tag/v1.6.3)からダウンロードできます。Chromeウェブストアへの提出・審査・公開状態は別途確認します。前の[1.6.2リリース](https://github.com/ten9miq/prompt-outline-navigator/releases/tag/v1.6.2)では、目次の検出、文章の部分修正、メッセージの識別、仮想化された履歴の保持を改善しました。
 
 前版`1.6.0`では、所有者の依頼により検証済みのストア用ZIPを準備しました。ZIPは`dist/prompt-outline-navigator-1.6.0-chrome-web-store.zip`です。[GitHubリリース](https://github.com/ten9miq/prompt-outline-navigator/releases/tag/v1.6.0)からダウンロードできます。Chromeウェブストアへの提出は別途行います。
 
