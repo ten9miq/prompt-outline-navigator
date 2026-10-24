@@ -1,6 +1,6 @@
 # Release 1.7.0 / Gemini対応のリリース準備
 
-Prepared on **2026-10-24**. Status: **formal release package prepared locally; not published or submitted**.
+Prepared on **2026-10-24**. Status: **GitHub release published; Chrome Web Store submission not performed**.
 
 Gemini対応を含む正式リリース用の版数は`1.7.0`です。機能コミットでは1.6.3を維持し、完成したbranchのローカルmain統合直前の版数準備で一度だけ1.7.0へ更新したものです。公開済み`v1.6.3`のChatGPT向け成果物は上書きしません。過去の版数・ハッシュ・公開経過は[1.6.3の過去記録](RELEASE_1.6.3.md)に保存しています。
 
@@ -23,14 +23,14 @@ Canvasとノートブックの内容自体は目次対象外です。実確認�
 
 ## Formal release artifact / 正式リリース用成果物
 
-| Item | Local status |
+| Item | Status |
 | --- | --- |
 | Source version | `1.7.0` |
 | Submission ZIP | `dist/prompt-outline-navigator-1.7.0-chrome-web-store.zip` |
 | Checksum | `dist/prompt-outline-navigator-1.7.0-chrome-web-store.zip.sha256` |
 | Build / exact ZIP verification | `npm run build`: 94 unit tests and 53 browser tests passed; all 14 packaged files matched source hashes |
 | ZIP bytes / SHA-256 | `52,702 bytes` / `D94EDB7310E433B7EDEADBEEACDC57F06148B9BB440CD1389B5B7196A1275FE9` |
-| Publication status | Formal local package only; no push, tag, GitHub publication or store submission |
+| Publication status | [GitHub v1.7.0](https://github.com/ten9miq/prompt-outline-navigator/releases/tag/v1.7.0), published `2026-10-24T13:26:33Z`; not submitted to Chrome Web Store |
 
 Build the formal package from the finalized versioned source:
 
@@ -71,7 +71,7 @@ Single purpose: provide a local outline and in-page navigation for ChatGPT and G
 | Remote code | No remote code, analytics or new permission categories |
 | Distribution | Inspect and preserve current regions, pricing and publication settings when submission is separately authorized |
 
-追加ホストへのアクセスをストア申告へ反映します。保存データとローカル処理の方針は変わりません。現時点でストア設定・掲載内容・公開状態は変更していません。
+追加ホストへのアクセスをストア申告へ反映します。保存データとローカル処理の方針は変わりません。Chrome Web Storeの設定・掲載内容・公開状態は変更していません。
 
 ## Reviewer checks / レビュー確認項目
 
@@ -86,9 +86,9 @@ Single purpose: provide a local outline and in-page navigation for ChatGPT and G
 
 The feature commit keeps version 1.6.3. A single version-preparation commit selects 1.7.0 immediately before the local main merge; commit identities are recorded in Git history. Local commits, versioning, main integration and formal package creation are authorized by this preparation request.
 
-残る外部操作は別の依頼で行います。今回、remote push、tag作成、GitHub release公開、Chromeウェブストア提出は行っていません。
+mainとannotated tag `v1.7.0`をpushし、GitHub releaseを公開しました。tagはリリースmerge `d1d32f124c20d0d415b2e8d7bbb543af07801348`を指します。正式ZIPとチェックサムの2件をGitHubからdownloadし、ローカルとのhash一致を確認しました。Chromeウェブストア提出は行っていません。
 
-1. When publication is authorized, push the finalized source and create tag `v1.7.0` on the local release merge. Use the same version for the GitHub release and attach the verified 1.7.0 ZIP/checksum.
+1. GitHub publication is complete: tag `v1.7.0` identifies the verified release merge and the ZIP/checksum are attached. A subsequent documentation-only commit records this state; it does not move the release tag or change the package.
 2. Publish the updated privacy source and prepare the Gemini listing/site-access disclosures. Preserve unrelated distribution, regions and pricing.
 3. Before an authorized Chrome Web Store submission, inspect current public/draft versions and pending reviews; do not infer current dashboard state from the historical 1.6.3 record.
 4. Upload this finalized versioned ZIP only in the authorized store workflow and record submission, review and publication separately.

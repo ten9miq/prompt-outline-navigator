@@ -6,7 +6,7 @@ A live table-of-contents and navigation sidebar for ChatGPT and Gemini conversat
 
 Prompt Outline Navigator is an independent project and is not affiliated with or endorsed by OpenAI or Google.
 
-**Release preparation:** Gemini support in this checkout is unreleased. Version `1.7.0` is prepared locally as a formal release package; GitHub publication and Chrome Web Store submission have not been performed. The published `v1.6.3` package predates Gemini support. See [release preparation](docs/RELEASE.md).
+**Release:** Gemini support is available in [v1.7.0](https://github.com/ten9miq/prompt-outline-navigator/releases/tag/v1.7.0). The GitHub release includes the formal ZIP and checksum. Chrome Web Store submission has not been performed.
 
 [Privacy Policy](PRIVACY.md)
 

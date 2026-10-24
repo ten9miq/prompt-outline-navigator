@@ -24,9 +24,10 @@ test('translated READMEs retain matching feature coverage', () => {
   assert.deepEqual(english.match(/^#{2,3} /gm), japanese.match(/^#{2,3} /gm));
 });
 
-test('Gemini documentation separates unreleased support and detached-history limits', () => {
-  assert.match(english, /Gemini support in this checkout is unreleased/);
-  assert.match(japanese, /Gemini対応は未リリース/);
+test('Gemini documentation identifies its release and detached-history limits', () => {
+  const releaseUrl = 'https://github.com/ten9miq/prompt-outline-navigator/releases/tag/v1.7.0';
+  assert.ok(english.includes(releaseUrl));
+  assert.ok(japanese.includes(releaseUrl));
   assert.match(english, /not retained or recovered/);
   assert.match(japanese, /保持・復旧は未対応/);
   for (const readme of [english, japanese]) {

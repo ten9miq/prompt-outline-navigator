@@ -1,8 +1,8 @@
 # Gemini support and verification / Gemini対応と検証
 
-Gemini support is included in the locally prepared 1.7.0 sources and release package, but has not been published. The published v1.6.3 package predates these changes. See [release preparation](RELEASE.md).
+Gemini support is published in [v1.7.0](https://github.com/ten9miq/prompt-outline-navigator/releases/tag/v1.7.0), with the formal ZIP and checksum. The published v1.6.3 package predates these changes. See [release preparation](RELEASE.md).
 
-Gemini対応を含む1.7.0のソースと正式リリース用パッケージをローカルで準備していますが、公開はしていません。公開済みv1.6.3には含まれません。[リリース準備](RELEASE.md)を参照してください。
+Gemini対応を含む[v1.7.0](https://github.com/ten9miq/prompt-outline-navigator/releases/tag/v1.7.0)と正式ZIP・チェックサムをGitHubで公開しています。公開済みv1.6.3には含まれません。[リリース準備](RELEASE.md)を参照してください。
 
 ## Scope / 対応範囲
 
