@@ -3,6 +3,7 @@
   --chatgpt-toc-width: 200px;
   --chatgpt-toc-top-offset: 0px;
   --chatgpt-toc-content-max-width: min(80vw, calc(100vw - var(--chatgpt-toc-width) - 80px));
+  --chatgpt-toc-gemini-answer-padding: 32px;
 }
 
 body.chatgpt-toc-open > .chatgpt-toc-app-root,
@@ -86,6 +87,118 @@ body.chatgpt-toc-open > .chatgpt-toc-app-root [data-app-shell-titlebar="true"] {
   min-width: 0 !important;
   width: 100% !important;
   max-width: var(--wide-content-max-width) !important;
+}
+
+/* Gemini keeps independent caps on history, query bubbles, and the input box.
+   Use the available chat pane width, which already excludes both sidebars.
+   Never select the immersive Canvas/editor surface or notebook composers. */
+:where(body.chatgpt-toc-gemini-wide) chat-window-content
+  infinite-scroller:is(.chat-history,[data-test-id="chat-history-container"])
+  :is(.conversation-container, model-response, model-response-content),
+:where(body.chatgpt-toc-gemini-wide) chat-window-content
+  infinite-scroller:is(.chat-history,[data-test-id="chat-history-container"]) model-response-content .markdown,
+:where(body.chatgpt-toc-gemini-wide) chat-window-content
+  infinite-scroller:is(.chat-history,[data-test-id="chat-history-container"])
+  user-query,
+:where(body.chatgpt-toc-gemini-wide) chat-window-content
+  infinite-scroller:is(.chat-history,[data-test-id="chat-history-container"])
+  user-query :is(.user-query-container,.query-bubble-with-status,.user-query-bubble-with-background,.horizontal-container,.query-text),
+:where(body.chatgpt-toc-gemini-wide) chat-window-content
+  > input-container :is(.input-area-container,input-area-v2),
+:where(body.chatgpt-toc-gemini-wide) chat-window .chat-container:has(> chat-window-content)
+  > input-container :is(.input-area-container,input-area-v2) {
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  box-sizing: border-box;
+}
+
+/* Gemini reserves inline margins on the query row. A 100% width excludes
+   those margins and pushes the bubble into the clipped right edge. Let the
+   column's stretch sizing subtract the native margins from its available width. */
+:where(body.chatgpt-toc-gemini-wide) chat-window-content
+  infinite-scroller:is(.chat-history,[data-test-id="chat-history-container"]) user-query .query-content {
+  width: auto !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  align-self: stretch;
+  box-sizing: border-box;
+}
+
+/* The desktop new-chat composer is absolutely positioned with a negative
+   native end margin. Size it between the input pane's padded edges instead
+   of resolving 100% against the containing padding box. Mobile stays in flow. */
+:where(body.chatgpt-toc-gemini-wide) chat-window
+  .input-area-container.is-zero-state:not(.is-mobile) {
+  width: auto !important;
+  inset-inline: 16px;
+  margin-inline: 0 !important;
+}
+
+/* The mobile zero-state input switches to a column and gives its input-area
+   component inline margins. Stretch the remaining space instead of adding
+   those margins to a forced 100% component width. */
+:where(body.chatgpt-toc-gemini-wide) chat-window
+  .input-area-container.is-zero-state.is-mobile > input-area-v2 {
+  width: auto !important;
+  align-self: stretch;
+}
+
+:where(body.chatgpt-toc-gemini-wide) chat-window-content
+  infinite-scroller:is(.chat-history,[data-test-id="chat-history-container"])
+  :is(.query-text,model-response-content .markdown) {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+:where(body.chatgpt-toc-gemini-wide) chat-window-content
+  infinite-scroller:is(.chat-history,[data-test-id="chat-history-container"]) model-response-content pre {
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+/* Keep readable gutters while retaining the widened response's outer box. */
+:where(body.chatgpt-toc-gemini-wide) chat-window-content
+  infinite-scroller:is(.chat-history,[data-test-id="chat-history-container"]) model-response-content .markdown {
+  padding-inline: var(--chatgpt-toc-gemini-answer-padding) !important;
+}
+
+/* Response controls have independent native 708px caps. Match the response
+   text's gutters while retaining the icons' native optical offset and order. */
+:where(body.chatgpt-toc-gemini-wide) chat-window-content
+  infinite-scroller:is(.chat-history,[data-test-id="chat-history-container"])
+  model-response .response-container-footer {
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0;
+  padding-inline: var(--chatgpt-toc-gemini-answer-padding) !important;
+  box-sizing: border-box;
+  margin-inline: 0 !important;
+}
+
+/* Mobile markdown keeps 24px of native block padding. Convert the footer's
+   matching native margins into padding so its text alignment fits the pane. */
+:where(body.chatgpt-toc-gemini-wide) chat-app.mobile chat-window-content
+  infinite-scroller:is(.chat-history,[data-test-id="chat-history-container"])
+  model-response .response-container-footer {
+  padding-inline: calc(var(--chatgpt-toc-gemini-answer-padding) + 24px) !important;
+}
+
+:where(body.chatgpt-toc-gemini-wide) chat-window-content
+  infinite-scroller:is(.chat-history,[data-test-id="chat-history-container"])
+  model-response .response-container-footer message-actions {
+  width: auto !important;
+  max-width: none !important;
+  min-width: 0;
+  margin-inline: -6px 6px !important;
+}
+
+/* Gemini also caps the flow blocks inside its full-width markdown wrapper.
+   Lift that cap without resetting list padding, quote borders, or margins. */
+:where(body.chatgpt-toc-gemini-wide) chat-window-content
+  infinite-scroller:is(.chat-history,[data-test-id="chat-history-container"])
+  model-response-content .markdown > :is(p,h1,h2,h3,h4,h5,h6,ul,ol,blockquote,pre,hr,div,table,table-block,code-block) {
+  max-width: 100% !important;
 }
 
 /* Keep project pages and rich response content from widening their grid tracks. */
@@ -260,6 +373,28 @@ body.chatgpt-toc-resizing > .chatgpt-toc-app-root > :first-child { transition: n
   z-index: 39;
 }
 #chatgpt-toc-hover-edge[hidden] { display: none !important; }
+
+/* Mobile Canvas is a native fixed, viewport-wide overlay. Keep its toolbar
+   reachable instead of placing the TOC or hover trigger over that overlay.
+   The saved pin preference and the underlying page reservation stay intact. */
+body.chatgpt-toc-gemini-wide:has(chat-app.mobile chat-window.full-width-immersive immersive-panel)
+  :is(#chatgpt-toc-sidebar,#chatgpt-toc-hover-edge) {
+  visibility: hidden;
+  pointer-events: none;
+}
+
+/* Code/preview tabs add more controls than a narrow inline Canvas can fit on
+   one row. Wrap the mobile header rather than clipping Share/Expand/Close. */
+body.chatgpt-toc-gemini-wide chat-app.mobile inline-preview:has(.tab-group-container) .title-container {
+  flex-wrap: wrap;
+  height: auto !important;
+  row-gap: 8px;
+  padding-inline: 12px;
+}
+
+body.chatgpt-toc-gemini-wide chat-app.mobile inline-preview:has(.tab-group-container) .title-container > .title-wrapper {
+  flex: 1 1 100%;
+}
 
 .toc-header {
   cursor: grab;
@@ -535,7 +670,12 @@ body.chatgpt-toc-resizing > .chatgpt-toc-app-root > :first-child { transition: n
 
 #chatgpt-toc-sidebar[hidden] { display: none !important; }
 
-@media (max-width: 700px) { :root { --chatgpt-toc-width: min(200px, 55vw); } }
+@media (max-width: 700px) {
+  :root {
+    --chatgpt-toc-width: min(200px, 55vw);
+    --chatgpt-toc-gemini-answer-padding: 16px;
+  }
+}
 
 @media (prefers-reduced-motion: reduce) {
   body.chatgpt-toc-open > .chatgpt-toc-app-root,

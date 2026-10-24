@@ -35,6 +35,9 @@
       this.pageObserver = new MutationObserver(schedulePageSync);
       window.addEventListener('popstate', schedulePageSync);
       window.addEventListener('hashchange', schedulePageSync);
+      // SPA routers may update history after their final DOM mutation. Unlike
+      // popstate, currententrychange also covers pushState and replaceState.
+      window.navigation?.addEventListener('currententrychange', schedulePageSync);
       window.addEventListener('resize', schedulePageSync, { passive: true });
       const syncEditedContent = (event) => {
         const editor = event.target.closest?.(shared.EDITOR_SELECTOR);
@@ -76,7 +79,7 @@
         nextIdentity === this.conversationIdentity;
       if (sameConversation) {
         for (const group of [...this.groups]) {
-          if (shouldPreserveDisconnectedGroup(group)) this.disconnectGroupFromTurn(group);
+          if (shouldPreserveDisconnectedGroup(group, nextSource)) this.disconnectGroupFromTurn(group);
           else this.removeGroup(group);
         }
       } else this.clearConversation();
@@ -132,6 +135,14 @@
 
     getStableTurnKey(message) {
       if (!message) return null;
+      if (message.matches?.('user-query,model-response-content') && message.closest?.(SELECTORS.geminiHistory)) {
+        const turnId = message.closest('.conversation-container[id]')?.id;
+        // A regenerated Gemini response can acquire a new message-content ID.
+        // Its conversation container still identifies the same response slot.
+        if (turnId) return `gemini:${message.matches('user-query') ? 'user' : 'response'}:${turnId}`;
+        const responseId = message.querySelector?.('message-content[id]')?.id;
+        return responseId ? `gemini:response:${responseId}` : null;
+      }
       const messageId = message.getAttribute?.('data-message-id') ||
         message.getAttribute?.('data-chatgpt-selection-message-id') ||
         message.getAttribute?.('data-chatgpt-search-message-ids')?.trim().split(/\s+/)[0] ||
@@ -261,7 +272,7 @@
             responsePairs.some((pair) => pair.assistant.closest(SELECTORS.conversationTurn) === group.turn &&
               (!group.prompt || pair.prompt === group.prompt));
           if (replacedSlot || (group.assistant.isConnected && this.thread.contains(group.assistant))) this.removeGroup(group);
-          else if (shouldPreserveDisconnectedGroup(group)) this.disconnectGroupFromTurn(group);
+          else if (shouldPreserveDisconnectedGroup(group, this.source)) this.disconnectGroupFromTurn(group);
           else this.removeGroup(group);
         }
       }

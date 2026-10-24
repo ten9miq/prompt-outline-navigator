@@ -171,7 +171,8 @@ test('DOM-dependent selectors are centralized', () => {
   assert.match(SELECTORS.headings, /h1,h2,h3,h4,h5,h6/);
   assert.match(SELECTORS.conversationTurn, /\[data-turn-key\]/);
   assert.doesNotMatch(SELECTORS.stableTurn, /data-testid/);
-  assert.equal(SELECTORS.conversationScroll, '[data-app-action-timeline-scroll]');
+  assert.match(SELECTORS.conversationScroll, /\[data-app-action-timeline-scroll\]/);
+  assert.match(SELECTORS.conversationScroll, /infinite-scroller/);
   assert.equal(SELECTORS.threadComposer, '[data-chatgpt-composer][data-composer-placement="thread"]');
   assert.equal(SELECTORS.nativeTocItem, undefined);
   assert.equal(SELECTORS.nativeTocActive, undefined);

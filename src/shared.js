@@ -2,22 +2,26 @@
 (() => {
   'use strict';
 
+  // Gemini's history pane excludes its navigation, input, and Canvas surface.
+  const geminiHistory = 'infinite-scroller:is(.chat-history,[data-test-id="chat-history-container"])';
   const api = {
     SELECTORS: Object.freeze({
-      thread: '[data-chatgpt-conversation-selection-target][data-thread-find-target="conversation"],#thread',
+      thread: `[data-chatgpt-conversation-selection-target][data-thread-find-target="conversation"],#thread,${geminiHistory}`,
       main: 'main',
-      userMessage: '[data-message-author-role="user"],[data-chatgpt-search-unit-key]:is(:has([data-user-message-bubble="true"]),[class~="group/user-message"])',
+      userMessage: `[data-message-author-role="user"],[data-chatgpt-search-unit-key]:is(:has([data-user-message-bubble="true"]),[class~="group/user-message"]),${geminiHistory} user-query`,
       promptText: '.whitespace-pre-wrap',
-      assistantMessage: '[data-message-author-role="assistant"],[data-chatgpt-search-unit-key]:has([data-conversation-role="assistant"]),[data-chatgpt-search-unit-key]:has([data-markdown-text-style="assistant-message"])',
+      assistantMessage: `[data-message-author-role="assistant"],[data-chatgpt-search-unit-key]:has([data-conversation-role="assistant"]),[data-chatgpt-search-unit-key]:has([data-markdown-text-style="assistant-message"]),${geminiHistory} model-response model-response-content`,
       headings: 'h1,h2,h3,h4,h5,h6,[role="heading"][aria-level]',
       stableTurn: '[data-message-id],[data-turn-id],[data-turn-key]',
-      conversationTurn: '[data-testid^="conversation-turn-"],[data-turn-key]',
-      conversationScroll: '[data-app-action-timeline-scroll]',
+      conversationTurn: `[data-testid^="conversation-turn-"],[data-turn-key],${geminiHistory} .conversation-container`,
+      conversationScroll: `[data-app-action-timeline-scroll],${geminiHistory}`,
       threadComposer: '[data-chatgpt-composer][data-composer-placement="thread"]',
       composer: '[data-chatgpt-composer],[data-thread-find-composer]',
       assistantContent: '[data-markdown-text-style="assistant-message"]',
       conversationIdentity: '[data-chatgpt-selection-conversation-id]',
-      userPromptContent: '[data-user-message-bubble="true"]'
+      userPromptContent: '[data-user-message-bubble="true"]',
+      geminiHistory,
+      geminiPromptText: '.query-text'
     }),
     SOURCE_ATTRIBUTES: Object.freeze([
       'data-chatgpt-conversation-selection-target', 'data-thread-find-target',
@@ -25,7 +29,7 @@
       'data-message-author-role', 'data-chatgpt-search-unit-key', 'data-chatgpt-search-message-ids',
       'data-conversation-role', 'data-user-message-bubble', 'data-markdown-text-style', 'data-markdown-copy-content', 'data-composer-markdown',
       'data-oai-writing-block-surface',
-      'data-turn-key', 'data-turn-id', 'data-message-id', 'data-testid',
+      'data-turn-key', 'data-turn-id', 'data-message-id', 'data-testid', 'data-test-id',
       'role', 'aria-level', 'hidden', 'aria-hidden', 'inert', 'class', 'id', 'aria-controls', 'aria-expanded', 'contenteditable'
     ]),
     MESSAGE_ATTRIBUTES: Object.freeze(['data-message-author-role', 'data-chatgpt-search-unit-key', 'data-chatgpt-search-message-ids',
@@ -46,6 +50,13 @@
 
   api.getPromptText = (prompt) => {
     if (!prompt) return '';
+    if (prompt.matches?.('user-query')) {
+      const body = prompt.querySelector(api.SELECTORS.geminiPromptText)?.cloneNode(true);
+      if (!body) return '';
+      body.querySelectorAll('.cdk-visually-hidden,.screen-reader-user-query-label').forEach((label) => label.remove());
+      body.querySelectorAll('.query-text-line').forEach((line) => line.append('\n'));
+      return api.truncateText(body.textContent);
+    }
     const observedBody = prompt.querySelector?.(api.SELECTORS.userPromptContent);
     const body = observedBody || prompt.querySelector?.(api.SELECTORS.promptText);
     if (body) return api.truncateText(body.textContent);
@@ -342,7 +353,11 @@
       api.getOutlineText(candidate) === api.getOutlineText(heading)).indexOf(heading)
   });
 
-  api.shouldPreserveDisconnectedGroup = (group) => Boolean(group?.key);
+  // Gemini can replace history after the URL has changed. Its disconnected
+  // turns cannot safely be distinguished from a previous conversation, so only
+  // ChatGPT's supported virtualized history is cached across disconnections.
+  api.shouldPreserveDisconnectedGroup = (group, source = null) => Boolean(group?.key) &&
+    !source?.root?.matches?.(api.SELECTORS.geminiHistory);
 
   api.getConversationIdentity = (thread, pathname = '') => {
     const selectionId = thread?.getAttribute?.('data-chatgpt-conversation-selection-target');
@@ -356,8 +371,8 @@
 
   api.resolveDarkTheme = (className, colorScheme, prefersDark) => {
     const classes = String(className || '').split(/\s+/);
-    if (classes.includes('dark')) return true;
-    if (classes.includes('light')) return false;
+    if (classes.includes('dark') || classes.includes('dark-theme')) return true;
+    if (classes.includes('light') || classes.includes('light-theme')) return false;
     const scheme = String(colorScheme || '').trim().toLowerCase();
     if (scheme === 'dark') return true;
     if (scheme === 'light') return false;

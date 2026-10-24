@@ -25,6 +25,7 @@ test('privacy policies identify supported sites and prohibit remote code', () =>
   for (const policy of [english, japanese]) {
     assert.match(policy, /https:\/\/chatgpt\.com\/\*/);
     assert.match(policy, /https:\/\/chat\.openai\.com\/\*/);
+    assert.match(policy, /https:\/\/gemini\.google\.com\/\*/);
   }
   assert.match(english, /does not download or execute remote code/i);
   assert.match(japanese, /リモートコードのダウンロードや実行は行いません/);

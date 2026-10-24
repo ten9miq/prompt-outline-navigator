@@ -21,9 +21,11 @@ function contrastRatio(foreground, background) {
 
 test('manifest identifies the navigator and only stores extension preferences', () => {
   assert.equal(manifest.name, 'Prompt Outline Navigator');
-  assert.equal(manifest.version, '1.6.3');
+  assert.equal(manifest.version, '1.7.0');
   assert.equal(manifest.author, 'ten9miq');
   assert.equal(packageJson.author, 'ten9miq');
+  assert.equal(packageJson.description, manifest.description);
+  assert.ok(packageJson.keywords.includes('gemini'));
   assert.deepEqual(manifest.permissions, ['storage']);
   assert.equal(manifest.host_permissions, undefined);
   assert.equal(manifest.key, undefined);
@@ -44,7 +46,7 @@ test('navigator icons are transparent PNGs at every declared size', () => {
   assert.doesNotMatch(iconSvg, /<(?:linearGradient|radialGradient|text)\b/);
 });
 
-test('content script covers both supported ChatGPT hosts', () => {
+test('content script covers ChatGPT and Gemini hosts', () => {
   const [contentScript] = manifest.content_scripts;
   assert.deepEqual(contentScript.js, [
     'src/shared.js',
@@ -58,7 +60,8 @@ test('content script covers both supported ChatGPT hosts', () => {
   assert.deepEqual(contentScript.css, ['styles.css']);
   assert.deepEqual(contentScript.matches, [
     'https://chat.openai.com/*',
-    'https://chatgpt.com/*'
+    'https://chatgpt.com/*',
+    'https://gemini.google.com/*'
   ]);
 });
 
