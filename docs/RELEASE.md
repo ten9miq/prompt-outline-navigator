@@ -1,101 +1,96 @@
-# Release preparation / リリース準備
+# Gemini release preparation / Gemini対応のリリース準備
 
-Release target: **1.6.3**, prepared on **2026-10-23**. This patch fixes cached TOC navigation after earlier history changes the coordinates in long conversations. Manifest, package, lockfile, store ZIP, merge, tag and GitHub release use the same version.
+Prepared on **2026-10-24**. Status: **unreleased, local review only**.
+
+現在のGemini対応は未公開です。ソースの版数は意図的に`1.6.3`を維持しています。公開済み`v1.6.3`のChatGPT向けZIPとは内容が異なり、同じ版数で新しい更新を提出してはいけません。過去の版数・ハッシュ・公開経過は[1.6.3の過去記録](RELEASE_1.6.3.md)に保存しています。
 
 ## Release contents / 更新内容
 
-- When a cached destination does not remount at its remembered coordinate, narrow the search using currently rendered turn order.
-- Support both heading and prompt navigation, normal and reverse scrollers, and cancellation by a new click, user scrolling or conversation change.
-- Add regression fixtures for prepended history, late tail remounts and position stability after a wheel scroll; add unit checks for search direction and request isolation.
-- Preserve existing permissions, local-only processing and sidebar settings.
+- Add `https://gemini.google.com/*` to content-script matches; keep the existing ChatGPT sites and `storage` permission.
+- Build prompt/response-heading outlines from rendered Gemini history, follow streaming/remounts and SPA changes, and preserve light/dark behavior.
+- Widen regular Gemini responses, sent-prompt bubbles, new/existing inputs and response action rows. Keep 32px response-wrapper gutters, reduced to 16px at viewport widths of 700px or less, while respecting native inner block spacing.
+- Correct query margins, absolute desktop new-chat inputs, mobile input component margins, and the independent response-footer/action caps and centering.
+- Keep Canvas/notebook content outside outline generation and width targeting. Preserve their UI coexistence, temporarily hide the TOC under mobile fullscreen Canvas, and wrap narrow inline code Canvas headers.
+- Preserve ChatGPT outline, writing-block and discovered-history recovery behavior.
 
-長い会話で上の履歴を読み込むと保持済み項目の座標がずれ、最下部の目次をクリックしても本文へ到達できない問題を修正しました。古い座標で対象が再表示されない場合は、描画中のターンの順序から探索範囲を絞り込みます。
+対応範囲と公開前に理解すべき制約は[Gemini対応と検証](GEMINI_SUPPORT.md)を参照してください。英日README、プライバシーポリシー、掲載原稿は同じ対応サイトと処理方針を記載します。
 
-## Validation and artifacts / 検証と成果物
+## Known limits / 既知の制約
 
-The package builder ran `npm run build` for 1.6.3: syntax checks, **92 unit tests** and **43 Playwright browser tests** passed. All 14 manifest-derived ZIP files and hashes were verified against the release source. The two new browser regression cases failed against the pre-fix navigation implementation and passed after the fix. Existing sample screenshots are unchanged.
+Gemini outlines cover rendered turns only. Detached Gemini history is not retained or recovered; DOM-removal virtualization was not reproduced in the 20-turn live check. Do not claim ChatGPT-equivalent history recovery or unlimited-conversation verification.
 
-Dedicated Chrome checks on 2026-10-22 reproduced the issue in an existing long project conversation: loading earlier history increased the scroll height from about 15,400px to 34,300px, but the old code repeatedly selected a stale coordinate without rendering the destination. After the fix, the last heading remounted within about 1.5 seconds and stayed at the resulting position; a subsequent PageUp changed the position and showed no delayed return. The fixture tests separately verify prompt/heading alignment and wheel scrolling. Private conversation content and URLs are excluded from release artifacts. See [the earlier reliability audit](TOC_RELIABILITY.md) for the broader lifecycle checks.
+Canvasとノートブックの内容自体は目次対象外です。実確認はノートブック1件・スライド型Canvas1件・単一HTMLのコードCanvas1件であり、全種類・全アカウント機能の保証ではありません。別注入機能のショートカット競合は対象拡張の幅補正解除後も再現し、相手側の設定やファイルは変更していません。
 
-| Artifact | Status |
+## Local review artifact / ローカル確認用成果物
+
+| Item | Review state |
 | --- | --- |
-| Source version | `1.6.3` |
-| Submission ZIP | `dist/prompt-outline-navigator-1.6.3-chrome-web-store.zip` |
-| ZIP size | `50,455 bytes` |
-| SHA-256 | `7F965F4732BF12DA08257939D210214D8057BA331B12013384C0690ECF01961E` |
-| Checksum file | `dist/prompt-outline-navigator-1.6.3-chrome-web-store.zip.sha256` |
-| Tag / GitHub release | `v1.6.3` / `https://github.com/ten9miq/prompt-outline-navigator/releases/tag/v1.6.3` |
+| Source version | `1.6.3`, unchanged during development |
+| Review ZIP | `dist/prompt-outline-navigator-1.6.3-chrome-web-store-review.zip` |
+| Checksum | `dist/prompt-outline-navigator-1.6.3-chrome-web-store-review.zip.sha256` |
+| Build / exact ZIP verification | `npm run build`: 94 unit tests and 53 browser tests passed; all 14 packaged files matched source hashes |
+| ZIP bytes / SHA-256 | `52,701 bytes` / `FBA9EBB745DAA5218E89E57ED22A0B062E49E1AB102D0BC61FDFDB916B29DDF6` |
+| Submission status | Not submitted; this review ZIP must not be uploaded as an update |
 
-The package contains only manifest-referenced runtime files, icons and `LICENSE`. Logs, private content, dependencies, tests and documentation are excluded. Upload this exact ZIP for the release.
-
-この版のZIPのファイル一覧と内容ハッシュを検証しました。テスト用の非同期更新・再生成・仮想化の状態遷移と、既存会話での実画面検証を区別しています。
-
-Build another submission artifact only when required:
+Build the review package without overwriting the published-version submission ZIP:
 
 ```powershell
 $env:PLAYWRIGHT_BROWSERS_PATH = Join-Path $env:USERPROFILE 'AppData\Local\ms-playwright'
-powershell -NoProfile -ExecutionPolicy Bypass -File scripts/build-store-package.ps1
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/build-store-package.ps1 -Review
 ```
 
-Use `-Review` for a review-only ZIP. `-SkipTests` is allowed only immediately after successful checks of unchanged runtime; exact file-list and hash checks still run. Sample screenshots are generated with `node scripts/capture-store-screenshots.js`.
+The builder runs `npm run build`, verifies the exact manifest-derived ZIP file list and every file hash, and reports SHA-256. The package contains runtime scripts, CSS, manifest, declared icons and `LICENSE` only. Documentation, tests, dependencies, logs, generated conversations and private content are excluded. Use `-SkipTests` only immediately after successful checks of unchanged runtime.
+
+この確認用ZIPは版数を上げずにコードレビュー・展開検証するためのものです。現在の本番用`dist/prompt-outline-navigator-1.6.3-chrome-web-store.zip`とそのチェックサムは、過去の公開成果物として上書きしません。
 
 ## Store listing and privacy / 掲載原稿とプライバシー
 
-| Field | Value |
+| Field | Prepared value / action |
 | --- | --- |
-| Existing store item | `nleamodjnjbpcemdbcemfpbaelkkmmpe`; do not create a duplicate |
+| Existing store item | `nleamodjnjbpcemdbcemfpbaelkkmmpe`; use the existing item |
 | Name | `Prompt Outline Navigator` |
-| Short description | `A live table-of-contents and navigation sidebar for ChatGPT conversations` |
-| Detailed description | [Japanese](../store-assets/listing.ja.txt), [English alternative](../store-assets/listing.en.txt) |
+| Short description | `A live table-of-contents and navigation sidebar for ChatGPT and Gemini conversations` |
+| Detailed listing | [Japanese](../store-assets/listing.ja.txt), [English](../store-assets/listing.en.txt) |
 | Homepage | `https://github.com/ten9miq/prompt-outline-navigator` |
 | Support | `https://github.com/ten9miq/prompt-outline-navigator/issues` |
-| Privacy policy | `https://github.com/ten9miq/prompt-outline-navigator/blob/main/PRIVACY.ja.md` |
-| Policy effective date | `2026-10-15`; unchanged in both languages |
-| Existing distribution | Public listing in Japanese; preserve the dashboard's existing regions and pricing |
+| Privacy source | [English](../PRIVACY.md), [Japanese](../PRIVACY.ja.md), dated `2026-10-24` |
+| Public privacy URL | `https://github.com/ten9miq/prompt-outline-navigator/blob/main/PRIVACY.ja.md`; publish the updated source with the release before store submission |
+| Store images | Existing fictional ChatGPT examples remain usable; see [asset notes](../store-assets/README.md) |
 
-Single purpose: provide a local outline and in-page navigation for supported ChatGPT conversations, documents and message feeds.
+Single purpose: provide a local outline and in-page navigation for ChatGPT and Gemini conversations, plus supported ChatGPT documents and feeds.
 
-| Dashboard field | Rationale |
+| Disclosure | Preparation |
 | --- | --- |
-| `storage` | Saves only sidebar open/closed preference and width in `chrome.storage.local`. Content, temporary vertical position and hover visibility are not stored. |
-| Site access | Content scripts run only on `https://chatgpt.com/*` and `https://chat.openai.com/*` to read rendered content and provide navigation. |
-| Remote code | No remote code, dynamic code evaluation, analytics SDKs or new permissions in the extension. |
-| Data usage | Retain `Personal communications` and `Website content` disclosures for locally processed content. No developer collection, transmission, sale or third-party sharing. |
-| Certifications | No sale, unrelated-purpose transfer, or creditworthiness/lending use of data. |
+| `storage` | Store only sidebar mode and width in `chrome.storage.local` |
+| Site access | Add `https://gemini.google.com/*`; preserve `https://chatgpt.com/*` and `https://chat.openai.com/*` |
+| Data use | Local page processing only; retain communications/content disclosure, with no developer collection, transmission, sale or sharing |
+| Remote code | No remote code, analytics or new permission categories |
+| Distribution | Inspect and preserve current regions, pricing and publication settings when submission is separately authorized |
 
-既存の日本語掲載を更新します。権限やデータの扱いは変わらないため、既存の申告を維持します。ストアのアクセス集計設定と、拡張本体からの通信・解析の有無は区別します。
+追加ホストへのアクセスをストア申告へ反映します。保存データとローカル処理の方針は変わりません。現時点でストア設定・掲載内容・公開状態は変更していません。
 
-## Reviewer steps / 審査手順
+## Reviewer checks / レビュー確認項目
 
-1. Install the update and reload a supported ChatGPT page. Use an existing non-sensitive conversation with headings; attachment-only input is supported.
-2. Select upper/lower outline entries and check scrolling. Active Space documents and dot feeds depend on account feature availability.
-3. In a writing conversation with an earlier collapsed document, select one of its outline headings. The original document should expand and navigation should wait for the content to be ready.
-4. Resize the sidebar, reload to confirm saved width, and check pin/hover modes. Boundary/title resets preserve display mode.
-5. Navigate between conversations, a start page and settings. Manual visibility and reserved width remain stable. Unsupported content shows the empty state.
-6. For deterministic lifecycle verification, run `npm test`; private conversation URLs and login credentials are not required.
+1. Load the unpacked checkout or extract the review ZIP, then reload ChatGPT and Gemini tabs. Confirm the added Gemini site access using the reviewer's own account.
+2. In Gemini, check prompt pairing, headings, incremental updates and upper/middle/lower navigation. Compare the outline with rendered content, including attachment-only groups.
+3. Check pinned/hover modes, resizing and reload persistence. Inspect response text, prompts, new-chat/existing inputs and response action rows at normal and narrow widths; inspect actual text/controls, not only document scrollWidth.
+4. Check notebook/source-dialog and Canvas coexistence where available. Canvas/notebook content should not become a new outline source; narrow inline and fullscreen controls must remain reachable.
+5. Recheck representative ChatGPT conversations, writing blocks and virtualized-history destinations. Gemini's detached-history limitation must remain explicit.
+6. Use anonymous fixtures via `npm test` for deterministic transitions. Do not include account credentials, private conversation URLs, feedback submissions or private screenshots in review material.
 
-拡張固有のログイン・課金はありません。審査者自身のChatGPTアカウントと機密情報のない会話で確認できます。ログイン情報や私的な会話URLは審査資料に含めません。
+## Final release steps / 今後の公開手順
 
-## Publication status and final steps / 公開範囲と最終工程
+These steps are not performed by this preparation task.
 
-Version 1.6.3 was merged into `main` as `700f1a8`, tagged `v1.6.3`, and published on GitHub with the verified ZIP and checksum. On 2026-10-23 (JST), that same ZIP was uploaded to the existing Chrome Web Store item `nleamodjnjbpcemdbcemfpbaelkkmmpe`. Before upload, both the published and draft versions were 1.6.2 with no pending review; after processing, the draft version was confirmed as 1.6.3. Submission completed with automatic publication after approval selected, and the dashboard confirmed **審査待ち (pending review)**. Existing listing content, images, privacy declarations and distribution settings were preserved. Store approval and public availability of 1.6.3 are not yet confirmed.
+1. Review the completed changes, including `tests/gemini.spec.js`, and record them in the approved release source/branch. Existing unrelated logs and old checksums are not release content.
+2. Immediately before merging the completed branch into `main`, choose and increment the next version **once** across manifest, package, lockfile and version assertions. Do not reuse `1.6.3` for the Gemini update.
+3. Build a fresh submission ZIP without `-Review` from those finalized sources, verify its file list and hashes, and use the same version for the merge, package, tag and GitHub release.
+4. Commit/merge/push/tag and publish a GitHub release only when separately requested. Attach the finalized ZIP and checksum; the local review ZIP is not that release artifact.
+5. For an authorized Chrome Web Store submission, first inspect current public/draft versions and pending reviews, publish the updated privacy source, update Gemini listing/site-access disclosures, and preserve unrelated distribution settings.
+6. Upload the finalized versioned ZIP and record submission/review/publication separately. Do not describe a submission as an approved or published store release.
 
-2026年10月23日（日本時間）に、GitHubで公開したものと同じ検証済みZIPを既存のChrome Web Store項目へアップロードし、ドラフト版が1.6.3であることを確認して審査に提出しました。承認後の自動公開を選択し、ダッシュボードの「審査待ち」を確認しています。既存の掲載内容・画像・プライバシー申告・公開設定は維持しました。審査提出と承認・公開は区別し、1.6.3のストア公開済みとは扱っていません。
+版数変更、commit、merge、push、tag、GitHub公開、Chromeウェブストアへの提出は今回行っていません。最終公開前には、その時点のコードとストア状態を確認します。
 
-1. Merge the completed branch using version `1.6.3`, then tag the merge as `v1.6.3`.
-2. Push release sources/tag and publish the GitHub release with the verified ZIP and checksum.
-3. For a separately requested store submission, first check the current published/draft versions and any pending review. Preserve existing privacy, distribution, regions and pricing.
-4. Upload the verified ZIP and submit for review only as part of that store workflow. Record the actual submission result separately.
-5. Do not describe the store update as published until the dashboard/public listing confirms it.
+## Previous release record / 過去版の記録
 
-この準備記録そのものは、Chrome Web Storeの審査承認・ストア公開を意味しません。GitHubの公開結果とストアの審査・公開結果を分けて報告します。
-
-## Previous releases / 過去版
-
-Version 1.6.2 was merged as `b189231` and tagged/released on 2026-10-22 (JST). Its ZIP was 49,928 bytes with SHA-256 `22AA4AF858708343B0CD19AAC5174560422142FDB4F7344180CE3C60172743C8`; 90 unit tests and 41 browser tests passed. It improved outline discovery, partial writing revisions, message identity and virtualized-history handling. The existing store item received the update, Japanese listing, sample screenshots and reviewer instructions. On 2026-10-22 the dashboard confirmed pending review with automatic publication after approval. On 2026-10-23, before uploading 1.6.3, the dashboard confirmed 1.6.2 as published with public distribution.
-
-Version 1.6.1 was prepared on 2026-10-18 and is published in Chrome Web Store (confirmed on 2026-10-22). Its original verified ZIP was 46,425 bytes with SHA-256 `A4283B195C4367B07195E7F9AFCB2C1C34D7E3DDFD36DC774366C55C41898424`; 84 unit tests and 22 browser tests passed.
-
-Version 1.6.0 has a GitHub release dated 2026-10-15. Its ZIP was 45,920 bytes with SHA-256 `FFF623509F07ACA7A9C4A2207B3BEDAEB008E255C5E996CFF86473122C02DBE9`; 84 unit tests and 19 browser tests passed.
-
-Version 1.5.0 used a 44,568-byte ZIP with SHA-256 `E06CCF55F9F3DC64C48A2A8F4A554590170910DF135FBB99D5C40E89C597E93E`. Version 1.4.0 was tagged on merge commit `84f15df` and released on 2026-10-11.
+[Version 1.6.3](RELEASE_1.6.3.md) records the published ChatGPT history-navigation patch, its original ZIP/hash and earlier releases. The last store state recorded there was pending review on 2026-10-23; this preparation did not recheck or change the live dashboard.

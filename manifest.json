@@ -12,10 +12,10 @@
    "content_scripts": [ {
       "css": [ "styles.css" ],
       "js": [ "src/shared.js", "src/source-adapters.js", "src/sidebar.js", "src/conversation.js", "src/navigation.js", "src/active-tracker.js", "content.js" ],
-      "matches": [ "https://chat.openai.com/*", "https://chatgpt.com/*" ],
+      "matches": [ "https://chat.openai.com/*", "https://chatgpt.com/*", "https://gemini.google.com/*" ],
       "run_at": "document_idle"
    } ],
-   "description": "A live table-of-contents and navigation sidebar for ChatGPT conversations",
+   "description": "A live table-of-contents and navigation sidebar for ChatGPT and Gemini conversations",
    "icons": {
       "128": "icons/toc_gpt_icon_128.png",
       "16": "icons/toc_gpt_icon_16.png",

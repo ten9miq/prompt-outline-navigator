@@ -21,6 +21,34 @@ test('translated READMEs retain matching feature coverage', () => {
   assert.equal(japaneseFeatures.length, englishFeatures.length);
   assert.match(english, /## Development[\s\S]*## Origin/);
   assert.match(japanese, /## 開発[\s\S]*## 由来/);
+  assert.deepEqual(english.match(/^#{2,3} /gm), japanese.match(/^#{2,3} /gm));
+});
+
+test('Gemini documentation separates unreleased support and detached-history limits', () => {
+  assert.match(english, /Gemini support in this checkout is unreleased/);
+  assert.match(japanese, /Gemini対応は未リリース/);
+  assert.match(english, /not retained or recovered/);
+  assert.match(japanese, /保持・復旧は未対応/);
+  for (const readme of [english, japanese]) {
+    assert.match(readme, /https:\/\/gemini\.google\.com\/\*/);
+    assert.match(readme, /docs\/GEMINI_SUPPORT\.md/);
+  }
+  const publicDocs = ['README.md', 'README.ja.md', 'docs/RELEASE.md', 'docs/GEMINI_SUPPORT.md', 'docs/TOC_RELIABILITY.md']
+    .map((name) => fs.readFileSync(path.join(root, name), 'utf8')).join('\n');
+  assert.doesNotMatch(publicDocs, /https:\/\/gemini\.google\.com\/(?:app|notebook)\/[a-f0-9-]{8,}/i);
+});
+
+test('release-facing Markdown links resolve within the repository', () => {
+  const files = ['README.md', 'README.ja.md', 'PRIVACY.md', 'PRIVACY.ja.md',
+    'docs/RELEASE.md', 'docs/RELEASE_1.6.3.md', 'docs/GEMINI_SUPPORT.md', 'docs/PLAN.md', 'store-assets/README.md'];
+  for (const name of files) {
+    const source = fs.readFileSync(path.join(root, name), 'utf8');
+    for (const match of source.matchAll(/\[[^\]]*\]\(([^)]+)\)/g)) {
+      const target = match[1].split('#')[0];
+      if (!target || /^[a-z]+:/i.test(target)) continue;
+      assert.ok(fs.existsSync(path.resolve(root, path.dirname(name), target)), `${name}: ${target}`);
+    }
+  }
 });
 
 test('repository instructions require synchronized README maintenance', () => {

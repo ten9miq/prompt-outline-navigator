@@ -1,3 +1,7 @@
+# 初期改修計画（過去の記録）
+
+> 初期の1.2.1取り込み時の設計メモです。以下の版数や構成案は当時の記録で、現在の版数・構成を示しません。現在の構成は[README](../README.ja.md)、Gemini対応は[対応と検証](GEMINI_SUPPORT.md)、公開準備は[RELEASE.md](RELEASE.md)を参照してください。
+
 この改修なら、**元拡張へStylus/UserScriptを単純に貼り付けるのではなく、TOCの更新・描画・現在位置追従・レイアウトを分離して整理する**のがよいです。
 
 まず重要なのは、**GitHubの `main` は manifest上 v1.0.1ですが、Chrome Web Store版は v1.2.1** だという点です。([GitHub][1])

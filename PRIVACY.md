@@ -2,18 +2,18 @@
 
 [English](PRIVACY.md) | [日本語](PRIVACY.ja.md)
 
-Effective date: October 15, 2026.
+Effective date: October 24, 2026.
 
-Prompt Outline Navigator is a browser extension that creates a table of contents for supported conversations, active Space documents, and dot message feeds displayed on ChatGPT. This policy explains how the extension handles data.
+Prompt Outline Navigator is a browser extension that creates a table of contents for ChatGPT and Gemini conversations, and active Space documents and dot message feeds displayed on ChatGPT. This policy explains how the extension handles data.
 
 ## Data processed
 
-To provide its table-of-contents and navigation features, the extension reads the following content from supported ChatGPT pages:
+To provide its table-of-contents and navigation features, the extension reads the following content from supported ChatGPT and Gemini pages:
 
 - User prompt text
 - Assistant response text and headings
 - Active document text and headings, and visible message-feed text
-- The current prompt position exposed by ChatGPT's page interface
+- Visible prompt and heading positions exposed by the supported page
 
 This content is processed locally in the browser only. It is not collected by the developer, transmitted to an external server, sold, or shared with third parties.
 
@@ -21,7 +21,7 @@ This content is processed locally in the browser only. It is not collected by th
 
 The extension stores only the sidebar's open/closed preference and its width in pixels. These preferences are stored locally using `chrome.storage.local`. Temporary hover visibility and vertical position are not stored.
 
-Conversation, document, and message-feed content is not written to extension storage. It remains in page memory only while the supported ChatGPT page is open and is discarded when the page is closed or reloaded.
+Conversation, document, and message-feed content is not written to extension storage. It remains in page memory only while the supported page is open and is discarded when the page is closed or reloaded.
 
 The sidebar preference remains until the user removes the extension, clears the extension's stored data, or changes the preference through the extension.
 
@@ -31,12 +31,13 @@ The extension uses:
 
 - `storage`: to remember the sidebar's open or closed state and width.
 - Access to `https://chatgpt.com/*` and `https://chat.openai.com/*`: to detect supported conversation, document, and message-feed content and display its outline and navigation.
+- Access to `https://gemini.google.com/*`: to detect Gemini conversations and display their outline and navigation.
 
 ## Remote code and external services
 
 The extension does not download or execute remote code and does not send data to the developer or any analytics, advertising, or other third-party service.
 
-The extension operates on ChatGPT pages, which are provided by OpenAI and are governed by OpenAI's own terms and privacy policy. Prompt Outline Navigator is an independent project and is not affiliated with or endorsed by OpenAI.
+The extension operates on ChatGPT pages provided by OpenAI and Gemini pages provided by Google. Each service is governed by its provider's terms and privacy policy. Prompt Outline Navigator is an independent project and is not affiliated with or endorsed by OpenAI or Google.
 
 ## Changes to this policy
 

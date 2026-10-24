@@ -276,6 +276,10 @@
       // Keep scoped conversation/composer styles active even when an editor
       // becomes the TOC source or the conversation DOM is temporarily absent.
       document.body.classList.add('chatgpt-toc-wide');
+      // Width changes belong to Gemini's regular chat pane, not notebooks or
+      // immersive editors. Keep them independent of the outline's visibility.
+      document.body.classList.toggle('chatgpt-toc-gemini-wide',
+        globalThis.location?.hostname === 'gemini.google.com' && /^\/app(?:\/|$)/.test(pathname));
       // Hover previews overlay the page; only the saved open state reserves width.
       const pinned = this.sidebarPreferenceVisible;
       const visible = pinned || Boolean(this.sidebarHoverVisible);
@@ -364,8 +368,8 @@
       const sync = () => {
         const root = document.documentElement;
         const dark = resolveDarkTheme(
-          root.className,
-          getComputedStyle(root).colorScheme,
+          `${root.className} ${document.body.className}`,
+          getComputedStyle(root).colorScheme === 'normal' ? getComputedStyle(document.body).colorScheme : getComputedStyle(root).colorScheme,
           window.matchMedia?.('(prefers-color-scheme: dark)').matches
         );
         this.sidebar.classList.toggle('dark-mode', dark);
@@ -373,6 +377,7 @@
       sync();
       this.themeObserver = new MutationObserver(sync);
       this.themeObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['class', 'style'] });
+      this.themeObserver.observe(document.body, { attributes: true, attributeFilter: ['class', 'style'] });
       window.matchMedia?.('(prefers-color-scheme: dark)').addEventListener('change', sync);
     }
   };

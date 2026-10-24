@@ -1,23 +1,25 @@
-Prompt Outline Navigator adds a live outline and navigation sidebar to supported ChatGPT content.
+Prompt Outline Navigator adds a live outline and navigation sidebar to supported ChatGPT and Gemini conversations.
 
 Features:
-• Generate an outline from user prompts and response headings in normal and GPT/project conversations.
+• Outline Gemini prompts and response headings, following streaming updates, remounts and conversation changes.
+• Widen regular Gemini responses, sent prompts, new/existing inputs and response actions while keeping readable gutters and controls inside the pane. Canvas and notebook contents are not indexed or widened.
+• Generate an outline from user prompts and response headings in normal ChatGPT and GPT/project conversations.
 • Keep embedded writing editors under their original prompt, with entries for subjects, document titles and sections.
 • Support read-only Markdown writing blocks and retain headings when a partial revision collapses the original document; selecting an entry expands the document before navigation.
 • Follow delayed rendering, regenerated answers and conversation remounts while preventing duplicate responses and preserving history order.
 • When an editor has no real headings, use short numbered paragraphs whose entire text is bold as fallback section entries.
 • Also navigate active Space documents and dot message feeds when their supported content structure is present.
 • Track your current prompt and heading, and collapse prompt groups and heading levels.
-• Scroll smoothly to rendered destinations; restore older virtualized conversation destinations when possible.
+• Scroll smoothly to rendered destinations; in ChatGPT, restore discovered older virtualized destinations when possible.
 • Keep the sidebar and its reserved space stable across page transitions and dialogs; support attachment-only prompts.
 • Switch between pinned and hover modes with the pin button. In hover mode, point at the right edge to preview and select outline entries without resizing the page.
 • Drag the left boundary to resize the sidebar and save the width. Double-click the boundary to reset to the default 200px width.
 • Drag the title bar to move the sidebar down temporarily. Double-click the title to return to the top without changing the width or display mode.
 • Support light and dark themes.
-• Keep conversation and composer width adjustments active with or without a writing editor, including initial messages on new-chat and project home screens.
+• Keep ChatGPT conversation and composer width adjustments active with or without a writing editor, including initial messages on new-chat and project home screens.
 
-The outline is built from content rendered in the page. Long conversations may load older messages as you navigate; the extension retains entries it has already discovered. ChatGPT features and page structures may vary by account and change over time. Not every page produces an outline.
+The outline uses content rendered in the page. ChatGPT retains entries already discovered when older turns are virtualized. Gemini follows currently rendered turns only: entries for turns removed from the DOM are not retained or recovered. Canvas and notebook coexistence is supported without indexing their contents; mobile fullscreen Canvas temporarily hides the TOC and restores its saved mode when closed. Features and page structures vary by account and may change over time. Not every page produces an outline.
 
 Conversation, document, and message-feed content is processed locally in your browser. The extension does not send it to the developer or any external server. Only the sidebar display mode (pinned or hover) and width are saved locally. Temporary vertical position and hover visibility are not saved.
 
-Prompt Outline Navigator is an independent project and is not affiliated with or endorsed by OpenAI. ChatGPT access and features are provided by OpenAI; this extension does not supply an account or subscription.
+Prompt Outline Navigator is an independent project and is not affiliated with or endorsed by OpenAI or Google. ChatGPT and Gemini access and features are provided by their respective providers; this extension does not supply an account or subscription.
