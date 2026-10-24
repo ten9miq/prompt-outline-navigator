@@ -1,8 +1,8 @@
-# Gemini release preparation / Gemini対応のリリース準備
+# Release 1.7.0 / Gemini対応のリリース準備
 
-Prepared on **2026-10-24**. Status: **unreleased, local review only**.
+Prepared on **2026-10-24**. Status: **formal release package prepared locally; not published or submitted**.
 
-現在のGemini対応は未公開です。ソースの版数は意図的に`1.6.3`を維持しています。公開済み`v1.6.3`のChatGPT向けZIPとは内容が異なり、同じ版数で新しい更新を提出してはいけません。過去の版数・ハッシュ・公開経過は[1.6.3の過去記録](RELEASE_1.6.3.md)に保存しています。
+Gemini対応を含む正式リリース用の版数は`1.7.0`です。機能コミットでは1.6.3を維持し、完成したbranchのローカルmain統合直前の版数準備で一度だけ1.7.0へ更新したものです。公開済み`v1.6.3`のChatGPT向け成果物は上書きしません。過去の版数・ハッシュ・公開経過は[1.6.3の過去記録](RELEASE_1.6.3.md)に保存しています。
 
 ## Release contents / 更新内容
 
@@ -21,27 +21,31 @@ Gemini outlines cover rendered turns only. Detached Gemini history is not retain
 
 Canvasとノートブックの内容自体は目次対象外です。実確認はノートブック1件・スライド型Canvas1件・単一HTMLのコードCanvas1件であり、全種類・全アカウント機能の保証ではありません。別注入機能のショートカット競合は対象拡張の幅補正解除後も再現し、相手側の設定やファイルは変更していません。
 
-## Local review artifact / ローカル確認用成果物
+## Formal release artifact / 正式リリース用成果物
 
-| Item | Review state |
+| Item | Local status |
 | --- | --- |
-| Source version | `1.6.3`, unchanged during development |
-| Review ZIP | `dist/prompt-outline-navigator-1.6.3-chrome-web-store-review.zip` |
-| Checksum | `dist/prompt-outline-navigator-1.6.3-chrome-web-store-review.zip.sha256` |
+| Source version | `1.7.0` |
+| Submission ZIP | `dist/prompt-outline-navigator-1.7.0-chrome-web-store.zip` |
+| Checksum | `dist/prompt-outline-navigator-1.7.0-chrome-web-store.zip.sha256` |
 | Build / exact ZIP verification | `npm run build`: 94 unit tests and 53 browser tests passed; all 14 packaged files matched source hashes |
-| ZIP bytes / SHA-256 | `52,701 bytes` / `FBA9EBB745DAA5218E89E57ED22A0B062E49E1AB102D0BC61FDFDB916B29DDF6` |
-| Submission status | Not submitted; this review ZIP must not be uploaded as an update |
+| ZIP bytes / SHA-256 | `52,702 bytes` / `D94EDB7310E433B7EDEADBEEACDC57F06148B9BB440CD1389B5B7196A1275FE9` |
+| Publication status | Formal local package only; no push, tag, GitHub publication or store submission |
 
-Build the review package without overwriting the published-version submission ZIP:
+Build the formal package from the finalized versioned source:
 
 ```powershell
 $env:PLAYWRIGHT_BROWSERS_PATH = Join-Path $env:USERPROFILE 'AppData\Local\ms-playwright'
-powershell -NoProfile -ExecutionPolicy Bypass -File scripts/build-store-package.ps1 -Review
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/build-store-package.ps1
 ```
 
 The builder runs `npm run build`, verifies the exact manifest-derived ZIP file list and every file hash, and reports SHA-256. The package contains runtime scripts, CSS, manifest, declared icons and `LICENSE` only. Documentation, tests, dependencies, logs, generated conversations and private content are excluded. Use `-SkipTests` only immediately after successful checks of unchanged runtime.
 
-この確認用ZIPは版数を上げずにコードレビュー・展開検証するためのものです。現在の本番用`dist/prompt-outline-navigator-1.6.3-chrome-web-store.zip`とそのチェックサムは、過去の公開成果物として上書きしません。
+`1.7.0` is the single version for this package, the local main merge, and any later authorized tag/GitHub release. The package is checked against the merged runtime without rebuilding it merely to change documentation or Git history.
+
+### Previous local review / 以前の確認用ZIP
+
+`dist/prompt-outline-navigator-1.6.3-chrome-web-store-review.zip` was a review-only build before the version increment: 52,701 bytes, SHA-256 `FBA9EBB745DAA5218E89E57ED22A0B062E49E1AB102D0BC61FDFDB916B29DDF6`. It must not be used as the Gemini store update. The historical submission ZIP `dist/prompt-outline-navigator-1.6.3-chrome-web-store.zip` and its checksum remain unchanged.
 
 ## Store listing and privacy / 掲載原稿とプライバシー
 
@@ -71,25 +75,24 @@ Single purpose: provide a local outline and in-page navigation for ChatGPT and G
 
 ## Reviewer checks / レビュー確認項目
 
-1. Load the unpacked checkout or extract the review ZIP, then reload ChatGPT and Gemini tabs. Confirm the added Gemini site access using the reviewer's own account.
+1. Load the unpacked checkout or extract the 1.7.0 submission ZIP, then reload ChatGPT and Gemini tabs. Confirm the added Gemini site access using the reviewer's own account.
 2. In Gemini, check prompt pairing, headings, incremental updates and upper/middle/lower navigation. Compare the outline with rendered content, including attachment-only groups.
 3. Check pinned/hover modes, resizing and reload persistence. Inspect response text, prompts, new-chat/existing inputs and response action rows at normal and narrow widths; inspect actual text/controls, not only document scrollWidth.
 4. Check notebook/source-dialog and Canvas coexistence where available. Canvas/notebook content should not become a new outline source; narrow inline and fullscreen controls must remain reachable.
 5. Recheck representative ChatGPT conversations, writing blocks and virtualized-history destinations. Gemini's detached-history limitation must remain explicit.
 6. Use anonymous fixtures via `npm test` for deterministic transitions. Do not include account credentials, private conversation URLs, feedback submissions or private screenshots in review material.
 
-## Final release steps / 今後の公開手順
+## Local source and remaining publication steps / ローカル統合と残りの公開手順
 
-These steps are not performed by this preparation task.
+The feature commit keeps version 1.6.3. A single version-preparation commit selects 1.7.0 immediately before the local main merge; commit identities are recorded in Git history. Local commits, versioning, main integration and formal package creation are authorized by this preparation request.
 
-1. Review the completed changes, including `tests/gemini.spec.js`, and record them in the approved release source/branch. Existing unrelated logs and old checksums are not release content.
-2. Immediately before merging the completed branch into `main`, choose and increment the next version **once** across manifest, package, lockfile and version assertions. Do not reuse `1.6.3` for the Gemini update.
-3. Build a fresh submission ZIP without `-Review` from those finalized sources, verify its file list and hashes, and use the same version for the merge, package, tag and GitHub release.
-4. Commit/merge/push/tag and publish a GitHub release only when separately requested. Attach the finalized ZIP and checksum; the local review ZIP is not that release artifact.
-5. For an authorized Chrome Web Store submission, first inspect current public/draft versions and pending reviews, publish the updated privacy source, update Gemini listing/site-access disclosures, and preserve unrelated distribution settings.
-6. Upload the finalized versioned ZIP and record submission/review/publication separately. Do not describe a submission as an approved or published store release.
+残る外部操作は別の依頼で行います。今回、remote push、tag作成、GitHub release公開、Chromeウェブストア提出は行っていません。
 
-版数変更、commit、merge、push、tag、GitHub公開、Chromeウェブストアへの提出は今回行っていません。最終公開前には、その時点のコードとストア状態を確認します。
+1. When publication is authorized, push the finalized source and create tag `v1.7.0` on the local release merge. Use the same version for the GitHub release and attach the verified 1.7.0 ZIP/checksum.
+2. Publish the updated privacy source and prepare the Gemini listing/site-access disclosures. Preserve unrelated distribution, regions and pricing.
+3. Before an authorized Chrome Web Store submission, inspect current public/draft versions and pending reviews; do not infer current dashboard state from the historical 1.6.3 record.
+4. Upload this finalized versioned ZIP only in the authorized store workflow and record submission, review and publication separately.
+5. Do not describe the local ZIP, a GitHub release, or a store submission as an approved/published store update until the actual result confirms it.
 
 ## Previous release record / 過去版の記録
 

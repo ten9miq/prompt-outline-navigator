@@ -6,7 +6,7 @@ A live table-of-contents and navigation sidebar for ChatGPT and Gemini conversat
 
 Prompt Outline Navigator is an independent project and is not affiliated with or endorsed by OpenAI or Google.
 
-**Development status:** Gemini support in this checkout is unreleased and is not included in the published `v1.6.3` package. The source version remains `1.6.3` until the next release is ready to merge. See [release preparation](docs/RELEASE.md).
+**Release preparation:** Gemini support in this checkout is unreleased. Version `1.7.0` is prepared locally as a formal release package; GitHub publication and Chrome Web Store submission have not been performed. The published `v1.6.3` package predates Gemini support. See [release preparation](docs/RELEASE.md).
 
 [Privacy Policy](PRIVACY.md)
 
@@ -94,7 +94,7 @@ The script runs `npm run build` (JavaScript syntax checks, unit and browser test
 
 See [release preparation](docs/RELEASE.md) for listing drafts, privacy declarations, safe sample screenshots and final submission steps. Regenerate the sample screenshots with `node scripts/capture-store-screenshots.js`.
 
-The published [v1.6.3 release](https://github.com/ten9miq/prompt-outline-navigator/releases/tag/v1.6.3) contains the ChatGPT cached-history navigation fix. Its original ZIP is `dist/prompt-outline-navigator-1.6.3-chrome-web-store.zip`; Gemini support belongs to the unreleased work in this checkout. The source version is intentionally still `1.6.3`. Use [release preparation](docs/RELEASE.md) for the Gemini review package and future release steps. The [1.6.2 release](https://github.com/ten9miq/prompt-outline-navigator/releases/tag/v1.6.2) improved outline discovery, partial writing revisions, message identity and virtualized-history handling.
+The published [v1.6.3 release](https://github.com/ten9miq/prompt-outline-navigator/releases/tag/v1.6.3) contains the ChatGPT cached-history navigation fix. Its original ZIP is `dist/prompt-outline-navigator-1.6.3-chrome-web-store.zip`; Gemini support belongs to the unreleased work in this checkout. The Gemini update uses `1.7.0`. See [release preparation](docs/RELEASE.md) for its formal ZIP and remaining publication steps. The [1.6.2 release](https://github.com/ten9miq/prompt-outline-navigator/releases/tag/v1.6.2) improved outline discovery, partial writing revisions, message identity and virtualized-history handling.
 
 The previous version `1.6.0` and its verified store package were prepared at the owner's request. The ZIP is `dist/prompt-outline-navigator-1.6.0-chrome-web-store.zip`. See the [GitHub release](https://github.com/ten9miq/prompt-outline-navigator/releases/tag/v1.6.0) for downloads; Chrome Web Store submission is separate.
 

@@ -1,6 +1,6 @@
 {
   "name": "prompt-outline-navigator",
-  "version": "1.6.3",
+  "version": "1.7.0",
   "description": "A live table-of-contents and navigation sidebar for ChatGPT and Gemini conversations",
   "main": "content.js",
   "scripts": {

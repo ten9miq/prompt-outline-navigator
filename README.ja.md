@@ -6,7 +6,7 @@ ChatGPTとGeminiの会話に、リアルタイムで更新される目次とナ�
 
 Prompt Outline Navigatorは独立したプロジェクトであり、OpenAIやGoogleとの提携や、両社による承認を受けたものではありません。
 
-**開発状態：** このチェックアウトのGemini対応は未リリースで、公開済みの`v1.6.3`パッケージには含まれません。次のリリースをマージする直前までソースの版数は`1.6.3`を維持します。[リリース準備](docs/RELEASE.md)を参照してください。
+**リリース準備：** このチェックアウトのGemini対応は未リリースです。正式リリース用の`1.7.0`をローカルで準備済みですが、GitHub公開・Chromeウェブストアへの提出は行っていません。公開済み`v1.6.3`パッケージにはGemini対応は含まれません。[リリース準備](docs/RELEASE.md)を参照してください。
 
 [プライバシーポリシー](PRIVACY.ja.md)
 
@@ -94,7 +94,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File scripts/build-store-package.
 
 掲載原稿、プライバシー申告、個人情報を含まないサンプル画像と公開前の手順は[公開準備](docs/RELEASE.md)を参照してください。サンプル画像は`node scripts/capture-store-screenshots.js`で再生成できます。
 
-公開済みの[v1.6.3リリース](https://github.com/ten9miq/prompt-outline-navigator/releases/tag/v1.6.3)はChatGPTの保持済み履歴への移動を修正したものです。当時のZIPは`dist/prompt-outline-navigator-1.6.3-chrome-web-store.zip`で、Gemini対応はこのチェックアウトの未リリース作業に含まれます。ソースの版数は意図的に`1.6.3`のままです。Geminiの確認用パッケージと今後の公開手順は[リリース準備](docs/RELEASE.md)を参照してください。[1.6.2リリース](https://github.com/ten9miq/prompt-outline-navigator/releases/tag/v1.6.2)では目次の検出・部分修正・メッセージ識別・仮想化履歴の扱いを改善しました。
+公開済みの[v1.6.3リリース](https://github.com/ten9miq/prompt-outline-navigator/releases/tag/v1.6.3)はChatGPTの保持済み履歴への移動を修正したものです。当時のZIPは`dist/prompt-outline-navigator-1.6.3-chrome-web-store.zip`で、Gemini対応はこのチェックアウトの未リリース作業に含まれます。Gemini更新版には`1.7.0`を使います。正式ZIPと残りの公開手順は[リリース準備](docs/RELEASE.md)を参照してください。[1.6.2リリース](https://github.com/ten9miq/prompt-outline-navigator/releases/tag/v1.6.2)では目次の検出・部分修正・メッセージ識別・仮想化履歴の扱いを改善しました。
 
 前版`1.6.0`では、所有者の依頼により検証済みのストア用ZIPを準備しました。ZIPは`dist/prompt-outline-navigator-1.6.0-chrome-web-store.zip`です。[GitHubリリース](https://github.com/ten9miq/prompt-outline-navigator/releases/tag/v1.6.0)からダウンロードできます。Chromeウェブストアへの提出は別途行います。
 

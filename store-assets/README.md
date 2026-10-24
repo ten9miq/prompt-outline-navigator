@@ -1,6 +1,6 @@
 # Chrome Web Store assets
 
-The Gemini listing drafts are prepared for the next release; this task does not upload or publish store content.
+The Gemini listing drafts are prepared for version 1.7.0; the formal package is local and store content has not been uploaded or published.
 
 Upload the generated PNG files to the corresponding Chrome Web Store fields when the final release is authorized:
 
