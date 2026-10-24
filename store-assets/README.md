@@ -1,8 +1,8 @@
 # Chrome Web Store assets
 
-The v1.7.0 package is published on GitHub. These Gemini listing drafts have not been applied to the Chrome Web Store.
+The v1.7.0 package is published on GitHub and was submitted to the Chrome Web Store on 2026-10-24 (JST); it is awaiting review. The Japanese and English listing texts were saved together in the dashboard's shared description field before submission. The currently published store version remains 1.6.3.
 
-Upload the generated PNG files to the corresponding Chrome Web Store fields when the final release is authorized:
+The existing store images were retained for this submission. The generated PNG files correspond to these Chrome Web Store fields:
 
 | File | Store field | Required |
 | --- | --- | --- |

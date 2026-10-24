@@ -1,6 +1,6 @@
 # Release 1.7.0 / Gemini対応のリリース準備
 
-Prepared on **2026-10-24**. Status: **GitHub release published; Chrome Web Store submission not performed**.
+Updated on **2026-10-24**. Status: **GitHub release published; Chrome Web Store 1.7.0 submitted and awaiting review**.
 
 Gemini対応を含む正式リリース用の版数は`1.7.0`です。機能コミットでは1.6.3を維持し、完成したbranchのローカルmain統合直前の版数準備で一度だけ1.7.0へ更新したものです。公開済み`v1.6.3`のChatGPT向け成果物は上書きしません。過去の版数・ハッシュ・公開経過は[1.6.3の過去記録](RELEASE_1.6.3.md)に保存しています。
 
@@ -30,7 +30,7 @@ Canvasとノートブックの内容自体は目次対象外です。実確認�
 | Checksum | `dist/prompt-outline-navigator-1.7.0-chrome-web-store.zip.sha256` |
 | Build / exact ZIP verification | `npm run build`: 94 unit tests and 53 browser tests passed; all 14 packaged files matched source hashes |
 | ZIP bytes / SHA-256 | `52,702 bytes` / `D94EDB7310E433B7EDEADBEEACDC57F06148B9BB440CD1389B5B7196A1275FE9` |
-| Publication status | [GitHub v1.7.0](https://github.com/ten9miq/prompt-outline-navigator/releases/tag/v1.7.0), published `2026-10-24T13:26:33Z`; not submitted to Chrome Web Store |
+| Publication status | [GitHub v1.7.0](https://github.com/ten9miq/prompt-outline-navigator/releases/tag/v1.7.0), published `2026-10-24T13:26:33Z`; Chrome Web Store 1.7.0 awaiting review, confirmed `2026-10-24 22:53 JST` |
 
 Build the formal package from the finalized versioned source:
 
@@ -58,7 +58,7 @@ The builder runs `npm run build`, verifies the exact manifest-derived ZIP file l
 | Homepage | `https://github.com/ten9miq/prompt-outline-navigator` |
 | Support | `https://github.com/ten9miq/prompt-outline-navigator/issues` |
 | Privacy source | [English](../PRIVACY.md), [Japanese](../PRIVACY.ja.md), dated `2026-10-24` |
-| Public privacy URL | `https://github.com/ten9miq/prompt-outline-navigator/blob/main/PRIVACY.ja.md`; publish the updated source with the release before store submission |
+| Public privacy URL | `https://github.com/ten9miq/prompt-outline-navigator/blob/main/PRIVACY.ja.md`; updated source published and existing store URL preserved |
 | Store images | Existing fictional ChatGPT examples remain usable; see [asset notes](../store-assets/README.md) |
 
 Single purpose: provide a local outline and in-page navigation for ChatGPT and Gemini conversations, plus supported ChatGPT documents and feeds.
@@ -69,9 +69,9 @@ Single purpose: provide a local outline and in-page navigation for ChatGPT and G
 | Site access | Add `https://gemini.google.com/*`; preserve `https://chatgpt.com/*` and `https://chat.openai.com/*` |
 | Data use | Local page processing only; retain communications/content disclosure, with no developer collection, transmission, sale or sharing |
 | Remote code | No remote code, analytics or new permission categories |
-| Distribution | Inspect and preserve current regions, pricing and publication settings when submission is separately authorized |
+| Distribution | Existing regions and distribution settings preserved; automatic publication after review approval retained |
 
-追加ホストへのアクセスをストア申告へ反映します。保存データとローカル処理の方針は変わりません。Chrome Web Storeの設定・掲載内容・公開状態は変更していません。
+追加ホストへのアクセスをストア申告へ反映しました。日英の単一用途・storage・対象3ホストの説明と審査用テスト手順を保存し、リモートコードなし・既存のデータ利用申告を維持しました。日本語・英語の商品説明は「すべての言語用」の共通説明欄へ併記しています（4,741文字）。Gemini対応の概要もパッケージから反映済みです。既存画像・カテゴリ・言語・配布設定は維持しました。
 
 ## Reviewer checks / レビュー確認項目
 
@@ -86,14 +86,13 @@ Single purpose: provide a local outline and in-page navigation for ChatGPT and G
 
 The feature commit keeps version 1.6.3. A single version-preparation commit selects 1.7.0 immediately before the local main merge; commit identities are recorded in Git history. Local commits, versioning, main integration and formal package creation are authorized by this preparation request.
 
-mainとannotated tag `v1.7.0`をpushし、GitHub releaseを公開しました。tagはリリースmerge `d1d32f124c20d0d415b2e8d7bbb543af07801348`を指します。正式ZIPとチェックサムの2件をGitHubからdownloadし、ローカルとのhash一致を確認しました。Chromeウェブストア提出は行っていません。
+mainとannotated tag `v1.7.0`をpushし、GitHub releaseを公開しました。tagはリリースmerge `d1d32f124c20d0d415b2e8d7bbb543af07801348`を指します。正式ZIPとチェックサムの2件をGitHubからdownloadし、ローカルとのhash一致を確認しました。
 
 1. GitHub publication is complete: tag `v1.7.0` identifies the verified release merge and the ZIP/checksum are attached. A subsequent documentation-only commit records this state; it does not move the release tag or change the package.
-2. Publish the updated privacy source and prepare the Gemini listing/site-access disclosures. Preserve unrelated distribution, regions and pricing.
-3. Before an authorized Chrome Web Store submission, inspect current public/draft versions and pending reviews; do not infer current dashboard state from the historical 1.6.3 record.
-4. Upload this finalized versioned ZIP only in the authorized store workflow and record submission, review and publication separately.
-5. Do not describe the local ZIP, a GitHub release, or a store submission as an approved/published store update until the actual result confirms it.
+2. Chrome Web Store submission is complete: upload of the formal 1.7.0 ZIP and saved listing/privacy/reviewer updates preceded submission. The dashboard showed the success dialog and **審査待ち** at `2026-10-24 22:53 JST`; the package page confirmed draft 1.7.0 and published 1.6.3. The time is the observed confirmation time, not a separately reported server timestamp.
+3. Await Google's review. Automatic publication after approval was selected in the submission dialog. This is not approval or confirmation that 1.7.0 is publicly available on the store. Check the [existing store item](https://chromewebstore.google.com/detail/prompt-outline-navigator/nleamodjnjbpcemdbcemfpbaelkkmmpe) and dashboard for the eventual outcome.
+4. Record approval/publication separately when confirmed; preserve the release tag and package during documentation-only updates.
 
 ## Previous release record / 過去版の記録
 
-[Version 1.6.3](RELEASE_1.6.3.md) records the published ChatGPT history-navigation patch, its original ZIP/hash and earlier releases. The last store state recorded there was pending review on 2026-10-23; this preparation did not recheck or change the live dashboard.
+[Version 1.6.3](RELEASE_1.6.3.md) records the published ChatGPT history-navigation patch, its original ZIP/hash and earlier releases. Its historical pending-review entry remains unchanged; the current dashboard confirmed 1.6.3 as published before the 1.7.0 submission.

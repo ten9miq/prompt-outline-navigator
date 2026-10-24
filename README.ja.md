@@ -6,7 +6,7 @@ ChatGPTとGeminiの会話に、リアルタイムで更新される目次とナ�
 
 Prompt Outline Navigatorは独立したプロジェクトであり、OpenAIやGoogleとの提携や、両社による承認を受けたものではありません。
 
-**リリース：** Gemini対応を含む[v1.7.0](https://github.com/ten9miq/prompt-outline-navigator/releases/tag/v1.7.0)をGitHubで公開しました。正式ZIPとチェックサムを添付済みです。Chromeウェブストアへの提出は行っていません。
+**リリース：** Gemini対応を含む[v1.7.0](https://github.com/ten9miq/prompt-outline-navigator/releases/tag/v1.7.0)をGitHubで公開しました。正式ZIPとチェックサムを添付済みです。2026-10-24にChromeウェブストアへ1.7.0を提出し、現在は審査待ちです。ストアの公開済みバージョンは引き続き1.6.3です。
 
 [プライバシーポリシー](PRIVACY.ja.md)
 
